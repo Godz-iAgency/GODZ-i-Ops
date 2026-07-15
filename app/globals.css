@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background: #000000;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2c2c2c;
+  border-radius: 4px;
+}
+
+.font-display {
+  font-family: 'Archivo Black', sans-serif;
+}
+.font-heading {
+  font-family: 'Space Grotesk', sans-serif;
+}
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+textarea,
+input,
+select {
+  font-family: 'Inter', sans-serif;
+}
+
+.card-hover {
+  transition: border-color 100ms ease, transform 100ms ease;
+}
+.card-hover:hover {
+  border-color: #f0451f;
+  transform: translateY(-1px);
+}
