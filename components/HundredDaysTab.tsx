@@ -31,9 +31,9 @@ export default function HundredDaysTab() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <p className="text-xs mb-4 text-[#999]">Tap a day to write a note. Filled boxes have a note saved.</p>
-      <div className="grid grid-cols-8 sm:grid-cols-10 gap-2">
+    <div className="max-w-[760px] mx-auto">
+      <p className="text-xs text-muted mb-4">Tap a day to write a note. Filled boxes have a note saved.</p>
+      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
         {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => {
           const hasNote = !!dayNotes[n];
           const isToday = n === day;
@@ -41,33 +41,43 @@ export default function HundredDaysTab() {
             <button
               key={n}
               onClick={() => openDay(n)}
-              className="card-hover aspect-square rounded-lg flex flex-col items-center justify-center gap-0.5 border"
+              className="aspect-square rounded-[10px] flex flex-col items-center justify-center gap-0.5 transition-all hover:scale-[1.08]"
               style={{
-                background: hasNote ? "#F0451F" : "#1F1F1F",
-                borderColor: isToday ? "#fff" : hasNote ? "#F0451F" : "#2C2C2C",
-                borderWidth: isToday ? 1.5 : 1,
+                border: isToday ? "1.5px solid #fff" : `1px solid ${hasNote ? "var(--color-accent)" : "var(--color-border)"}`,
+                background: hasNote
+                  ? "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))"
+                  : "rgba(255,255,255,0.025)",
+                color: hasNote ? "#fff" : "var(--color-muted)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = "0 4px 14px rgba(232,67,10,0.35)";
+                e.currentTarget.style.borderColor = "var(--color-accent-light)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.borderColor = isToday ? "#fff" : hasNote ? "var(--color-accent)" : "var(--color-border)";
               }}
             >
-              <span className="text-xs font-semibold" style={{ color: hasNote ? "#fff" : "#999" }}>
-                {n}
-              </span>
-              <span className="text-[9px] font-mono" style={{ color: hasNote ? "rgba(255,255,255,0.8)" : "#999" }}>
-                {dateForDay(n)}
-              </span>
+              <span className="text-xs font-bold">{n}</span>
+              <span className="text-[8px] font-mono opacity-70">{dateForDay(n)}</span>
             </button>
           );
         })}
       </div>
 
       {selectedDay && (
-        <div className="fixed inset-0 flex items-center justify-center p-5 z-50 bg-black/70" onClick={() => setSelectedDay(null)}>
-          <div className="w-full max-w-sm rounded-xl p-5 bg-[#141414] border border-[#2C2C2C]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70" onClick={() => setSelectedDay(null)}>
+          <div
+            className="w-full max-w-sm rounded-2xl p-5 bg-surface2 border border-border"
+            style={{ boxShadow: "var(--shadow-elevated)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-heading">
+              <h3 className="text-lg font-bold text-foreground">
                 Day {selectedDay} · {dateForDay(selectedDay)}
               </h3>
               <button onClick={() => setSelectedDay(null)}>
-                <X size={16} color="#999" />
+                <X size={16} color="var(--color-muted)" />
               </button>
             </div>
             <textarea
@@ -75,9 +85,16 @@ export default function HundredDaysTab() {
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder="What happened today?"
               rows={5}
-              className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none mb-3 bg-[#1F1F1F] text-white border border-[#2C2C2C]"
+              className="w-full text-[13px] px-3 py-2.5 rounded-xl outline-none resize-none mb-3 bg-black/30 text-foreground border border-border placeholder:text-muted"
             />
-            <button onClick={saveDayNote} className="w-full py-2.5 rounded-lg text-sm font-semibold bg-[#F0451F] text-white">
+            <button
+              onClick={saveDayNote}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+              style={{
+                background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))",
+                boxShadow: "var(--shadow-cta)",
+              }}
+            >
               Save note
             </button>
           </div>

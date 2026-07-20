@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, X, RefreshCw, Save, Trash2, Mail, Phone, MapPin } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Phone, MapPin, ArrowRight } from "lucide-react";
 
 type Tier = "godzi" | "splitmic" | "gbombs" | "bookworm" | "hotcake";
 
 const TIER_META: Record<Tier, { label: string; color: string }> = {
-  godzi: { label: "GODZ-i", color: "#F2C94C" },
-  splitmic: { label: "SplitMic", color: "#56CCF2" },
-  gbombs: { label: "gBOMBS", color: "#EF6C9E" },
-  bookworm: { label: "Bookworm", color: "#C9A66B" },
-  hotcake: { label: "HotCake", color: "#5FBF7A" },
+  godzi: { label: "GODZ-i", color: "#f2c94c" },
+  splitmic: { label: "SplitMic", color: "#56ccf2" },
+  gbombs: { label: "gBOMBS", color: "#ef6c9e" },
+  bookworm: { label: "Bookworm", color: "#c9a66b" },
+  hotcake: { label: "HotCake", color: "#5fbf7a" },
 };
 const TIER_ORDER: Tier[] = ["godzi", "splitmic", "gbombs", "bookworm", "hotcake"];
 
@@ -56,6 +56,14 @@ function daysAgo(dateStr?: string) {
   if (d === 0) return "today";
   if (d === 1) return "1d ago";
   return `${d}d ago`;
+}
+
+function pillStyle(active: boolean, activeBg = "var(--color-accent)") {
+  return {
+    background: active ? activeBg : "transparent",
+    color: active ? "#0a0705" : "var(--color-muted)",
+    boxShadow: active ? "0 4px 16px rgba(232,67,10,0.35)" : "none",
+  };
 }
 
 export default function OutreachBoard() {
@@ -160,17 +168,13 @@ export default function OutreachBoard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto bg-surface2 p-1 rounded-full border border-border max-w-full">
           {TIER_ORDER.map((t) => (
             <button
               key={t}
               onClick={() => setTier(t)}
-              className="px-3.5 py-1.5 rounded-full text-sm font-medium border"
-              style={{
-                background: tier === t ? TIER_META[t].color : "#141414",
-                color: tier === t ? "#000" : "#999",
-                borderColor: tier === t ? TIER_META[t].color : "#2C2C2C",
-              }}
+              className="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-[13px] font-semibold transition-all"
+              style={pillStyle(tier === t, TIER_META[t].color)}
             >
               {TIER_META[t].label}
             </button>
@@ -179,19 +183,19 @@ export default function OutreachBoard() {
         <button
           onClick={() => load(tier)}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border border-[#2C2C2C] bg-[#141414] text-[#999] hover:text-white disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
         >
           <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
         </button>
       </div>
 
       {error && (
-        <div className="px-3 py-2 rounded-lg text-sm bg-[rgba(240,69,31,0.14)] border border-[#F0451F] text-[#F0451F]">
+        <div className="px-3.5 py-2.5 rounded-xl text-sm bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
           {error}
         </div>
       )}
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-3.5 overflow-x-auto pb-3 snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
         {stages.map((stage) => {
           const stageLeads = leads.filter((l) => l.fields.Stage === stage);
           const isOver = overStage === stage;
@@ -209,18 +213,22 @@ export default function OutreachBoard() {
                 setOverStage(null);
                 setDragId(null);
               }}
-              className="flex-shrink-0 w-64 rounded-xl flex flex-col bg-[#141414] border"
-              style={{ borderColor: isOver ? "#F0451F" : "#2C2C2C", minHeight: "60vh" }}
+              className="flex-shrink-0 snap-start rounded-2xl flex flex-col bg-surface2 border"
+              style={{
+                width: "min(85vw, 250px)",
+                minHeight: "60vh",
+                borderColor: isOver ? "var(--color-accent)" : "var(--color-border)",
+              }}
             >
-              <div className="px-3 py-2.5 flex items-center justify-between border-b border-[#2C2C2C]">
-                <h3 className="text-sm font-semibold font-heading">{stage}</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-[#1F1F1F] text-[#999] font-mono">
+              <div className="px-3.5 py-3 flex items-center justify-between border-b border-border">
+                <h3 className="text-[13px] font-bold text-foreground">{stage}</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-surface3 text-muted font-mono">
                   {stageLeads.length}
                 </span>
               </div>
-              <div className="p-2 flex flex-col gap-2 flex-1">
+              <div className="p-2.5 flex flex-col gap-2 flex-1">
                 {stageLeads.length === 0 && addingStage !== stage && (
-                  <p className="text-xs italic px-1 py-3 text-[#999]">No one here yet.</p>
+                  <p className="text-xs italic px-1 py-3 text-muted">No one here yet.</p>
                 )}
                 {stageLeads.map((lead) => (
                   <div
@@ -228,48 +236,60 @@ export default function OutreachBoard() {
                     draggable
                     onDragStart={() => setDragId(lead.id)}
                     onDragEnd={() => setDragId(null)}
-                    onClick={() => setDetail(lead)}
-                    className="card-hover rounded-lg p-2.5 flex flex-col gap-1.5 cursor-pointer bg-[#1F1F1F] border border-[#2C2C2C]"
+                    className="card-hover rounded-xl p-3 flex flex-col gap-2 cursor-pointer bg-surface3 border border-border"
                     style={{ opacity: dragId === lead.id ? 0.4 : 1 }}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm truncate flex-1">{lead.fields.Name}</span>
+                    <div onClick={() => setDetail(lead)} className="flex items-center justify-between gap-2">
+                      <span className="text-[13px] font-semibold truncate flex-1 text-foreground">{lead.fields.Name}</span>
                       {lead.fields["Last Contact"] && (
-                        <span className="text-[10px] text-[#999] font-mono flex-shrink-0">
+                        <span className="text-[10px] text-muted font-mono flex-shrink-0">
                           {daysAgo(lead.fields["Last Contact"])}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap">
+                    <div onClick={() => setDetail(lead)} className="flex items-center gap-1.5 flex-wrap">
                       {lead.fields.Category && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#141414] text-[#999]">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-surfaceElevated text-textSecondary">
                           {lead.fields.Category}
                         </span>
                       )}
                       {asArray(lead.fields.Channel).map((c) => (
-                        <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#141414] text-[#4FD1C5]">
+                        <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-surfaceElevated text-accentLight">
                           {c}
                         </span>
                       ))}
                     </div>
+                    {/* Touch-friendly stage move -- drag-and-drop needs a mouse, this works on tablet */}
+                    <select
+                      value={stage}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => moveStage(lead.id, e.target.value)}
+                      className="text-[11px] px-2 py-1.5 rounded-lg outline-none bg-black/30 border border-border text-textSecondary font-mono"
+                    >
+                      {stages.map((s) => (
+                        <option key={s} value={s}>
+                          Move to: {s}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 ))}
               </div>
-              <div className="p-2 border-t border-[#2C2C2C]">
+              <div className="p-2.5 border-t border-border">
                 {addingStage === stage ? (
-                  <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-[#1F1F1F] border border-[#2C2C2C]">
+                  <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-surface3 border border-border">
                     <input
                       autoFocus
                       value={form.Name}
                       onChange={(e) => setForm({ ...form, Name: e.target.value })}
                       placeholder="Name"
-                      className="text-sm px-2 py-1.5 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
+                      className="text-[13px] px-2.5 py-2 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
                     />
                     {schema?.category && schema.category.length > 0 && (
                       <select
                         value={form.Category}
                         onChange={(e) => setForm({ ...form, Category: e.target.value })}
-                        className="text-sm px-2 py-1.5 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
+                        className="text-[13px] px-2.5 py-2 rounded-lg outline-none bg-black/40 border border-border text-foreground"
                       >
                         <option value="">Category...</option>
                         {schema.category.map((c) => (
@@ -287,11 +307,11 @@ export default function OutreachBoard() {
                             key={c}
                             type="button"
                             onClick={() => toggleChannel(form, c, setForm)}
-                            className="text-[10px] px-2 py-1 rounded-full border"
+                            className="text-[10px] px-2.5 py-1 rounded-full border transition-all"
                             style={{
-                              background: active ? "#F0451F" : "transparent",
-                              borderColor: active ? "#F0451F" : "#2C2C2C",
-                              color: active ? "#fff" : "#999",
+                              background: active ? "var(--color-accent)" : "transparent",
+                              borderColor: active ? "var(--color-accent)" : "var(--color-border)",
+                              color: active ? "#fff" : "var(--color-muted)",
                             }}
                           >
                             {c}
@@ -303,19 +323,20 @@ export default function OutreachBoard() {
                       value={form.Email}
                       onChange={(e) => setForm({ ...form, Email: e.target.value })}
                       placeholder="Email"
-                      className="text-sm px-2 py-1.5 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
+                      className="text-[13px] px-2.5 py-2 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
                     />
                     <input
                       value={form.Phone}
                       onChange={(e) => setForm({ ...form, Phone: e.target.value })}
                       placeholder="Phone"
-                      className="text-sm px-2 py-1.5 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
+                      className="text-[13px] px-2.5 py-2 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
                     />
                     <div className="flex gap-1.5 pt-1">
                       <button
                         onClick={() => createLead(stage)}
                         disabled={saving}
-                        className="flex-1 py-1.5 rounded-md text-xs font-medium flex items-center justify-center gap-1 bg-[#F0451F] text-white disabled:opacity-50"
+                        className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 text-white disabled:opacity-50"
+                        style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
                       >
                         <Save size={12} /> Save
                       </button>
@@ -324,16 +345,16 @@ export default function OutreachBoard() {
                           setAddingStage(null);
                           setForm(emptyForm);
                         }}
-                        className="px-2 py-1.5 rounded-md bg-[#141414]"
+                        className="px-2.5 py-2 rounded-lg bg-surface2"
                       >
-                        <X size={13} color="#999" />
+                        <X size={13} color="var(--color-muted)" />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <button
                     onClick={() => setAddingStage(stage)}
-                    className="w-full py-1.5 rounded-md flex items-center justify-center gap-1.5 text-xs text-[#999] border border-dashed border-[#2C2C2C]"
+                    className="w-full py-2 rounded-lg flex items-center justify-center gap-1.5 text-xs text-muted border border-dashed border-borderHover transition-all hover:border-accent hover:text-accentLight"
                   >
                     <Plus size={13} /> Add lead
                   </button>
@@ -346,46 +367,45 @@ export default function OutreachBoard() {
 
       {detail && schema && (
         <div
-          className="fixed inset-0 flex items-center justify-center p-5 z-50 bg-black/70"
+          className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70"
           onClick={() => setDetail(null)}
         >
           <div
-            className="w-full max-w-md rounded-xl p-5 bg-[#141414] border border-[#2C2C2C] max-h-[85vh] overflow-y-auto"
+            className="w-full max-w-md rounded-2xl p-5 bg-surface2 border border-border max-h-[90vh] overflow-y-auto"
+            style={{ boxShadow: "var(--shadow-elevated)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <input
                 value={detail.fields.Name || ""}
                 onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Name: e.target.value } })}
-                className="text-xl font-heading bg-transparent outline-none flex-1"
+                className="text-xl font-bold bg-transparent outline-none flex-1 text-foreground"
               />
               <button onClick={() => setDetail(null)}>
-                <X size={18} color="#999" />
+                <X size={18} color="var(--color-muted)" />
               </button>
             </div>
 
             <div className="flex flex-col gap-3">
-              <div>
-                <label className="text-xs uppercase tracking-wide text-[#999] font-mono">Stage</label>
-                <select
-                  value={detail.fields.Stage || ""}
-                  onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Stage: e.target.value } })}
-                  className="w-full mt-1 text-sm px-2.5 py-2 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
-                >
-                  {stages.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex items-center gap-2 p-1 rounded-xl bg-black/30 border border-border overflow-x-auto">
+                {stages.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setDetail({ ...detail, fields: { ...detail.fields, Stage: s } })}
+                    className="flex-shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    style={pillStyle(detail.fields.Stage === s)}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
 
               <div>
-                <label className="text-xs uppercase tracking-wide text-[#999] font-mono">Category</label>
+                <label className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono">Category</label>
                 <select
                   value={detail.fields.Category || ""}
                   onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Category: e.target.value } })}
-                  className="w-full mt-1 text-sm px-2.5 py-2 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
+                  className="w-full mt-1 text-[13px] px-2.5 py-2 rounded-lg outline-none bg-black/30 border border-border text-foreground"
                 >
                   <option value="">None</option>
                   {schema.category.map((c) => (
@@ -397,7 +417,7 @@ export default function OutreachBoard() {
               </div>
 
               <div>
-                <label className="text-xs uppercase tracking-wide text-[#999] font-mono">Channels</label>
+                <label className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono">Channels</label>
                 <div className="flex gap-1.5 flex-wrap mt-1">
                   {schema.channel.map((c) => {
                     const active = asArray(detail.fields.Channel).includes(c);
@@ -407,11 +427,11 @@ export default function OutreachBoard() {
                         onClick={() =>
                           toggleChannel(detail.fields, c, (f) => setDetail({ ...detail, fields: f }))
                         }
-                        className="text-xs px-2.5 py-1 rounded-full border"
+                        className="text-xs px-3 py-1.5 rounded-full border transition-all"
                         style={{
-                          background: active ? "#F0451F" : "transparent",
-                          borderColor: active ? "#F0451F" : "#2C2C2C",
-                          color: active ? "#fff" : "#999",
+                          background: active ? "var(--color-accent)" : "transparent",
+                          borderColor: active ? "var(--color-accent)" : "var(--color-border)",
+                          color: active ? "#fff" : "var(--color-muted)",
                         }}
                       >
                         {c}
@@ -422,31 +442,31 @@ export default function OutreachBoard() {
               </div>
 
               <div className="grid grid-cols-1 gap-2">
-                <div className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-black border border-[#2C2C2C]">
-                  <Mail size={14} color="#999" />
+                <div className="flex items-center gap-2 px-2.5 py-2.5 rounded-lg bg-black/30 border border-border">
+                  <Mail size={14} color="var(--color-muted)" />
                   <input
                     value={detail.fields.Email || ""}
                     onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Email: e.target.value } })}
                     placeholder="Email"
-                    className="flex-1 text-sm bg-transparent outline-none"
+                    className="flex-1 text-[13px] bg-transparent outline-none text-foreground placeholder:text-muted"
                   />
                 </div>
-                <div className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-black border border-[#2C2C2C]">
-                  <Phone size={14} color="#999" />
+                <div className="flex items-center gap-2 px-2.5 py-2.5 rounded-lg bg-black/30 border border-border">
+                  <Phone size={14} color="var(--color-muted)" />
                   <input
                     value={detail.fields.Phone || ""}
                     onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Phone: e.target.value } })}
                     placeholder="Phone"
-                    className="flex-1 text-sm bg-transparent outline-none"
+                    className="flex-1 text-[13px] bg-transparent outline-none text-foreground placeholder:text-muted"
                   />
                 </div>
-                <div className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-black border border-[#2C2C2C]">
-                  <MapPin size={14} color="#999" />
+                <div className="flex items-center gap-2 px-2.5 py-2.5 rounded-lg bg-black/30 border border-border">
+                  <MapPin size={14} color="var(--color-muted)" />
                   <input
                     value={detail.fields.Address || ""}
                     onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Address: e.target.value } })}
                     placeholder="Address"
-                    className="flex-1 text-sm bg-transparent outline-none"
+                    className="flex-1 text-[13px] bg-transparent outline-none text-foreground placeholder:text-muted"
                   />
                 </div>
                 <input
@@ -455,7 +475,7 @@ export default function OutreachBoard() {
                     setDetail({ ...detail, fields: { ...detail.fields, "Channel Handle": e.target.value } })
                   }
                   placeholder="Handle / profile link"
-                  className="text-sm px-2.5 py-2 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
+                  className="text-[13px] px-2.5 py-2.5 rounded-lg outline-none bg-black/30 border border-border text-foreground placeholder:text-muted"
                 />
               </div>
 
@@ -465,18 +485,18 @@ export default function OutreachBoard() {
                   setDetail({ ...detail, fields: { ...detail.fields, "Next Action": e.target.value } })
                 }
                 placeholder="Next action"
-                className="text-sm px-2.5 py-2 rounded-md outline-none bg-black border border-[#2C2C2C] text-white"
+                className="text-[13px] px-2.5 py-2.5 rounded-lg outline-none bg-black/30 border border-border text-foreground placeholder:text-muted"
               />
               <textarea
                 value={detail.fields.Notes || ""}
                 onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Notes: e.target.value } })}
                 placeholder="Notes"
                 rows={3}
-                className="text-sm px-2.5 py-2 rounded-md outline-none resize-none bg-black border border-[#2C2C2C] text-white"
+                className="text-[13px] px-2.5 py-2.5 rounded-lg outline-none resize-none bg-black/30 border border-border text-foreground placeholder:text-muted"
               />
 
               {detail.fields["Last Contact"] && (
-                <p className="text-xs text-[#999] font-mono">
+                <p className="text-xs text-muted font-mono">
                   Last contact: {detail.fields["Last Contact"]} ({daysAgo(detail.fields["Last Contact"])})
                 </p>
               )}
@@ -484,7 +504,11 @@ export default function OutreachBoard() {
               <button
                 onClick={saveDetail}
                 disabled={saving}
-                className="w-full py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 bg-[#F0451F] text-white disabled:opacity-50"
+                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 text-white disabled:opacity-50 transition-all hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))",
+                  boxShadow: "var(--shadow-cta)",
+                }}
               >
                 <Save size={15} /> Save changes
               </button>
