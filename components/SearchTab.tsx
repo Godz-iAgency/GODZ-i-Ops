@@ -33,7 +33,7 @@ function CopyChip({ text }: { text: string }) {
   return (
     <button
       onClick={doCopy}
-      className="text-xs px-3 py-1.5 rounded-full text-left flex items-center gap-1.5 transition-all hover:-translate-y-0.5"
+      className="text-sm px-4 py-2 rounded-full text-left flex items-center gap-1.5 transition-all hover:-translate-y-0.5"
       style={{
         background: copied ? "var(--color-accent)" : "rgba(255,255,255,0.04)",
         borderColor: copied ? "var(--color-accent)" : "rgba(255,255,255,0.08)",
@@ -64,12 +64,12 @@ export default function SearchTab() {
   const removeContentIdea = (id: number) => setContentLog(contentLog.filter((c) => c.id !== id));
 
   return (
-    <div className="max-w-[640px] mx-auto flex flex-col gap-[26px]">
+    <div className="max-w-[900px] mx-auto flex flex-col gap-9">
       <section>
-        <h2 className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono mb-2.5">
+        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">
           LinkedIn search terms, talent buyers · tap to copy
         </h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5">
           {LINKEDIN_SEARCH_TERMS.map((s) => (
             <CopyChip key={s} text={s} />
           ))}
@@ -77,10 +77,10 @@ export default function SearchTab() {
       </section>
 
       <section>
-        <h2 className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono mb-2.5">
+        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">
           Instagram search terms, bands · tap to copy
         </h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5">
           {INSTAGRAM_SEARCH_TERMS.map((s) => (
             <CopyChip key={s} text={s} />
           ))}
@@ -88,31 +88,31 @@ export default function SearchTab() {
       </section>
 
       <section>
-        <h2 className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono mb-2.5">Content ideas</h2>
-        <div className="flex gap-2 mb-3">
+        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">Content ideas</h2>
+        <div className="flex gap-2.5 mb-4">
           <input
             value={newContentIdea}
             onChange={(e) => setNewContentIdea(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addContentIdea()}
             placeholder="What are you researching today?"
-            className="flex-1 min-w-0 text-[13px] px-3 py-2.5 rounded-xl outline-none bg-white/[0.02] text-foreground border border-border placeholder:text-muted"
+            className="flex-1 min-w-0 text-base px-4 py-3 rounded-xl outline-none bg-white/[0.02] text-foreground border border-border placeholder:text-muted"
           />
           <button
             onClick={addContentIdea}
-            className="px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-1 text-white"
+            className="px-5 py-3 rounded-xl text-base font-bold flex items-center gap-1.5 text-white"
             style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
           >
-            <Plus size={14} /> Add
+            <Plus size={16} /> Add
           </button>
         </div>
-        <div className="flex flex-col gap-2">
-          {contentLog.length === 0 && <p className="text-xs italic text-muted">Nothing added yet.</p>}
+        <div className="flex flex-col gap-2.5">
+          {contentLog.length === 0 && <p className="text-sm italic text-muted">Nothing added yet.</p>}
           {contentLog.map((idea) => (
-            <div key={idea.id} className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface2 border border-border">
-              <span className="text-[13px] flex-1 text-foreground">{idea.text}</span>
-              <span className="text-[10px] text-muted font-mono">{idea.addedAt}</span>
+            <div key={idea.id} className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-surface2 border border-border">
+              <span className="text-base flex-1 text-foreground">{idea.text}</span>
+              <span className="text-xs text-muted font-mono">{idea.addedAt}</span>
               <button onClick={() => removeContentIdea(idea.id)}>
-                <Trash2 size={13} color="var(--color-muted)" />
+                <Trash2 size={15} color="var(--color-muted)" />
               </button>
             </div>
           ))}

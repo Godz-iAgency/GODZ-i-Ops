@@ -22,23 +22,23 @@ export default function Home() {
   return (
     <div className="relative z-[1] min-h-screen w-full">
       <header className="sticky top-0 z-20 border-b border-border backdrop-blur-md bg-[rgba(5,5,7,0.9)]">
-        <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <Image src="/godzi-ops-logo.png" alt="GODZ-i" width={2000} height={600} priority className="h-9 w-auto rounded-lg" />
-            <div className="text-[13px] text-[#b8ada1] font-semibold leading-none border-l border-border pl-3">
+        <div className="max-w-[1280px] mx-auto px-5 sm:px-8 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <Image src="/godzi-ops-logo.png" alt="GODZ-i" width={2000} height={600} priority className="h-11 w-auto rounded-lg" />
+            <div className="text-base text-[#b8ada1] font-semibold leading-tight border-l border-border pl-4">
               Command
               <br />
               Center
             </div>
           </div>
-          <nav className="flex gap-1.5 bg-white/[0.03] p-1 rounded-full border border-border overflow-x-auto max-w-full">
+          <nav className="flex gap-2 bg-white/[0.03] p-1.5 rounded-full border border-border overflow-x-auto max-w-full">
             {TABS.map((t) => {
               const active = tab === t.id;
               return (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-[13px] font-semibold transition-all"
+                  className="flex-shrink-0 whitespace-nowrap px-5 py-2.5 rounded-full text-base font-semibold transition-all"
                   style={{
                     background: active ? "var(--color-accent)" : "transparent",
                     color: active ? "#0a0705" : "var(--color-muted)",
@@ -53,7 +53,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-[1160px] mx-auto px-4 sm:px-6 pt-7 pb-14 relative z-[1]">
+      <main className="max-w-[1280px] mx-auto px-5 sm:px-8 pt-9 pb-16 relative z-[1]">
         {tab === "today" && <TodayTab />}
         {tab === "outreach" && <OutreachBoard />}
         {tab === "hundred" && <HundredDaysTab />}

@@ -13,7 +13,7 @@ const LINKS = [
 
 export default function LinksTab() {
   return (
-    <div className="max-w-[640px] mx-auto flex flex-col gap-2">
+    <div className="max-w-[900px] mx-auto flex flex-col gap-3">
       {LINKS.map((link) => {
         const Icon = link.icon;
         return (
@@ -22,16 +22,16 @@ export default function LinksTab() {
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-4 rounded-xl bg-surface2 border border-border transition-all hover:border-accent hover:-translate-y-0.5"
+            className="flex items-center gap-4 px-5 py-5 rounded-xl bg-surface2 border border-border transition-all hover:border-accent hover:-translate-y-0.5"
           >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface3">
-              <Icon size={17} color={link.color} />
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface3">
+              <Icon size={20} color={link.color} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-foreground">{link.label}</p>
-              {link.sub && <p className="text-xs truncate text-muted">{link.sub}</p>}
+              <p className="text-base font-semibold text-foreground">{link.label}</p>
+              {link.sub && <p className="text-sm truncate text-muted">{link.sub}</p>}
             </div>
-            <Link2 size={14} color="var(--color-muted)" />
+            <Link2 size={17} color="var(--color-muted)" />
           </a>
         );
       })}

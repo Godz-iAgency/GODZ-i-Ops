@@ -39,7 +39,7 @@ function CheckRow({ checked, onToggle, label }: { checked: boolean; onToggle: ()
   return (
     <button
       onClick={onToggle}
-      className="row-hover w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-[13px]"
+      className="row-hover w-full flex items-center gap-3.5 px-5 py-4 rounded-xl text-left text-base"
       style={{
         border: `1px solid ${checked ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
         background: checked ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
@@ -47,13 +47,13 @@ function CheckRow({ checked, onToggle, label }: { checked: boolean; onToggle: ()
       }}
     >
       <span
-        className="w-[18px] h-[18px] rounded-md flex-shrink-0 flex items-center justify-center"
+        className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center"
         style={{
-          border: `1px solid ${checked ? "var(--color-accent)" : "rgba(255,255,255,0.25)"}`,
+          border: `1.5px solid ${checked ? "var(--color-accent)" : "rgba(255,255,255,0.25)"}`,
           background: checked ? "var(--color-accent)" : "transparent",
         }}
       >
-        {checked && <Check size={11} color="#fff" strokeWidth={3.5} />}
+        {checked && <Check size={14} color="#fff" strokeWidth={3.5} />}
       </span>
       <span className="flex-1">{label}</span>
     </button>
@@ -77,24 +77,24 @@ export default function TodayTab() {
   };
 
   return (
-    <div className="flex flex-col gap-[22px] max-w-[640px] mx-auto">
+    <div className="flex flex-col gap-8 max-w-[900px] mx-auto">
       <div>
-        <p className="text-[11px] tracking-[0.3em] uppercase text-accent font-bold font-mono mb-1.5">
+        <p className="text-sm tracking-[0.3em] uppercase text-accent font-bold font-mono mb-2">
           GODZ-i / Command Center
         </p>
-        <h1 className="text-[34px] font-extrabold tracking-[-0.03em] leading-none text-foreground">
+        <h1 className="text-[44px] sm:text-[56px] font-extrabold tracking-[-0.03em] leading-none text-foreground">
           {day < 1 ? "SPRINT STARTS JUL 14" : `DAY ${Math.min(day, 100)} OF 100`}
         </h1>
-        <p className="text-xs text-muted font-mono mt-2">
+        <p className="text-base text-muted font-mono mt-3">
           {sched.label} · {sched.sub}
         </p>
       </div>
 
       <section>
-        <h2 className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono mb-2.5">
+        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">
           Marketing · 1 hour · {marketingDone}/4
         </h2>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
           <CheckRow label="5 LinkedIn outreach sent, talent buyers" checked={todayLog.linkedin} onToggle={() => setTodayLog({ linkedin: !todayLog.linkedin })} />
           <CheckRow label="5 Instagram outreach sent, bands" checked={todayLog.instagram} onToggle={() => setTodayLog({ instagram: !todayLog.instagram })} />
           <CheckRow label="5 email contacts pulled, gBOMBS outreach sent" checked={todayLog.email} onToggle={() => setTodayLog({ email: !todayLog.email })} />
@@ -103,8 +103,8 @@ export default function TodayTab() {
       </section>
 
       <section>
-        <h2 className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono mb-2.5">Building · 2 hours</h2>
-        <div className="flex flex-col gap-2">
+        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">Building · 2 hours</h2>
+        <div className="flex flex-col gap-2.5">
           {BUILD_ITEMS.map((item) => (
             <CheckRow key={item.key} label={item.label} checked={!!todayLog.build[item.key]} onToggle={() => toggleBuild(item.key)} />
           ))}
@@ -112,30 +112,30 @@ export default function TodayTab() {
       </section>
 
       <section>
-        <h2 className="text-[11px] uppercase tracking-[0.14em] text-muted font-mono mb-2.5">Delivering · 1 hour</h2>
-        <div className="flex flex-col gap-2">
+        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">Delivering · 1 hour</h2>
+        <div className="flex flex-col gap-2.5">
           <CheckRow label="Sent an update or talked to an active client today" checked={todayLog.delivering} onToggle={() => setTodayLog({ delivering: !todayLog.delivering })} />
           <textarea
             value={todayLog.deliveryNote}
             onChange={(e) => setTodayLog({ deliveryNote: e.target.value })}
             placeholder="What did you deliver or communicate today?"
             rows={3}
-            className="text-[13px] px-3.5 py-3 rounded-xl outline-none resize-none text-foreground border border-border bg-white/[0.02] placeholder:text-muted"
+            className="text-base px-5 py-4 rounded-xl outline-none resize-none text-foreground border border-border bg-white/[0.02] placeholder:text-muted"
           />
         </div>
       </section>
 
       <button
         onClick={saveToday}
-        className="w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 text-white transition-all hover:-translate-y-0.5"
+        className="w-full py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-2 text-white transition-all hover:-translate-y-0.5"
         style={{
           background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))",
           boxShadow: "var(--shadow-cta)",
         }}
       >
-        <Save size={15} /> Save today
+        <Save size={19} /> Save today
       </button>
-      {savedAt && <p className="text-xs text-center text-muted">Saved at {savedAt}</p>}
+      {savedAt && <p className="text-sm text-center text-muted">Saved at {savedAt}</p>}
     </div>
   );
 }

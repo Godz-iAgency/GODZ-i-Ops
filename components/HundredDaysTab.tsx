@@ -31,9 +31,9 @@ export default function HundredDaysTab() {
   };
 
   return (
-    <div className="max-w-[760px] mx-auto">
-      <p className="text-xs text-muted mb-4">Tap a day to write a note. Filled boxes have a note saved.</p>
-      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
+    <div className="max-w-[1100px] mx-auto">
+      <p className="text-base text-muted mb-5">Tap a day to write a note. Filled boxes have a note saved.</p>
+      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-3">
         {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => {
           const hasNote = !!dayNotes[n];
           const isToday = n === day;
@@ -41,9 +41,9 @@ export default function HundredDaysTab() {
             <button
               key={n}
               onClick={() => openDay(n)}
-              className="aspect-square rounded-[10px] flex flex-col items-center justify-center gap-0.5 transition-all hover:scale-[1.08]"
+              className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.08]"
               style={{
-                border: isToday ? "1.5px solid #fff" : `1px solid ${hasNote ? "var(--color-accent)" : "var(--color-border)"}`,
+                border: isToday ? "2px solid #fff" : `1px solid ${hasNote ? "var(--color-accent)" : "var(--color-border)"}`,
                 background: hasNote
                   ? "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))"
                   : "rgba(255,255,255,0.025)",
@@ -58,8 +58,8 @@ export default function HundredDaysTab() {
                 e.currentTarget.style.borderColor = isToday ? "#fff" : hasNote ? "var(--color-accent)" : "var(--color-border)";
               }}
             >
-              <span className="text-xs font-bold">{n}</span>
-              <span className="text-[8px] font-mono opacity-70">{dateForDay(n)}</span>
+              <span className="text-lg sm:text-xl font-bold">{n}</span>
+              <span className="text-[11px] sm:text-xs font-mono opacity-70">{dateForDay(n)}</span>
             </button>
           );
         })}
@@ -68,16 +68,16 @@ export default function HundredDaysTab() {
       {selectedDay && (
         <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70" onClick={() => setSelectedDay(null)}>
           <div
-            className="w-full max-w-sm rounded-2xl p-5 bg-surface2 border border-border"
+            className="w-full max-w-md rounded-2xl p-6 bg-surface2 border border-border"
             style={{ boxShadow: "var(--shadow-elevated)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold text-foreground">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-foreground">
                 Day {selectedDay} · {dateForDay(selectedDay)}
               </h3>
               <button onClick={() => setSelectedDay(null)}>
-                <X size={16} color="var(--color-muted)" />
+                <X size={18} color="var(--color-muted)" />
               </button>
             </div>
             <textarea
@@ -85,11 +85,11 @@ export default function HundredDaysTab() {
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder="What happened today?"
               rows={5}
-              className="w-full text-[13px] px-3 py-2.5 rounded-xl outline-none resize-none mb-3 bg-black/30 text-foreground border border-border placeholder:text-muted"
+              className="w-full text-base px-4 py-3 rounded-xl outline-none resize-none mb-4 bg-black/30 text-foreground border border-border placeholder:text-muted"
             />
             <button
               onClick={saveDayNote}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+              className="w-full py-4 rounded-xl text-base font-bold text-white transition-all hover:-translate-y-0.5"
               style={{
                 background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))",
                 boxShadow: "var(--shadow-cta)",
