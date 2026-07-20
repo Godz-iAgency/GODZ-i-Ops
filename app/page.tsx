@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import TodayTab from "@/components/TodayTab";
 import OutreachBoard from "@/components/OutreachBoard";
 import SearchTab from "@/components/SearchTab";
@@ -22,13 +23,12 @@ export default function Home() {
     <div className="relative z-[1] min-h-screen w-full">
       <header className="sticky top-0 z-20 border-b border-border backdrop-blur-md bg-[rgba(5,5,7,0.9)]">
         <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2.5">
-            <div className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center font-black text-sm text-[#0a0705] bg-gradient-to-br from-accent to-accentLight">
-              G
-            </div>
-            <div>
-              <div className="text-[10px] tracking-[0.22em] uppercase text-accent font-bold leading-none">GODZ-i</div>
-              <div className="text-[13px] text-[#b8ada1] font-semibold leading-none mt-0.5">Command Center</div>
+          <div className="flex items-center gap-3">
+            <Image src="/godzi-ops-logo.png" alt="GODZ-i" width={2000} height={600} priority className="h-9 w-auto rounded-lg" />
+            <div className="text-[13px] text-[#b8ada1] font-semibold leading-none border-l border-border pl-3">
+              Command
+              <br />
+              Center
             </div>
           </div>
           <nav className="flex gap-1.5 bg-white/[0.03] p-1 rounded-full border border-border overflow-x-auto max-w-full">
