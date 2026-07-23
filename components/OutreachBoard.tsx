@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, X, RefreshCw, Save, Mail, Phone, MapPin, ArrowRight } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Phone, MapPin, ArrowRight, Search, ChevronDown } from "lucide-react";
+
+const PAGE_SIZE = 10;
 
 type Tier = "godzi" | "splitmic" | "gbombs" | "bookworm" | "hotcake";
 
@@ -78,6 +80,8 @@ export default function OutreachBoard() {
   const [form, setForm] = useState<LeadFields>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Lead | null>(null);
+  const [searchByStage, setSearchByStage] = useState<Record<string, string>>({});
+  const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
 
   const load = useCallback(async (t: Tier) => {
     setLoading(true);
@@ -92,6 +96,8 @@ export default function OutreachBoard() {
       const leadsData = await leadsRes.json();
       setSchema(schemaData);
       setLeads(leadsData.leads);
+      setSearchByStage({});
+      setVisibleByStage({});
     } catch (e: any) {
       setError(e.message || "Something went wrong");
     } finally {
@@ -198,6 +204,13 @@ export default function OutreachBoard() {
       <div className="flex gap-3.5 overflow-x-auto pb-3 snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
         {stages.map((stage) => {
           const stageLeads = leads.filter((l) => l.fields.Stage === stage);
+          const query = (searchByStage[stage] || "").trim().toLowerCase();
+          const filteredLeads = query
+            ? stageLeads.filter((l) => (l.fields.Name || "").toLowerCase().includes(query))
+            : stageLeads;
+          const visibleCount = visibleByStage[stage] ?? PAGE_SIZE;
+          const visibleLeads = filteredLeads.slice(0, visibleCount);
+          const remaining = filteredLeads.length - visibleLeads.length;
           const isOver = overStage === stage;
           return (
             <div
@@ -226,56 +239,8 @@ export default function OutreachBoard() {
                   {stageLeads.length}
                 </span>
               </div>
-              <div className="p-3 flex flex-col gap-2.5 flex-1">
-                {stageLeads.length === 0 && addingStage !== stage && (
-                  <p className="text-sm italic px-1 py-3 text-muted">No one here yet.</p>
-                )}
-                {stageLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    draggable
-                    onDragStart={() => setDragId(lead.id)}
-                    onDragEnd={() => setDragId(null)}
-                    className="card-hover rounded-xl p-3.5 flex flex-col gap-2.5 cursor-pointer bg-surface3 border border-border"
-                    style={{ opacity: dragId === lead.id ? 0.4 : 1 }}
-                  >
-                    <div onClick={() => setDetail(lead)} className="flex items-center justify-between gap-2">
-                      <span className="text-base font-semibold truncate flex-1 text-foreground">{lead.fields.Name}</span>
-                      {lead.fields["Last Contact"] && (
-                        <span className="text-xs text-muted font-mono flex-shrink-0">
-                          {daysAgo(lead.fields["Last Contact"])}
-                        </span>
-                      )}
-                    </div>
-                    <div onClick={() => setDetail(lead)} className="flex items-center gap-1.5 flex-wrap">
-                      {lead.fields.Category && (
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-textSecondary">
-                          {lead.fields.Category}
-                        </span>
-                      )}
-                      {asArray(lead.fields.Channel).map((c) => (
-                        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-accentLight">
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                    {/* Touch-friendly stage move -- drag-and-drop needs a mouse, this works on tablet */}
-                    <select
-                      value={stage}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => moveStage(lead.id, e.target.value)}
-                      className="text-sm px-3 py-2.5 rounded-lg outline-none bg-black/30 border border-border text-textSecondary font-mono"
-                    >
-                      {stages.map((s) => (
-                        <option key={s} value={s}>
-                          Move to: {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-              <div className="p-3 border-t border-border">
+
+              <div className="p-3 border-b border-border">
                 {addingStage === stage ? (
                   <div className="flex flex-col gap-2 p-3 rounded-xl bg-surface3 border border-border">
                     <input
@@ -357,6 +322,84 @@ export default function OutreachBoard() {
                     className="w-full py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm text-muted border border-dashed border-borderHover transition-all hover:border-accent hover:text-accentLight"
                   >
                     <Plus size={15} /> Add lead
+                  </button>
+                )}
+              </div>
+
+              {stageLeads.length > 0 && (
+                <div className="px-3 pt-3">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/30 border border-border">
+                    <Search size={14} color="var(--color-muted)" />
+                    <input
+                      value={searchByStage[stage] || ""}
+                      onChange={(e) => {
+                        setSearchByStage({ ...searchByStage, [stage]: e.target.value });
+                        setVisibleByStage({ ...visibleByStage, [stage]: PAGE_SIZE });
+                      }}
+                      placeholder={`Search ${stage.toLowerCase()}...`}
+                      className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3 flex flex-col gap-2.5 flex-1">
+                {stageLeads.length === 0 && addingStage !== stage && (
+                  <p className="text-sm italic px-1 py-3 text-muted">No one here yet.</p>
+                )}
+                {stageLeads.length > 0 && filteredLeads.length === 0 && (
+                  <p className="text-sm italic px-1 py-3 text-muted">No matches for &ldquo;{searchByStage[stage]}&rdquo;.</p>
+                )}
+                {visibleLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    draggable
+                    onDragStart={() => setDragId(lead.id)}
+                    onDragEnd={() => setDragId(null)}
+                    className="card-hover rounded-xl p-3.5 flex flex-col gap-2.5 cursor-pointer bg-surface3 border border-border"
+                    style={{ opacity: dragId === lead.id ? 0.4 : 1 }}
+                  >
+                    <div onClick={() => setDetail(lead)} className="flex items-center justify-between gap-2">
+                      <span className="text-base font-semibold truncate flex-1 text-foreground">{lead.fields.Name}</span>
+                      {lead.fields["Last Contact"] && (
+                        <span className="text-xs text-muted font-mono flex-shrink-0">
+                          {daysAgo(lead.fields["Last Contact"])}
+                        </span>
+                      )}
+                    </div>
+                    <div onClick={() => setDetail(lead)} className="flex items-center gap-1.5 flex-wrap">
+                      {lead.fields.Category && (
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-textSecondary">
+                          {lead.fields.Category}
+                        </span>
+                      )}
+                      {asArray(lead.fields.Channel).map((c) => (
+                        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-accentLight">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                    {/* Touch-friendly stage move -- drag-and-drop needs a mouse, this works on tablet */}
+                    <select
+                      value={stage}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => moveStage(lead.id, e.target.value)}
+                      className="text-sm px-3 py-2.5 rounded-lg outline-none bg-black/30 border border-border text-textSecondary font-mono"
+                    >
+                      {stages.map((s) => (
+                        <option key={s} value={s}>
+                          Move to: {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+                {remaining > 0 && (
+                  <button
+                    onClick={() => setVisibleByStage({ ...visibleByStage, [stage]: filteredLeads.length })}
+                    className="w-full py-2.5 rounded-lg flex items-center justify-center gap-1.5 text-sm text-textSecondary bg-black/20 border border-border transition-all hover:border-accent hover:text-accentLight"
+                  >
+                    <ChevronDown size={15} /> Show {remaining} more
                   </button>
                 )}
               </div>
