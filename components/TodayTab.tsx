@@ -4,7 +4,7 @@ import { useLocalStorage } from "@/lib/useLocalStorage";
 import { Save, Check } from "lucide-react";
 import { useState } from "react";
 
-const SPRINT_START = "2026-07-14";
+const SPRINT_START = "2026-07-27";
 const startDate = new Date(SPRINT_START + "T00:00:00");
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const dayNumber = () => Math.round((new Date(todayStr() + "T00:00:00").getTime() - startDate.getTime()) / 86400000) + 1;
@@ -20,8 +20,6 @@ const BUILD_ITEMS = [
   { key: "splitmic", label: "SplitMic" },
   { key: "bookworm", label: "Bookworm" },
   { key: "gbombs", label: "gBOMBS" },
-  { key: "launchpad", label: "Band Launchpad build" },
-  { key: "talentpipeline", label: "Talent Buyer Pipeline build" },
 ];
 
 type DayLog = {
@@ -61,7 +59,7 @@ function CheckRow({ checked, onToggle, label }: { checked: boolean; onToggle: ()
 }
 
 export default function TodayTab() {
-  const [logs, setLogs] = useLocalStorage<Record<string, DayLog>>("godzi-daily-logs", {});
+  const [logs, setLogs] = useLocalStorage<Record<string, DayLog>>("godzi-daily-logs-2026-07-27", {});
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const today = todayStr();
   const day = dayNumber();
@@ -83,7 +81,7 @@ export default function TodayTab() {
           GODZ-i / Command Center
         </p>
         <h1 className="text-[44px] sm:text-[56px] font-extrabold tracking-[-0.03em] leading-none text-foreground">
-          {day < 1 ? "SPRINT STARTS JUL 14" : `DAY ${Math.min(day, 100)} OF 100`}
+          {day < 1 ? "SPRINT STARTS JUL 27" : `DAY ${Math.min(day, 100)} OF 100`}
         </h1>
         <p className="text-base text-muted font-mono mt-3">
           {sched.label} · {sched.sub}
@@ -95,7 +93,7 @@ export default function TodayTab() {
           Marketing · 1 hour · {marketingDone}/4
         </h2>
         <div className="flex flex-col gap-2.5">
-          <CheckRow label="5 LinkedIn outreach sent, talent buyers" checked={todayLog.linkedin} onToggle={() => setTodayLog({ linkedin: !todayLog.linkedin })} />
+          <CheckRow label="20 LinkedIn outreach sent, talent buyers" checked={todayLog.linkedin} onToggle={() => setTodayLog({ linkedin: !todayLog.linkedin })} />
           <CheckRow label="5 Instagram outreach sent, bands" checked={todayLog.instagram} onToggle={() => setTodayLog({ instagram: !todayLog.instagram })} />
           <CheckRow label="5 email contacts pulled, gBOMBS outreach sent" checked={todayLog.email} onToggle={() => setTodayLog({ email: !todayLog.email })} />
           <CheckRow label="Today's content posted" checked={todayLog.content} onToggle={() => setTodayLog({ content: !todayLog.content })} />
