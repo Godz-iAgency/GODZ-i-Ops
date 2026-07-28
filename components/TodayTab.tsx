@@ -164,14 +164,14 @@ export default function TodayTab() {
         </h2>
         <div className="flex flex-col gap-2.5">
           <CheckRow
-            label="10 LinkedIn outreach sent, talent buyers"
+            label="10 LinkedIn outreach sent, talent buyers, record labels, and festivals"
             checked={todayLog.linkedin}
             onToggle={() => setTodayLog({ linkedin: !todayLog.linkedin })}
             count={todayLog.linkedinCount}
             onCountChange={(n) => setTodayLog({ linkedinCount: n })}
           />
           <CheckRow
-            label="5 Instagram outreach sent, bands"
+            label="5 Instagram outreach sent, bands and venues"
             checked={todayLog.instagram}
             onToggle={() => setTodayLog({ instagram: !todayLog.instagram })}
             count={todayLog.instagramCount}
