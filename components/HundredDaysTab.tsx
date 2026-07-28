@@ -1,12 +1,13 @@
 "use client";
 
 import { useLocalStorage } from "@/lib/useLocalStorage";
+import { austinDateStr } from "@/lib/austinDate";
 import { useState } from "react";
 import { X } from "lucide-react";
 
 const SPRINT_START = "2026-07-27";
 const startDate = new Date(SPRINT_START + "T00:00:00");
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => austinDateStr();
 const dayNumber = () => Math.round((new Date(todayStr() + "T00:00:00").getTime() - startDate.getTime()) / 86400000) + 1;
 const dateForDay = (n: number) => {
   const d = new Date(startDate);

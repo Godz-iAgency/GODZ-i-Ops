@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTable, TIERS, Tier, LeadFields } from "@/lib/airtable";
+import { austinDateStr } from "@/lib/austinDate";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // automatically unless the caller explicitly set it.
   const fields: LeadFields = { ...body };
   if (fields.Stage && !fields["Last Contact"]) {
-    fields["Last Contact"] = new Date().toISOString().slice(0, 10);
+    fields["Last Contact"] = austinDateStr();
   }
 
   const table = getTable(tier);

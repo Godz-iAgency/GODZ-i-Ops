@@ -1,15 +1,16 @@
 "use client";
 
 import { useLocalStorage } from "@/lib/useLocalStorage";
+import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
 import { Save, Check } from "lucide-react";
 import { useState } from "react";
 
 const SPRINT_START = "2026-07-27";
 const startDate = new Date(SPRINT_START + "T00:00:00");
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => austinDateStr();
 const dayNumber = () => Math.round((new Date(todayStr() + "T00:00:00").getTime() - startDate.getTime()) / 86400000) + 1;
 const scheduleForToday = () => {
-  const dow = new Date().getDay();
+  const dow = austinDayOfWeek();
   if (dow === 6) return { label: "SABBATH", sub: "Rest day, no work scheduled" };
   if (dow === 0) return { label: "4:00 AM - 4:00 PM", sub: "12 hours, Sunday catch-up" };
   return { label: "12:00 PM - 4:00 PM", sub: "4 hours, Monday to Friday" };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { austinDateStr } from "@/lib/austinDate";
 import { Plus, X, RefreshCw, Save, Mail, Phone, MapPin, ArrowRight, Search, ChevronDown } from "lucide-react";
 
 const PAGE_SIZE = 10;
@@ -54,7 +55,9 @@ function asArray(v: string[] | string | undefined): string[] {
 
 function daysAgo(dateStr?: string) {
   if (!dateStr) return null;
-  const d = Math.round((Date.now() - new Date(dateStr + "T00:00:00").getTime()) / 86400000);
+  const today = new Date(austinDateStr() + "T00:00:00").getTime();
+  const then = new Date(dateStr + "T00:00:00").getTime();
+  const d = Math.round((today - then) / 86400000);
   if (d === 0) return "today";
   if (d === 1) return "1d ago";
   return `${d}d ago`;

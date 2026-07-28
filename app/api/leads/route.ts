@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTable, TIERS, Tier, LeadFields } from "@/lib/airtable";
+import { austinDateStr } from "@/lib/austinDate";
 
 export async function GET(req: NextRequest) {
   const tier = req.nextUrl.searchParams.get("tier") as Tier | null;
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   const fields: LeadFields = {
     ...body,
     Stage: body.Stage || "New",
-    "Last Contact": body["Last Contact"] || new Date().toISOString().slice(0, 10),
+    "Last Contact": body["Last Contact"] || austinDateStr(),
   };
   const created = await table.create([{ fields: fields as any }]);
   const record = created[0];
