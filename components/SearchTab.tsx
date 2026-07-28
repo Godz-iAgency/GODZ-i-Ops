@@ -5,18 +5,32 @@ import { useState } from "react";
 import { Plus, Trash2, Check } from "lucide-react";
 
 const INSTAGRAM_SEARCH_TERMS = [
+  // Bands
   "Austin indie rock band", "Austin americana band", "Austin texas country band", "Austin blues rock band",
   "Austin folk band", "Austin singer songwriter", "Austin punk band", "Austin hardcore band",
   "Austin metal band", "Austin hip hop artist", "Austin r&b artist", "Austin soul band",
   "Austin funk band", "Austin jazz band", "Austin latin band", "Austin tejano band",
   "Austin reggae band", "Austin ska band", "Austin electronic dj", "Austin synthpop band",
+  // Venues
+  "Austin live music venue", "Austin concert venue", "Austin dive bar live music", "Austin listening room",
+  "Austin outdoor music venue", "Austin brewery live music", "Austin rooftop venue", "Austin honky tonk",
+  "Austin amphitheater", "Austin dancehall venue",
 ];
 
 const LINKEDIN_SEARCH_TERMS = [
+  // Talent buyers
   "Austin talent buyer", "Austin venue booking manager", "Austin live music booker", "Austin club talent buyer",
   "Austin concert booking agent", "Austin entertainment booker", "Austin nightclub talent buyer", "Austin bar entertainment manager",
   "Austin music venue manager", "Austin event booking coordinator", "Austin live entertainment buyer", "Austin performance venue manager",
   "Austin show booker", "Austin artist booking manager", "Austin concert venue booker", "Austin music hall booking manager",
+  // Record labels
+  "Austin record label", "Austin independent record label", "Austin record label A&R", "Austin record label owner",
+  "Austin music label executive", "Austin label manager",
+  // Festivals
+  "Austin music festival talent buyer", "Austin festival booking manager", "Austin festival programming director",
+  "Austin festival director", "Austin festival artist relations", "Austin outdoor festival booker",
+  // Talent managers
+  "Austin talent manager", "Austin artist manager", "Austin music manager", "Austin band manager",
 ];
 
 function CopyChip({ text }: { text: string }) {
@@ -67,7 +81,7 @@ export default function SearchTab() {
     <div className="max-w-[900px] mx-auto flex flex-col gap-9">
       <section>
         <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">
-          LinkedIn search terms, talent buyers · tap to copy
+          LinkedIn search terms, talent buyers, record labels, festivals & talent managers · tap to copy
         </h2>
         <div className="flex flex-wrap gap-2.5">
           {LINKEDIN_SEARCH_TERMS.map((s) => (
@@ -78,7 +92,7 @@ export default function SearchTab() {
 
       <section>
         <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">
-          Instagram search terms, bands · tap to copy
+          Instagram search terms, bands & venues · tap to copy
         </h2>
         <div className="flex flex-wrap gap-2.5">
           {INSTAGRAM_SEARCH_TERMS.map((s) => (
