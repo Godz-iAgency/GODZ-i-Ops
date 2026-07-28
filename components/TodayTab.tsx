@@ -2,7 +2,7 @@
 
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
-import { Save, Check } from "lucide-react";
+import { Save, Check, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 
 const SPRINT_START = "2026-07-27";
@@ -31,31 +31,97 @@ type DayLog = {
   delivering: boolean;
   deliveryNote: string;
   build: Record<string, boolean>;
+  linkedinCount: number;
+  instagramCount: number;
+  emailCount: number;
+  contentCount: number;
 };
-const emptyLog: DayLog = { linkedin: false, instagram: false, email: false, content: false, delivering: false, deliveryNote: "", build: {} };
+const emptyLog: DayLog = {
+  linkedin: false,
+  instagram: false,
+  email: false,
+  content: false,
+  delivering: false,
+  deliveryNote: "",
+  build: {},
+  linkedinCount: 0,
+  instagramCount: 0,
+  emailCount: 0,
+  contentCount: 0,
+};
 
-function CheckRow({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label: string }) {
+function Counter({ count, onChange }: { count: number; onChange: (n: number) => void }) {
   return (
-    <button
-      onClick={onToggle}
-      className="row-hover w-full flex items-center gap-3.5 px-5 py-4 rounded-xl text-left text-base"
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="flex items-center gap-1 px-1.5 py-1.5 rounded-full bg-black/30 border border-border flex-shrink-0"
+    >
+      <button
+        onClick={() => onChange(Math.max(0, count - 1))}
+        aria-label="Decrease count"
+        className="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center text-textSecondary hover:text-white hover:bg-white/[0.06] transition-all"
+      >
+        <Minus size={14} />
+      </button>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={count}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/[^0-9]/g, "");
+          onChange(digits === "" ? 0 : parseInt(digits, 10));
+        }}
+        className="w-9 text-center text-base font-bold bg-transparent outline-none text-foreground font-mono"
+      />
+      <button
+        onClick={() => onChange(count + 1)}
+        aria-label="Increase count"
+        className="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center text-white transition-all hover:opacity-90"
+        style={{ background: "var(--color-accent)" }}
+      >
+        <Plus size={14} />
+      </button>
+    </div>
+  );
+}
+
+function CheckRow({
+  checked,
+  onToggle,
+  label,
+  count,
+  onCountChange,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  label: string;
+  count?: number;
+  onCountChange?: (n: number) => void;
+}) {
+  return (
+    <div
+      className="row-hover w-full flex items-center gap-3.5 px-5 py-4 rounded-xl text-base"
       style={{
         border: `1px solid ${checked ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
         background: checked ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
         color: checked ? "#f2ece5" : "var(--color-muted)",
       }}
     >
-      <span
-        className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center"
-        style={{
-          border: `1.5px solid ${checked ? "var(--color-accent)" : "rgba(255,255,255,0.25)"}`,
-          background: checked ? "var(--color-accent)" : "transparent",
-        }}
-      >
-        {checked && <Check size={14} color="#fff" strokeWidth={3.5} />}
-      </span>
-      <span className="flex-1">{label}</span>
-    </button>
+      <button onClick={onToggle} className="flex items-center gap-3.5 flex-1 text-left min-w-0">
+        <span
+          className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center"
+          style={{
+            border: `1.5px solid ${checked ? "var(--color-accent)" : "rgba(255,255,255,0.25)"}`,
+            background: checked ? "var(--color-accent)" : "transparent",
+          }}
+        >
+          {checked && <Check size={14} color="#fff" strokeWidth={3.5} />}
+        </span>
+        <span className="flex-1 truncate">{label}</span>
+      </button>
+      {onCountChange && <Counter count={count ?? 0} onChange={onCountChange} />}
+    </div>
   );
 }
 
@@ -71,7 +137,10 @@ export default function TodayTab() {
   const marketingDone = [todayLog.linkedin, todayLog.instagram, todayLog.email, todayLog.content].filter(Boolean).length;
 
   const saveToday = () => {
-    setLogs({ ...logs, [today]: todayLog });
+    setLogs({
+      ...logs,
+      [today]: { ...todayLog, linkedinCount: 0, instagramCount: 0, emailCount: 0, contentCount: 0 },
+    });
     setSavedAt(new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }));
   };
 
@@ -94,10 +163,34 @@ export default function TodayTab() {
           Marketing · 1 hour · {marketingDone}/4
         </h2>
         <div className="flex flex-col gap-2.5">
-          <CheckRow label="20 LinkedIn outreach sent, talent buyers" checked={todayLog.linkedin} onToggle={() => setTodayLog({ linkedin: !todayLog.linkedin })} />
-          <CheckRow label="5 Instagram outreach sent, bands" checked={todayLog.instagram} onToggle={() => setTodayLog({ instagram: !todayLog.instagram })} />
-          <CheckRow label="5 email contacts pulled, gBOMBS outreach sent" checked={todayLog.email} onToggle={() => setTodayLog({ email: !todayLog.email })} />
-          <CheckRow label="Today's content posted" checked={todayLog.content} onToggle={() => setTodayLog({ content: !todayLog.content })} />
+          <CheckRow
+            label="10 LinkedIn outreach sent, talent buyers"
+            checked={todayLog.linkedin}
+            onToggle={() => setTodayLog({ linkedin: !todayLog.linkedin })}
+            count={todayLog.linkedinCount}
+            onCountChange={(n) => setTodayLog({ linkedinCount: n })}
+          />
+          <CheckRow
+            label="5 Instagram outreach sent, bands"
+            checked={todayLog.instagram}
+            onToggle={() => setTodayLog({ instagram: !todayLog.instagram })}
+            count={todayLog.instagramCount}
+            onCountChange={(n) => setTodayLog({ instagramCount: n })}
+          />
+          <CheckRow
+            label="5 email contacts pulled, gBOMBS outreach sent"
+            checked={todayLog.email}
+            onToggle={() => setTodayLog({ email: !todayLog.email })}
+            count={todayLog.emailCount}
+            onCountChange={(n) => setTodayLog({ emailCount: n })}
+          />
+          <CheckRow
+            label="Today's content posted"
+            checked={todayLog.content}
+            onToggle={() => setTodayLog({ content: !todayLog.content })}
+            count={todayLog.contentCount}
+            onCountChange={(n) => setTodayLog({ contentCount: n })}
+          />
         </div>
       </section>
 
