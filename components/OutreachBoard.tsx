@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { austinDateStr } from "@/lib/austinDate";
-import { Plus, X, RefreshCw, Save, Mail, Phone, MapPin, ArrowRight, Search, ChevronDown } from "lucide-react";
+import { Plus, Minus, X, RefreshCw, Save, Mail, Phone, MapPin, ArrowRight, Search, ChevronDown } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
@@ -85,6 +85,8 @@ export default function OutreachBoard() {
   const [detail, setDetail] = useState<Lead | null>(null);
   const [searchByStage, setSearchByStage] = useState<Record<string, string>>({});
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
+  // Manual send-count tally -- a plain click counter, not persisted or synced anywhere.
+  const [tally, setTally] = useState(0);
 
   const load = useCallback(async (t: Tier) => {
     setLoading(true);
@@ -189,6 +191,36 @@ export default function OutreachBoard() {
             </button>
           ))}
         </div>
+
+        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-surface2 border border-border">
+          <button
+            onClick={() => setTally((t) => Math.max(0, t - 1))}
+            aria-label="Decrease tally"
+            className="w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center text-textSecondary hover:text-white hover:bg-white/[0.06] transition-all"
+          >
+            <Minus size={16} />
+          </button>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={tally}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/[^0-9]/g, "");
+              setTally(digits === "" ? 0 : parseInt(digits, 10));
+            }}
+            className="w-12 text-center text-lg font-bold bg-transparent outline-none text-foreground font-mono"
+          />
+          <button
+            onClick={() => setTally((t) => t + 1)}
+            aria-label="Increase tally"
+            className="w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center text-white transition-all hover:opacity-90"
+            style={{ background: "var(--color-accent)" }}
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+
         <button
           onClick={() => load(tier)}
           disabled={loading}
