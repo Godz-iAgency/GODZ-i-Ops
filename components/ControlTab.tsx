@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Send, Megaphone, RefreshCw, Plus, Trash2, Lock, AlertTriangle } from "lucide-react";
+import { Send, Megaphone, RefreshCw, Plus, Trash2, Lock, AlertTriangle, Eye, EyeOff } from "lucide-react";
 
 type QueuedContent = { id: string; content: string; status: string; notes?: string };
 type Status = {
@@ -23,6 +23,7 @@ export default function ControlTab() {
   const [running, setRunning] = useState<string | null>(null);
   const [newContent, setNewContent] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(PASSWORD_KEY);
@@ -123,14 +124,24 @@ export default function ControlTab() {
         <p className="text-sm text-muted">
           These controls send real emails and post to your live social accounts, so they need the app password.
         </p>
-        <input
-          type="password"
-          value={passwordDraft}
-          onChange={(e) => setPasswordDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && unlock()}
-          placeholder="App password"
-          className="text-base px-4 py-3 rounded-xl outline-none bg-white/[0.02] text-foreground border border-border placeholder:text-muted"
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={passwordDraft}
+            onChange={(e) => setPasswordDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && unlock()}
+            placeholder="App password"
+            className="w-full text-base pl-4 pr-12 py-3 rounded-xl outline-none bg-white/[0.02] text-foreground border border-border placeholder:text-muted"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-muted hover:text-white transition-colors"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         <button
           onClick={unlock}
           className="w-full py-3.5 rounded-xl text-base font-bold text-white transition-all hover:-translate-y-0.5"
