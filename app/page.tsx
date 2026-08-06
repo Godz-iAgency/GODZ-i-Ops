@@ -7,10 +7,12 @@ import OutreachBoard from "@/components/OutreachBoard";
 import SearchTab from "@/components/SearchTab";
 import HundredDaysTab from "@/components/HundredDaysTab";
 import LinksTab from "@/components/LinksTab";
+import ControlTab from "@/components/ControlTab";
 
 const TABS = [
   { id: "today", label: "Today" },
   { id: "outreach", label: "Outreach" },
+  { id: "control", label: "Control" },
   { id: "hundred", label: "100 Days" },
   { id: "search", label: "Search" },
   { id: "links", label: "Links" },
@@ -56,6 +58,7 @@ export default function Home() {
       <main className="max-w-[1280px] mx-auto px-5 sm:px-8 pt-9 pb-16 relative z-[1]">
         {tab === "today" && <TodayTab />}
         {tab === "outreach" && <OutreachBoard />}
+        {tab === "control" && <ControlTab />}
         {tab === "hundred" && <HundredDaysTab />}
         {tab === "search" && <SearchTab />}
         {tab === "links" && <LinksTab />}

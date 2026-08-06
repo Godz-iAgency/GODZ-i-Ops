@@ -97,3 +97,44 @@ export async function getAllLeadsWithEmail(): Promise<Array<{ tier: Tier; id: st
   );
   return results.flat();
 }
+
+export type QueuedContent = { id: string; content: string; status: string; notes?: string };
+
+export async function getContentQueue(): Promise<QueuedContent[]> {
+  const table = getContentQueueTable();
+  const records = await table.select({ pageSize: 50 }).all();
+  return records.map((r) => ({
+    id: r.id,
+    content: (r.fields.Content as string) || "",
+    status: (r.fields.Status as string) || "New",
+    notes: r.fields.Notes as string | undefined,
+  }));
+}
+
+export async function addContentToQueue(content: string): Promise<QueuedContent> {
+  const table = getContentQueueTable();
+  const created = await table.create([{ fields: { Content: content, Status: "New" } as any }]);
+  const r = created[0];
+  return { id: r.id, content: (r.fields.Content as string) || "", status: (r.fields.Status as string) || "New" };
+}
+
+export async function deleteQueuedContent(id: string): Promise<void> {
+  const table = getContentQueueTable();
+  await table.destroy([id]);
+}
+
+// Counts of leads sitting in "New" stage with an email, i.e. what the next
+// outreach run would actually send to.
+export async function getPendingOutreachCounts(): Promise<Record<Tier, number>> {
+  const tiers = Object.keys(TIERS) as Tier[];
+  const entries = await Promise.all(
+    tiers.map(async (tier) => {
+      const table = getTable(tier);
+      const records = await table
+        .select({ filterByFormula: "AND({Stage} = 'New', NOT({Email} = ''))", pageSize: 100 })
+        .all();
+      return [tier, records.length] as const;
+    })
+  );
+  return Object.fromEntries(entries) as Record<Tier, number>;
+}
