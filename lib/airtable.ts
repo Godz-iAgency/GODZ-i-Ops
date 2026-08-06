@@ -55,3 +55,45 @@ export type LeadFields = {
 };
 
 export type Lead = { id: string; fields: LeadFields };
+
+const CONTENT_QUEUE_TABLE_ID = "tbll3yXqFpeCw0j6S";
+
+export function getContentQueueTable() {
+  return new Airtable().base(BASE_APPS as string)(CONTENT_QUEUE_TABLE_ID);
+}
+
+const NOTIFICATION_LOG_TABLE_ID = "tblj1yr9DEpiXRPqm";
+
+function getNotificationLogTable() {
+  return new Airtable().base(BASE_APPS as string)(NOTIFICATION_LOG_TABLE_ID);
+}
+
+export async function wasAlreadyNotified(messageId: string): Promise<boolean> {
+  const table = getNotificationLogTable();
+  const records = await table
+    .select({ filterByFormula: `{Message ID} = '${messageId}'`, maxRecords: 1 })
+    .all();
+  return records.length > 0;
+}
+
+export async function markNotified(messageId: string, fromEmail: string): Promise<void> {
+  const table = getNotificationLogTable();
+  await table.create([
+    { fields: { "Message ID": messageId, "From Email": fromEmail, "Notified At": new Date().toISOString() } },
+  ]);
+}
+
+// Pulls every lead with an Email set, across all 5 tiers, for reply-matching.
+export async function getAllLeadsWithEmail(): Promise<Array<{ tier: Tier; id: string; fields: LeadFields }>> {
+  const tiers = Object.keys(TIERS) as Tier[];
+  const results = await Promise.all(
+    tiers.map(async (tier) => {
+      const table = getTable(tier);
+      const records = await table
+        .select({ pageSize: 100, filterByFormula: "NOT({Email} = '')" })
+        .all();
+      return records.map((r) => ({ tier, id: r.id, fields: r.fields as LeadFields }));
+    })
+  );
+  return results.flat();
+}

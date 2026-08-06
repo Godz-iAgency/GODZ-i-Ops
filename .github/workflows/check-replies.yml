@@ -1,0 +1,17 @@
+name: Check for lead replies
+
+on:
+  schedule:
+    # Every 5 minutes. Vercel Hobby cron only supports daily jobs, so this
+    # runs on GitHub Actions instead, which is free and supports short intervals.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check-replies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call check-replies endpoint
+        run: |
+          curl -sf -X GET "${{ secrets.APP_URL }}/api/cron/check-replies" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

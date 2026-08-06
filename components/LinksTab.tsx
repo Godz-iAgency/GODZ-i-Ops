@@ -1,12 +1,13 @@
 "use client";
 
-import { Calendar, Linkedin, Instagram, Mail, Sparkles, Share2, Link2 } from "lucide-react";
+import { Calendar, Linkedin, Instagram, Mail, Sparkles, Share2, Send, Link2 } from "lucide-react";
 
 const LINKS = [
   { label: "Booking Calendar", url: "https://app.cal.com/bookings/upcoming", icon: Calendar, color: "#F2C94C" },
   { label: "LinkedIn", url: "https://www.linkedin.com/in/christopher-downer/", icon: Linkedin, color: "#56CCF2" },
   { label: "Instagram", url: "https://www.instagram.com/drum.adik/", icon: Instagram, color: "#EF6C9E" },
   { label: "Email", url: "https://mail.google.com/mail/u/0/#inbox", icon: Mail, color: "#71717a", sub: "christopher@godz-iagency.com" },
+  { label: "Telegram", url: "https://web.telegram.org/a/#8256107242", icon: Send, color: "#29A9EA" },
   { label: "GODZ-i", url: "https://www.godz-iagency.com/", icon: Sparkles, color: "#e8430a" },
   { label: "SplitMic", url: "https://www.splitmic.com/", icon: Share2, color: "#5FBF7A" },
 ];
