@@ -55,9 +55,10 @@ export default function ControlTab() {
   }, [password, loadStatus]);
 
   const unlock = () => {
-    if (!passwordDraft.trim()) return;
-    window.localStorage.setItem(PASSWORD_KEY, passwordDraft);
-    setPassword(passwordDraft);
+    const trimmed = passwordDraft.trim();
+    if (!trimmed) return;
+    window.localStorage.setItem(PASSWORD_KEY, trimmed);
+    setPassword(trimmed);
     setPasswordDraft("");
   };
 
@@ -131,6 +132,10 @@ export default function ControlTab() {
             onChange={(e) => setPasswordDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && unlock()}
             placeholder="App password"
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
             className="w-full text-base pl-4 pr-12 py-3 rounded-xl outline-none bg-white/[0.02] text-foreground border border-border placeholder:text-muted"
           />
           <button
