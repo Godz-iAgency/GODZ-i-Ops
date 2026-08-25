@@ -52,7 +52,12 @@ export type ContactFields = {
   Phone?: string;
   "Why They Matter to SplitMic"?: string;
   "Source / Research Starting Point"?: string;
+  Website?: string;
+  "City / Area"?: string;
+  "Primary Source URL"?: string;
+  "Secondary Source URL"?: string;
   "Verification Status"?: string;
+  "Date Verified"?: string;
   Email?: string;
   "Email Status"?: string;
   "Email Last Contacted"?: string;

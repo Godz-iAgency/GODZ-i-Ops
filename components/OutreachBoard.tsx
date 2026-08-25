@@ -23,6 +23,11 @@ const STAGES = [
 const EMAIL_STATUSES = ["Not Contacted", "Sent", "Replied", "No Response", "Bounced"];
 
 const VERIFICATION_STATUSES = [
+  "Research Needed",
+  "Partially Verified",
+  "Verified",
+  // Legacy values from the original 500-target import -- kept so old rows
+  // still display correctly instead of falling through to "Not set".
   "Research target; person not yet verified",
   "Verified organization; identify current person",
   "Verified named contact",
@@ -39,7 +44,12 @@ type ContactFields = {
   Phone?: string;
   "Why They Matter to SplitMic"?: string;
   "Source / Research Starting Point"?: string;
+  Website?: string;
+  "City / Area"?: string;
+  "Primary Source URL"?: string;
+  "Secondary Source URL"?: string;
   "Verification Status"?: string;
+  "Date Verified"?: string;
   Email?: string;
   "Email Status"?: string;
   "Email Last Contacted"?: string;
@@ -387,11 +397,24 @@ export default function OutreachBoard() {
                             {[f.Role, f.Organization].filter(Boolean).join(" · ")}
                           </p>
                         </div>
-                        {f.Priority ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-surfaceElevated text-accentLight font-mono flex-shrink-0">
-                            P{f.Priority}
-                          </span>
-                        ) : null}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {f["Verification Status"]?.startsWith("Verified") && (
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-mono"
+                              style={{
+                                background: f["Verification Status"] === "Partially Verified" ? "rgba(242,201,76,0.15)" : "rgba(95,191,122,0.15)",
+                                color: f["Verification Status"] === "Partially Verified" ? "#f2c94c" : "#5fbf7a",
+                              }}
+                            >
+                              {f["Verification Status"] === "Partially Verified" ? "Partial" : "Verified"}
+                            </span>
+                          )}
+                          {f.Priority ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-surfaceElevated text-accentLight font-mono">
+                              P{f.Priority}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div onClick={() => setDetail(c)} className="flex items-center gap-1.5 flex-wrap">
@@ -517,21 +540,34 @@ export default function OutreachBoard() {
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Verification">
-                  <select
-                    value={detail.fields["Verification Status"] || ""}
-                    onChange={(e) => setDetailField({ "Verification Status": e.target.value })}
+                <Field label="City / Area">
+                  <input
+                    value={detail.fields["City / Area"] || ""}
+                    onChange={(e) => setDetailField({ "City / Area": e.target.value })}
                     className={inputCls}
-                  >
-                    <option value="">Not set</option>
-                    {VERIFICATION_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
               </div>
+
+              <Field label="Verification">
+                <select
+                  value={detail.fields["Verification Status"] || ""}
+                  onChange={(e) => setDetailField({ "Verification Status": e.target.value })}
+                  className={inputCls}
+                >
+                  <option value="">Not set</option>
+                  {VERIFICATION_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {detail.fields["Date Verified"] && (
+                <p className="text-xs text-muted font-mono -mt-2">
+                  Verified {detail.fields["Date Verified"]}
+                </p>
+              )}
 
               {detail.fields["Why They Matter to SplitMic"] && (
                 <div className="px-4 py-3 rounded-lg bg-black/20 border border-border">
@@ -544,20 +580,37 @@ export default function OutreachBoard() {
                 </div>
               )}
 
-              {detail.fields["Source / Research Starting Point"] && (
-                <a
-                  href={detail.fields["Source / Research Starting Point"]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3.5 py-3 rounded-lg text-sm bg-black/30 border border-border text-textSecondary hover:border-accent transition-all"
-                >
-                  <ExternalLink size={14} /> Research starting point
-                </a>
-              )}
+              {[
+                { label: "Research starting point", url: detail.fields["Source / Research Starting Point"] },
+                { label: "Website", url: detail.fields.Website },
+                { label: "Primary source", url: detail.fields["Primary Source URL"] },
+                { label: "Secondary source", url: detail.fields["Secondary Source URL"] },
+              ]
+                .filter((l) => l.url)
+                .map((l) => (
+                  <a
+                    key={l.label}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3.5 py-3 rounded-lg text-sm bg-black/30 border border-border text-textSecondary hover:border-accent transition-all"
+                  >
+                    <ExternalLink size={14} /> {l.label}
+                  </a>
+                ))}
 
               <div className="pt-1">
-                <p className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">Email</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">Contact</p>
                 <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-black/30 border border-border">
+                    <ExternalLink size={16} color="var(--color-muted)" />
+                    <input
+                      value={detail.fields["LinkedIn URL"] || ""}
+                      onChange={(e) => setDetailField({ "LinkedIn URL": e.target.value })}
+                      placeholder="LinkedIn URL"
+                      className="flex-1 min-w-0 text-base bg-transparent outline-none text-foreground placeholder:text-muted"
+                    />
+                  </div>
                   <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-black/30 border border-border">
                     <Mail size={16} color="var(--color-muted)" />
                     <input
