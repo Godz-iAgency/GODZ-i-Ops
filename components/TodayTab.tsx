@@ -5,7 +5,7 @@ import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
 import { Save, Check, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 
-const SPRINT_START = "2026-07-27";
+const SPRINT_START = "2026-08-25";
 const startDate = new Date(SPRINT_START + "T00:00:00");
 const todayStr = () => austinDateStr();
 const dayNumber = () => Math.round((new Date(todayStr() + "T00:00:00").getTime() - startDate.getTime()) / 86400000) + 1;
