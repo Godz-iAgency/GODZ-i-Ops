@@ -4,33 +4,73 @@ import { useLocalStorage } from "@/lib/useLocalStorage";
 import { useState } from "react";
 import { Plus, Trash2, Check } from "lucide-react";
 
-const INSTAGRAM_SEARCH_TERMS = [
-  // Bands
-  "Austin indie rock band", "Austin americana band", "Austin texas country band", "Austin blues rock band",
-  "Austin folk band", "Austin singer songwriter", "Austin punk band", "Austin hardcore band",
-  "Austin metal band", "Austin hip hop artist", "Austin r&b artist", "Austin soul band",
-  "Austin funk band", "Austin jazz band", "Austin latin band", "Austin tejano band",
-  "Austin reggae band", "Austin ska band", "Austin electronic dj", "Austin synthpop band",
-  // Venues
-  "Austin live music venue", "Austin concert venue", "Austin dive bar live music", "Austin listening room",
-  "Austin outdoor music venue", "Austin brewery live music", "Austin rooftop venue", "Austin honky tonk",
-  "Austin amphitheater", "Austin dancehall venue",
-];
-
-const LINKEDIN_SEARCH_TERMS = [
-  // Talent buyers
-  "Austin talent buyer", "Austin venue booking manager", "Austin live music booker", "Austin club talent buyer",
-  "Austin concert booking agent", "Austin entertainment booker", "Austin nightclub talent buyer", "Austin bar entertainment manager",
-  "Austin music venue manager", "Austin event booking coordinator", "Austin live entertainment buyer", "Austin performance venue manager",
-  "Austin show booker", "Austin artist booking manager", "Austin concert venue booker", "Austin music hall booking manager",
-  // Record labels
-  "Austin record label", "Austin independent record label", "Austin record label A&R", "Austin record label owner",
-  "Austin music label executive", "Austin label manager",
-  // Festivals
-  "Austin music festival talent buyer", "Austin festival booking manager", "Austin festival programming director",
-  "Austin festival director", "Austin festival artist relations", "Austin outdoor festival booker",
-  // Talent managers
-  "Austin talent manager", "Austin artist manager", "Austin music manager", "Austin band manager",
+// The daily 11:00-12:00 LinkedIn hour runs off these. Grouped the way the
+// Austin music ecosystem actually breaks down, so an hour of searching covers
+// one part of the scene properly instead of skimming all of it.
+const LINKEDIN_SEARCH_GROUPS: Array<{ label: string; terms: string[] }> = [
+  {
+    label: "Venues & booking",
+    terms: [
+      "Austin venue owner",
+      "Austin music venue owner",
+      "Austin venue booking manager",
+      "Austin talent buyer",
+      "Austin live music booker",
+    ],
+  },
+  {
+    label: "Promoters & festivals",
+    terms: [
+      "Austin concert promoter",
+      "Austin music promoter",
+      "Austin festival director",
+      "Austin festival talent buyer",
+    ],
+  },
+  {
+    label: "Artists & management",
+    terms: [
+      "Austin artist manager",
+      "Austin band manager",
+      "Austin music manager",
+      "Austin musician",
+      "Austin singer songwriter",
+      "Austin band",
+    ],
+  },
+  {
+    label: "Labels & A&R",
+    terms: ["Austin record label owner", "Austin A&R"],
+  },
+  {
+    label: "Organizations & nonprofits",
+    terms: ["Austin music organization director", "Austin music nonprofit director"],
+  },
+  {
+    label: "Production & live events",
+    terms: [
+      "Austin production manager",
+      "Austin live event producer",
+      "Austin concert producer",
+    ],
+  },
+  {
+    label: "Studios, backline & rental",
+    terms: [
+      "Austin recording studio owner",
+      "Austin rehearsal studio owner",
+      "Austin backline company",
+      "Austin instrument rental",
+    ],
+  },
+  {
+    label: "Startups & founders",
+    terms: ["Austin music entrepreneur", "Austin music startup founder"],
+  },
+  {
+    label: "Media & press",
+    terms: ["Austin music journalist", "Austin music podcast", "Austin music radio host"],
+  },
 ];
 
 function CopyChip({ text }: { text: string }) {
@@ -79,26 +119,27 @@ export default function SearchTab() {
 
   return (
     <div className="max-w-[900px] mx-auto flex flex-col gap-9">
-      <section>
-        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">
-          LinkedIn search terms, talent buyers, record labels, festivals & talent managers · tap to copy
-        </h2>
-        <div className="flex flex-wrap gap-2.5">
-          {LINKEDIN_SEARCH_TERMS.map((s) => (
-            <CopyChip key={s} text={s} />
-          ))}
+      <section className="flex flex-col gap-6">
+        <div>
+          <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">
+            LinkedIn search terms · tap to copy
+          </h2>
+          <p className="text-sm text-muted mt-1.5">
+            11:00 to 12:00. Search, pick 10 people, log them on the Outreach tab.
+          </p>
         </div>
-      </section>
-
-      <section>
-        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">
-          Instagram search terms, bands & venues · tap to copy
-        </h2>
-        <div className="flex flex-wrap gap-2.5">
-          {INSTAGRAM_SEARCH_TERMS.map((s) => (
-            <CopyChip key={s} text={s} />
-          ))}
-        </div>
+        {LINKEDIN_SEARCH_GROUPS.map((group) => (
+          <div key={group.label}>
+            <h3 className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">
+              {group.label}
+            </h3>
+            <div className="flex flex-wrap gap-2.5">
+              {group.terms.map((s) => (
+                <CopyChip key={s} text={s} />
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       <section>

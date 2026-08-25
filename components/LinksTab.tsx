@@ -1,20 +1,20 @@
 "use client";
 
-import { Calendar, Linkedin, Instagram, Mail, Sparkles, Share2, Send, Link2 } from "lucide-react";
+import { Calendar, Linkedin, Mail, Share2, Table2, Link2 } from "lucide-react";
+
+const AIRTABLE_BASE = "https://airtable.com/appVoya6LLvnSjCbQ";
 
 const LINKS = [
   { label: "Booking Calendar", url: "https://app.cal.com/bookings/upcoming", icon: Calendar, color: "#F2C94C" },
   { label: "LinkedIn", url: "https://www.linkedin.com/in/christopher-downer/", icon: Linkedin, color: "#56CCF2" },
-  { label: "Instagram", url: "https://www.instagram.com/drum.adik/", icon: Instagram, color: "#EF6C9E" },
   { label: "Email", url: "https://mail.google.com/mail/u/0/#inbox", icon: Mail, color: "#71717a", sub: "christopher@godz-iagency.com" },
-  { label: "Telegram", url: "https://web.telegram.org/a/#8256107242", icon: Send, color: "#29A9EA" },
-  { label: "GODZ-i", url: "https://www.godz-iagency.com/", icon: Sparkles, color: "#e8430a" },
   { label: "SplitMic", url: "https://www.splitmic.com/", icon: Share2, color: "#5FBF7A" },
+  { label: "Airtable", url: AIRTABLE_BASE, icon: Table2, color: "#e8430a", sub: "SplitMic Outreach, LinkedIn, Daily Progress" },
 ];
 
 export default function LinksTab() {
   return (
-    <div className="max-w-[900px] mx-auto flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {LINKS.map((link) => {
         const Icon = link.icon;
         return (

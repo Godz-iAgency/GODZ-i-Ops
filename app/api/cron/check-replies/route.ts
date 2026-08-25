@@ -1,34 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRecentInboxMessages } from "@/lib/gmail";
-import { getAllLeadsWithEmail, wasAlreadyNotified, markNotified, TIERS } from "@/lib/airtable";
+import { getAllContactsWithEmail, wasAlreadyNotified, markNotified } from "@/lib/airtable";
 import { sendTelegramMessage } from "@/lib/telegram";
 
-// Called every few minutes by an external scheduler (GitHub Actions --
-// Vercel Hobby cron only supports daily jobs, too slow for "notify me
-// within 5 minutes" of a reply). Checks the last 15 minutes of inbox mail
-// against known lead emails across all 5 Airtable tables.
+// Called every few minutes by GitHub Actions (Vercel Hobby cron only supports
+// daily jobs, too slow for "notify me within 5 minutes" of a reply). Checks the
+// last 15 minutes of inbox mail against known SplitMic contact emails.
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [messages, leads] = await Promise.all([getRecentInboxMessages(15), getAllLeadsWithEmail()]);
+  const [messages, contacts] = await Promise.all([
+    getRecentInboxMessages(15),
+    getAllContactsWithEmail(),
+  ]);
 
-  const leadByEmail = new Map(leads.map((l) => [l.fields.Email?.toLowerCase(), l]));
+  const contactByEmail = new Map(contacts.map((c) => [c.fields.Email?.toLowerCase(), c]));
 
   let notified = 0;
   for (const msg of messages) {
-    const lead = leadByEmail.get(msg.fromEmail);
-    if (!lead) continue;
+    const contact = contactByEmail.get(msg.fromEmail);
+    if (!contact) continue;
     if (await wasAlreadyNotified(msg.id)) continue;
 
-    const tierLabel = TIERS[lead.tier].label;
+    const f = contact.fields;
     const text =
-      `🔔 *Reply from ${tierLabel}*\n\n` +
-      `*${lead.fields.Name || msg.fromName}*\n` +
+      `🔔 *SplitMic reply*\n\n` +
+      `*${f["Name / Target"] || msg.fromName}*\n` +
+      (f.Organization ? `${f.Organization}\n` : "") +
+      (f.Role ? `${f.Role}\n` : "") +
       `Email: ${msg.fromEmail}\n` +
-      (lead.fields.Phone ? `Phone: ${lead.fields.Phone}\n` : "") +
+      (f["LinkedIn URL"] ? `LinkedIn: ${f["LinkedIn URL"]}\n` : "") +
       `\nSubject: ${msg.subject}\n` +
       `"${msg.snippet}"`;
 
@@ -37,5 +41,5 @@ export async function GET(req: NextRequest) {
     notified++;
   }
 
-  return NextResponse.json({ checked: messages.length, leads: leads.length, notified });
+  return NextResponse.json({ checked: messages.length, contacts: contacts.length, notified });
 }

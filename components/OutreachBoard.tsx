@@ -1,57 +1,70 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { austinDateStr } from "@/lib/austinDate";
-import { Plus, Minus, X, RefreshCw, Save, Mail, Phone, MapPin, ArrowRight, Search, ChevronDown } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Search, ChevronDown, ExternalLink } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
-type Tier = "godzi" | "splitmic" | "gbombs" | "bookworm" | "hotcake";
+// A row starts as research and only becomes sendable once it has a real
+// person/org and a usable email address.
+const STAGES = [
+  "Research Needed",
+  "Ready for Outreach",
+  "Contacted",
+  "Replied",
+  "Engaged",
+  "Meeting",
+  "Follow-up",
+  "Partner",
+  "Not Interested",
+];
 
-const TIER_META: Record<Tier, { label: string; color: string }> = {
-  godzi: { label: "GODZ-i", color: "#f2c94c" },
-  splitmic: { label: "SplitMic", color: "#56ccf2" },
-  gbombs: { label: "gBOMBS", color: "#ef6c9e" },
-  bookworm: { label: "Bookworm", color: "#c9a66b" },
-  hotcake: { label: "HotCake", color: "#5fbf7a" },
-};
-const TIER_ORDER: Tier[] = ["godzi", "splitmic", "gbombs", "bookworm", "hotcake"];
+const EMAIL_STATUSES = ["Not Contacted", "Sent", "Replied", "No Response", "Bounced"];
 
-type LeadFields = {
-  Name?: string;
+const VERIFICATION_STATUSES = [
+  "Research target; person not yet verified",
+  "Verified organization; identify current person",
+  "Verified named contact",
+];
+
+type ContactFields = {
+  "Name / Target"?: string;
+  Organization?: string;
+  Role?: string;
   Category?: string;
-  Channel?: string[];
-  "Channel Handle"?: string;
+  Priority?: number;
+  "Campaign Day"?: number;
+  "Daily Slot"?: number;
+  "Why They Matter to SplitMic"?: string;
+  "Source / Research Starting Point"?: string;
+  "Verification Status"?: string;
   Email?: string;
-  Phone?: string;
-  Address?: string;
-  Stage?: string;
-  "Last Contact"?: string;
+  "Email Status"?: string;
+  "Email Last Contacted"?: string;
+  "Email Follow-up Date"?: string;
+  "LinkedIn Name"?: string;
+  "LinkedIn URL"?: string;
+  "LinkedIn Status"?: string;
+  "LinkedIn Last Contacted"?: string;
+  "Relationship Status"?: string;
+  "Response Summary"?: string;
+  "Feedback / Pain Point"?: string;
   "Next Action"?: string;
+  "Next Action Date"?: string;
   Notes?: string;
 };
-type Lead = { id: string; fields: LeadFields };
-type Schema = { category: string[]; channel: string[]; stage: string[] };
 
-const emptyForm: LeadFields = {
-  Name: "",
-  Category: "",
-  Channel: [],
-  "Channel Handle": "",
+type Contact = { id: string; fields: ContactFields };
+
+const emptyForm: ContactFields = {
+  "Name / Target": "",
+  Organization: "",
+  Role: "",
   Email: "",
-  Phone: "",
-  Address: "",
   "Next Action": "",
   Notes: "",
 };
-
-// Defensive against transitional Airtable states where a field that will
-// become a multi-select array is still its old single-value string form.
-function asArray(v: string[] | string | undefined): string[] {
-  if (Array.isArray(v)) return v;
-  if (typeof v === "string" && v) return [v];
-  return [];
-}
 
 function daysAgo(dateStr?: string) {
   if (!dateStr) return null;
@@ -63,86 +76,93 @@ function daysAgo(dateStr?: string) {
   return `${d}d ago`;
 }
 
-function pillStyle(active: boolean, activeBg = "var(--color-accent)") {
+function pillStyle(active: boolean) {
   return {
-    background: active ? activeBg : "transparent",
+    background: active ? "var(--color-accent)" : "transparent",
     color: active ? "#0a0705" : "var(--color-muted)",
     boxShadow: active ? "0 4px 16px rgba(232,67,10,0.35)" : "none",
   };
 }
 
+const inputCls =
+  "w-full text-base px-3.5 py-3 rounded-lg outline-none bg-black/30 border border-border text-foreground placeholder:text-muted";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-sm uppercase tracking-[0.14em] text-muted font-mono">{label}</label>
+      <div className="mt-1.5">{children}</div>
+    </div>
+  );
+}
+
 export default function OutreachBoard() {
-  const [tier, setTier] = useState<Tier>("godzi");
-  const [schema, setSchema] = useState<Schema | null>(null);
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [addingStage, setAddingStage] = useState<string | null>(null);
-  const [form, setForm] = useState<LeadFields>(emptyForm);
+  const [form, setForm] = useState<ContactFields>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [detail, setDetail] = useState<Lead | null>(null);
+  const [detail, setDetail] = useState<Contact | null>(null);
   const [searchByStage, setSearchByStage] = useState<Record<string, string>>({});
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
-  // Manual send-count tally -- a plain click counter, not persisted or synced anywhere.
-  const [tally, setTally] = useState(0);
 
-  const load = useCallback(async (t: Tier) => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [schemaRes, leadsRes] = await Promise.all([
-        fetch(`/api/schema?tier=${t}`),
-        fetch(`/api/leads?tier=${t}`),
-      ]);
-      if (!schemaRes.ok || !leadsRes.ok) throw new Error("Failed to load from Airtable");
-      const schemaData = await schemaRes.json();
-      const leadsData = await leadsRes.json();
-      setSchema(schemaData);
-      setLeads(leadsData.leads);
+      const res = await fetch("/api/contacts");
+      if (!res.ok) throw new Error("Failed to load from Airtable");
+      const data = await res.json();
+      setContacts(data.contacts);
       setSearchByStage({});
       setVisibleByStage({});
-    } catch (e: any) {
-      setError(e.message || "Something went wrong");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load(tier);
-  }, [tier, load]);
+    load();
+  }, [load]);
 
-  const moveStage = async (id: string, stage: string) => {
-    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, fields: { ...l.fields, Stage: stage } } : l)));
+  const patch = async (id: string, fields: ContactFields) => {
+    setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, fields: { ...c.fields, ...fields } } : c)));
     try {
-      await fetch(`/api/leads/${id}?tier=${tier}`, {
+      const res = await fetch(`/api/contacts/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Stage: stage }),
+        body: JSON.stringify(fields),
       });
+      if (!res.ok) throw new Error("Failed to save");
     } catch {
-      load(tier);
+      load();
     }
   };
 
-  const createLead = async (stage: string) => {
-    if (!form.Name?.trim()) return;
+  const moveStage = (id: string, stage: string) =>
+    patch(id, { "Relationship Status": stage, ...(stage !== "New" ? {} : {}) });
+
+  const createContact = async (stage: string) => {
+    if (!form["Name / Target"]?.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/leads?tier=${tier}`, {
+      const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, Stage: stage }),
+        body: JSON.stringify({ ...form, "Relationship Status": stage }),
       });
-      if (!res.ok) throw new Error("Failed to save lead");
+      if (!res.ok) throw new Error("Failed to save contact");
       const created = await res.json();
-      setLeads((prev) => [...prev, created]);
+      setContacts((prev) => [...prev, created]);
       setForm(emptyForm);
       setAddingStage(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -152,77 +172,56 @@ export default function OutreachBoard() {
     if (!detail) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/leads/${detail.id}?tier=${tier}`, {
+      const res = await fetch(`/api/contacts/${detail.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(detail.fields),
       });
       if (!res.ok) throw new Error("Failed to save");
       const updated = await res.json();
-      setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       setDetail(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleChannel = (target: LeadFields, ch: string, setter: (f: LeadFields) => void) => {
-    const current = asArray(target.Channel);
-    const next = current.includes(ch) ? current.filter((c) => c !== ch) : [...current, ch];
-    setter({ ...target, Channel: next });
-  };
+  const setDetailField = (patchFields: ContactFields) =>
+    setDetail((d) => (d ? { ...d, fields: { ...d.fields, ...patchFields } } : d));
 
-  const stages = schema?.stage?.length ? schema.stage : ["New", "Contacted", "Replied", "Engaged", "Won", "Lost"];
+  const byStage = useMemo(() => {
+    const map: Record<string, Contact[]> = {};
+    for (const s of STAGES) map[s] = [];
+    for (const c of contacts) {
+      const s = c.fields["Relationship Status"] || "New";
+      (map[s] ||= []).push(c);
+    }
+    return map;
+  }, [contacts]);
+
+  const totals = useMemo(() => {
+    const emailed = contacts.filter((c) => c.fields["Email Status"] === "Sent").length;
+    const ready = contacts.filter(
+      (c) => (c.fields.Email || "").trim() && (c.fields["Email Status"] || "Not Contacted") === "Not Contacted"
+    ).length;
+    const needsResearch = contacts.filter((c) => !(c.fields.Email || "").trim()).length;
+    return { emailed, ready, needsResearch, total: contacts.length };
+  }, [contacts]);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-2 overflow-x-auto bg-surface2 p-1.5 rounded-full border border-border max-w-full">
-          {TIER_ORDER.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTier(t)}
-              className="flex-shrink-0 whitespace-nowrap px-5 py-2.5 rounded-full text-base font-semibold transition-all"
-              style={pillStyle(tier === t, TIER_META[t].color)}
-            >
-              {TIER_META[t].label}
-            </button>
-          ))}
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Email pipeline</h2>
+          <p className="text-sm text-muted font-mono mt-1">
+            {totals.total} targets · {totals.ready} ready to email · {totals.emailed} emailed ·{" "}
+            {totals.needsResearch} need an address
+          </p>
         </div>
-
-        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-surface2 border border-border">
-          <button
-            onClick={() => setTally((t) => Math.max(0, t - 1))}
-            aria-label="Decrease tally"
-            className="w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center text-textSecondary hover:text-white hover:bg-white/[0.06] transition-all"
-          >
-            <Minus size={16} />
-          </button>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={tally}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/[^0-9]/g, "");
-              setTally(digits === "" ? 0 : parseInt(digits, 10));
-            }}
-            className="w-12 text-center text-lg font-bold bg-transparent outline-none text-foreground font-mono"
-          />
-          <button
-            onClick={() => setTally((t) => t + 1)}
-            aria-label="Increase tally"
-            className="w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center text-white transition-all hover:opacity-90"
-            style={{ background: "var(--color-accent)" }}
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-
         <button
-          onClick={() => load(tier)}
+          onClick={load}
           disabled={loading}
           className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
         >
@@ -237,16 +236,23 @@ export default function OutreachBoard() {
       )}
 
       <div className="flex gap-3.5 overflow-x-auto pb-3 snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
-        {stages.map((stage) => {
-          const stageLeads = leads.filter((l) => l.fields.Stage === stage);
+        {STAGES.map((stage) => {
+          const stageContacts = byStage[stage] || [];
           const query = (searchByStage[stage] || "").trim().toLowerCase();
-          const filteredLeads = query
-            ? stageLeads.filter((l) => (l.fields.Name || "").toLowerCase().includes(query))
-            : stageLeads;
+          const filtered = query
+            ? stageContacts.filter((c) =>
+                [c.fields["Name / Target"], c.fields.Organization, c.fields.Role, c.fields.Category]
+                  .filter(Boolean)
+                  .join(" ")
+                  .toLowerCase()
+                  .includes(query)
+              )
+            : stageContacts;
           const visibleCount = visibleByStage[stage] ?? PAGE_SIZE;
-          const visibleLeads = filteredLeads.slice(0, visibleCount);
-          const remaining = filteredLeads.length - visibleLeads.length;
+          const visible = filtered.slice(0, visibleCount);
+          const remaining = filtered.length - visible.length;
           const isOver = overStage === stage;
+
           return (
             <div
               key={stage}
@@ -271,7 +277,7 @@ export default function OutreachBoard() {
               <div className="px-4 py-3.5 flex items-center justify-between border-b border-border">
                 <h3 className="text-base font-bold text-foreground">{stage}</h3>
                 <span className="text-sm px-2.5 py-1 rounded-full bg-surface3 text-muted font-mono">
-                  {stageLeads.length}
+                  {stageContacts.length}
                 </span>
               </div>
 
@@ -280,60 +286,32 @@ export default function OutreachBoard() {
                   <div className="flex flex-col gap-2 p-3 rounded-xl bg-surface3 border border-border">
                     <input
                       autoFocus
-                      value={form.Name}
-                      onChange={(e) => setForm({ ...form, Name: e.target.value })}
+                      value={form["Name / Target"]}
+                      onChange={(e) => setForm({ ...form, "Name / Target": e.target.value })}
                       placeholder="Name"
                       className="text-base px-3 py-2.5 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
                     />
-                    {schema?.category && schema.category.length > 0 && (
-                      <select
-                        value={form.Category}
-                        onChange={(e) => setForm({ ...form, Category: e.target.value })}
-                        className="text-base px-3 py-2.5 rounded-lg outline-none bg-black/40 border border-border text-foreground"
-                      >
-                        <option value="">Category...</option>
-                        {schema.category.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <div className="flex gap-1.5 flex-wrap">
-                      {(schema?.channel || []).map((c) => {
-                        const active = (form.Channel || []).includes(c);
-                        return (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => toggleChannel(form, c, setForm)}
-                            className="text-xs px-3 py-1.5 rounded-full border transition-all"
-                            style={{
-                              background: active ? "var(--color-accent)" : "transparent",
-                              borderColor: active ? "var(--color-accent)" : "var(--color-border)",
-                              color: active ? "#fff" : "var(--color-muted)",
-                            }}
-                          >
-                            {c}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <input
+                      value={form.Organization}
+                      onChange={(e) => setForm({ ...form, Organization: e.target.value })}
+                      placeholder="Organization"
+                      className="text-base px-3 py-2.5 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
+                    />
+                    <input
+                      value={form.Role}
+                      onChange={(e) => setForm({ ...form, Role: e.target.value })}
+                      placeholder="Role"
+                      className="text-base px-3 py-2.5 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
+                    />
                     <input
                       value={form.Email}
                       onChange={(e) => setForm({ ...form, Email: e.target.value })}
                       placeholder="Email"
                       className="text-base px-3 py-2.5 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
                     />
-                    <input
-                      value={form.Phone}
-                      onChange={(e) => setForm({ ...form, Phone: e.target.value })}
-                      placeholder="Phone"
-                      className="text-base px-3 py-2.5 rounded-lg outline-none bg-black/40 border border-border text-foreground placeholder:text-muted"
-                    />
                     <div className="flex gap-2 pt-1">
                       <button
-                        onClick={() => createLead(stage)}
+                        onClick={() => createContact(stage)}
                         disabled={saving}
                         className="flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 text-white disabled:opacity-50"
                         style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
@@ -356,12 +334,12 @@ export default function OutreachBoard() {
                     onClick={() => setAddingStage(stage)}
                     className="w-full py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm text-muted border border-dashed border-borderHover transition-all hover:border-accent hover:text-accentLight"
                   >
-                    <Plus size={15} /> Add lead
+                    <Plus size={15} /> Add contact
                   </button>
                 )}
               </div>
 
-              {stageLeads.length > 0 && (
+              {stageContacts.length > 0 && (
                 <div className="px-3 pt-3">
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/30 border border-border">
                     <Search size={14} color="var(--color-muted)" />
@@ -371,67 +349,97 @@ export default function OutreachBoard() {
                         setSearchByStage({ ...searchByStage, [stage]: e.target.value });
                         setVisibleByStage({ ...visibleByStage, [stage]: PAGE_SIZE });
                       }}
-                      placeholder={`Search ${stage.toLowerCase()}...`}
-                      className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted"
+                      placeholder="Name, org, role…"
+                      className="flex-1 min-w-0 text-sm bg-transparent outline-none text-foreground placeholder:text-muted"
                     />
                   </div>
                 </div>
               )}
 
               <div className="p-3 flex flex-col gap-2.5 flex-1">
-                {stageLeads.length === 0 && addingStage !== stage && (
+                {stageContacts.length === 0 && addingStage !== stage && (
                   <p className="text-sm italic px-1 py-3 text-muted">No one here yet.</p>
                 )}
-                {stageLeads.length > 0 && filteredLeads.length === 0 && (
-                  <p className="text-sm italic px-1 py-3 text-muted">No matches for &ldquo;{searchByStage[stage]}&rdquo;.</p>
+                {stageContacts.length > 0 && filtered.length === 0 && (
+                  <p className="text-sm italic px-1 py-3 text-muted">
+                    No matches for &ldquo;{searchByStage[stage]}&rdquo;.
+                  </p>
                 )}
-                {visibleLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    draggable
-                    onDragStart={() => setDragId(lead.id)}
-                    onDragEnd={() => setDragId(null)}
-                    className="card-hover rounded-xl p-3.5 flex flex-col gap-2.5 cursor-pointer bg-surface3 border border-border"
-                    style={{ opacity: dragId === lead.id ? 0.4 : 1 }}
-                  >
-                    <div onClick={() => setDetail(lead)} className="flex items-center justify-between gap-2">
-                      <span className="text-base font-semibold truncate flex-1 text-foreground">{lead.fields.Name}</span>
-                      {lead.fields["Last Contact"] && (
-                        <span className="text-xs text-muted font-mono flex-shrink-0">
-                          {daysAgo(lead.fields["Last Contact"])}
-                        </span>
-                      )}
-                    </div>
-                    <div onClick={() => setDetail(lead)} className="flex items-center gap-1.5 flex-wrap">
-                      {lead.fields.Category && (
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-textSecondary">
-                          {lead.fields.Category}
-                        </span>
-                      )}
-                      {asArray(lead.fields.Channel).map((c) => (
-                        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-accentLight">
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                    {/* Touch-friendly stage move -- drag-and-drop needs a mouse, this works on tablet */}
-                    <select
-                      value={stage}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => moveStage(lead.id, e.target.value)}
-                      className="text-sm px-3 py-2.5 rounded-lg outline-none bg-black/30 border border-border text-textSecondary font-mono"
+                {visible.map((c) => {
+                  const f = c.fields;
+                  const lastTouch = f["Email Last Contacted"] || f["LinkedIn Last Contacted"];
+                  return (
+                    <div
+                      key={c.id}
+                      draggable
+                      onDragStart={() => setDragId(c.id)}
+                      onDragEnd={() => setDragId(null)}
+                      className="card-hover rounded-xl p-3.5 flex flex-col gap-2.5 cursor-pointer bg-surface3 border border-border"
+                      style={{ opacity: dragId === c.id ? 0.4 : 1 }}
                     >
-                      {stages.map((s) => (
-                        <option key={s} value={s}>
-                          Move to: {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+                      <div onClick={() => setDetail(c)} className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-semibold truncate text-foreground">
+                            {f["Name / Target"]}
+                          </p>
+                          <p className="text-sm text-muted truncate">
+                            {[f.Role, f.Organization].filter(Boolean).join(" · ")}
+                          </p>
+                        </div>
+                        {f.Priority ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-surfaceElevated text-accentLight font-mono flex-shrink-0">
+                            P{f.Priority}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div onClick={() => setDetail(c)} className="flex items-center gap-1.5 flex-wrap">
+                        {f.Category && (
+                          <span className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-textSecondary">
+                            {f.Category}
+                          </span>
+                        )}
+                        {f.Email ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-surfaceElevated text-textSecondary flex items-center gap-1">
+                            <Mail size={11} /> {f["Email Status"] || "Not Contacted"}
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded-full bg-surfaceElevated text-muted flex items-center gap-1">
+                            <Mail size={11} /> No email yet
+                          </span>
+                        )}
+                      </div>
+
+                      {(lastTouch || f["Next Action"]) && (
+                        <div onClick={() => setDetail(c)} className="flex flex-col gap-1">
+                          {lastTouch && (
+                            <span className="text-xs text-muted font-mono">Last: {daysAgo(lastTouch)}</span>
+                          )}
+                          {f["Next Action"] && (
+                            <span className="text-xs text-accentLight truncate">→ {f["Next Action"]}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Touch-friendly stage move -- drag-and-drop needs a mouse, this works on tablet */}
+                      <select
+                        value={stage}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => moveStage(c.id, e.target.value)}
+                        className="text-sm px-3 py-2.5 rounded-lg outline-none bg-black/30 border border-border text-textSecondary font-mono"
+                      >
+                        {STAGES.map((s) => (
+                          <option key={s} value={s}>
+                            Move to: {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
                 {remaining > 0 && (
                   <button
-                    onClick={() => setVisibleByStage({ ...visibleByStage, [stage]: filteredLeads.length })}
+                    onClick={() => setVisibleByStage({ ...visibleByStage, [stage]: filtered.length })}
                     className="w-full py-2.5 rounded-lg flex items-center justify-center gap-1.5 text-sm text-textSecondary bg-black/20 border border-border transition-all hover:border-accent hover:text-accentLight"
                   >
                     <ChevronDown size={15} /> Show {remaining} more
@@ -443,7 +451,7 @@ export default function OutreachBoard() {
         })}
       </div>
 
-      {detail && schema && (
+      {detail && (
         <div
           className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70"
           onClick={() => setDetail(null)}
@@ -453,131 +461,198 @@ export default function OutreachBoard() {
             style={{ boxShadow: "var(--shadow-elevated)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-start justify-between gap-3 mb-5">
               <input
-                value={detail.fields.Name || ""}
-                onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Name: e.target.value } })}
-                className="text-2xl font-bold bg-transparent outline-none flex-1 text-foreground"
+                value={detail.fields["Name / Target"] || ""}
+                onChange={(e) => setDetailField({ "Name / Target": e.target.value })}
+                className="text-2xl font-bold bg-transparent outline-none flex-1 min-w-0 text-foreground"
               />
-              <button onClick={() => setDetail(null)}>
+              <button onClick={() => setDetail(null)} className="mt-1">
                 <X size={20} color="var(--color-muted)" />
               </button>
             </div>
 
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 p-1.5 rounded-xl bg-black/30 border border-border overflow-x-auto">
-                {stages.map((s) => (
+                {STAGES.map((s) => (
                   <button
                     key={s}
-                    onClick={() => setDetail({ ...detail, fields: { ...detail.fields, Stage: s } })}
+                    onClick={() => setDetailField({ "Relationship Status": s })}
                     className="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                    style={pillStyle(detail.fields.Stage === s)}
+                    style={pillStyle((detail.fields["Relationship Status"] || "New") === s)}
                   >
                     {s}
                   </button>
                 ))}
               </div>
 
-              <div>
-                <label className="text-sm uppercase tracking-[0.14em] text-muted font-mono">Category</label>
-                <select
-                  value={detail.fields.Category || ""}
-                  onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Category: e.target.value } })}
-                  className="w-full mt-1.5 text-base px-3 py-2.5 rounded-lg outline-none bg-black/30 border border-border text-foreground"
-                >
-                  <option value="">None</option>
-                  {schema.category.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Organization">
+                  <input
+                    value={detail.fields.Organization || ""}
+                    onChange={(e) => setDetailField({ Organization: e.target.value })}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Role">
+                  <input
+                    value={detail.fields.Role || ""}
+                    onChange={(e) => setDetailField({ Role: e.target.value })}
+                    className={inputCls}
+                  />
+                </Field>
               </div>
 
-              <div>
-                <label className="text-sm uppercase tracking-[0.14em] text-muted font-mono">Channels</label>
-                <div className="flex gap-2 flex-wrap mt-1.5">
-                  {schema.channel.map((c) => {
-                    const active = asArray(detail.fields.Channel).includes(c);
-                    return (
-                      <button
-                        key={c}
-                        onClick={() =>
-                          toggleChannel(detail.fields, c, (f) => setDetail({ ...detail, fields: f }))
-                        }
-                        className="text-sm px-3.5 py-2 rounded-full border transition-all"
-                        style={{
-                          background: active ? "var(--color-accent)" : "transparent",
-                          borderColor: active ? "var(--color-accent)" : "var(--color-border)",
-                          color: active ? "#fff" : "var(--color-muted)",
-                        }}
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Category">
+                  <input
+                    value={detail.fields.Category || ""}
+                    onChange={(e) => setDetailField({ Category: e.target.value })}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Verification">
+                  <select
+                    value={detail.fields["Verification Status"] || ""}
+                    onChange={(e) => setDetailField({ "Verification Status": e.target.value })}
+                    className={inputCls}
+                  >
+                    <option value="">Not set</option>
+                    {VERIFICATION_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5">
-                <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-black/30 border border-border">
-                  <Mail size={16} color="var(--color-muted)" />
-                  <input
-                    value={detail.fields.Email || ""}
-                    onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Email: e.target.value } })}
-                    placeholder="Email"
-                    className="flex-1 text-base bg-transparent outline-none text-foreground placeholder:text-muted"
-                  />
+              {detail.fields["Why They Matter to SplitMic"] && (
+                <div className="px-4 py-3 rounded-lg bg-black/20 border border-border">
+                  <p className="text-xs uppercase tracking-[0.14em] text-muted font-mono mb-1.5">
+                    Why they matter
+                  </p>
+                  <p className="text-sm text-textSecondary leading-relaxed">
+                    {detail.fields["Why They Matter to SplitMic"]}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-black/30 border border-border">
-                  <Phone size={16} color="var(--color-muted)" />
-                  <input
-                    value={detail.fields.Phone || ""}
-                    onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Phone: e.target.value } })}
-                    placeholder="Phone"
-                    className="flex-1 text-base bg-transparent outline-none text-foreground placeholder:text-muted"
-                  />
-                </div>
-                <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-black/30 border border-border">
-                  <MapPin size={16} color="var(--color-muted)" />
-                  <input
-                    value={detail.fields.Address || ""}
-                    onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Address: e.target.value } })}
-                    placeholder="Address"
-                    className="flex-1 text-base bg-transparent outline-none text-foreground placeholder:text-muted"
-                  />
-                </div>
-                <input
-                  value={detail.fields["Channel Handle"] || ""}
-                  onChange={(e) =>
-                    setDetail({ ...detail, fields: { ...detail.fields, "Channel Handle": e.target.value } })
-                  }
-                  placeholder="Handle / profile link"
-                  className="text-base px-3.5 py-3 rounded-lg outline-none bg-black/30 border border-border text-foreground placeholder:text-muted"
-                />
-              </div>
-
-              <input
-                value={detail.fields["Next Action"] || ""}
-                onChange={(e) =>
-                  setDetail({ ...detail, fields: { ...detail.fields, "Next Action": e.target.value } })
-                }
-                placeholder="Next action"
-                className="text-base px-3.5 py-3 rounded-lg outline-none bg-black/30 border border-border text-foreground placeholder:text-muted"
-              />
-              <textarea
-                value={detail.fields.Notes || ""}
-                onChange={(e) => setDetail({ ...detail, fields: { ...detail.fields, Notes: e.target.value } })}
-                placeholder="Notes"
-                rows={3}
-                className="text-base px-3.5 py-3 rounded-lg outline-none resize-none bg-black/30 border border-border text-foreground placeholder:text-muted"
-              />
-
-              {detail.fields["Last Contact"] && (
-                <p className="text-sm text-muted font-mono">
-                  Last contact: {detail.fields["Last Contact"]} ({daysAgo(detail.fields["Last Contact"])})
-                </p>
               )}
+
+              {detail.fields["Source / Research Starting Point"] && (
+                <a
+                  href={detail.fields["Source / Research Starting Point"]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3.5 py-3 rounded-lg text-sm bg-black/30 border border-border text-textSecondary hover:border-accent transition-all"
+                >
+                  <ExternalLink size={14} /> Research starting point
+                </a>
+              )}
+
+              <div className="pt-1">
+                <p className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">Email</p>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-black/30 border border-border">
+                    <Mail size={16} color="var(--color-muted)" />
+                    <input
+                      value={detail.fields.Email || ""}
+                      onChange={(e) => setDetailField({ Email: e.target.value })}
+                      placeholder="Email address"
+                      className="flex-1 min-w-0 text-base bg-transparent outline-none text-foreground placeholder:text-muted"
+                    />
+                  </div>
+                  {detail.fields.Email && (
+                    <a
+                      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(detail.fields.Email)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm bg-black/30 border border-border text-textSecondary hover:border-accent transition-all"
+                    >
+                      <ExternalLink size={14} /> Compose in Gmail
+                    </a>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="Status">
+                      <select
+                        value={detail.fields["Email Status"] || "Not Contacted"}
+                        onChange={(e) => setDetailField({ "Email Status": e.target.value })}
+                        className={inputCls}
+                      >
+                        {EMAIL_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Last contacted">
+                      <input
+                        type="date"
+                        value={detail.fields["Email Last Contacted"] || ""}
+                        onChange={(e) => setDetailField({ "Email Last Contacted": e.target.value })}
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Follow-up date">
+                    <input
+                      type="date"
+                      value={detail.fields["Email Follow-up Date"] || ""}
+                      onChange={(e) => setDetailField({ "Email Follow-up Date": e.target.value })}
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <p className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">
+                  Relationship
+                </p>
+                <div className="flex flex-col gap-3">
+                  <Field label="Response summary">
+                    <textarea
+                      value={detail.fields["Response Summary"] || ""}
+                      onChange={(e) => setDetailField({ "Response Summary": e.target.value })}
+                      rows={2}
+                      className={inputCls + " resize-none"}
+                    />
+                  </Field>
+                  <Field label="Feedback / pain point">
+                    <textarea
+                      value={detail.fields["Feedback / Pain Point"] || ""}
+                      onChange={(e) => setDetailField({ "Feedback / Pain Point": e.target.value })}
+                      rows={2}
+                      className={inputCls + " resize-none"}
+                    />
+                  </Field>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="Next action">
+                      <input
+                        value={detail.fields["Next Action"] || ""}
+                        onChange={(e) => setDetailField({ "Next Action": e.target.value })}
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Next action date">
+                      <input
+                        type="date"
+                        value={detail.fields["Next Action Date"] || ""}
+                        onChange={(e) => setDetailField({ "Next Action Date": e.target.value })}
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Notes">
+                    <textarea
+                      value={detail.fields.Notes || ""}
+                      onChange={(e) => setDetailField({ Notes: e.target.value })}
+                      rows={3}
+                      className={inputCls + " resize-none"}
+                    />
+                  </Field>
+                </div>
+              </div>
 
               <button
                 onClick={saveDetail}
@@ -588,7 +663,7 @@ export default function OutreachBoard() {
                   boxShadow: "var(--shadow-cta)",
                 }}
               >
-                <Save size={17} /> Save changes
+                <Save size={17} /> {saving ? "Saving…" : "Save changes"}
               </button>
             </div>
           </div>

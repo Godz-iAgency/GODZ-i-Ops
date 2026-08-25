@@ -1,140 +1,305 @@
 import Airtable from "airtable";
 
 const PAT = process.env.AIRTABLE_PAT;
-const BASE_MUSIC = process.env.AIRTABLE_BASE_MUSIC;
-const BASE_APPS = process.env.AIRTABLE_BASE_APPS;
+const BASE = process.env.AIRTABLE_BASE_MUSIC;
 
-if (!PAT || !BASE_MUSIC || !BASE_APPS) {
-  throw new Error("Missing Airtable env vars: AIRTABLE_PAT, AIRTABLE_BASE_MUSIC, AIRTABLE_BASE_APPS");
+if (!PAT || !BASE) {
+  throw new Error("Missing Airtable env vars: AIRTABLE_PAT, AIRTABLE_BASE_MUSIC");
 }
 
 Airtable.configure({ apiKey: PAT });
 
-export type Tier = "godzi" | "splitmic" | "gbombs" | "bookworm" | "hotcake";
+// Everything the Command Center touches now lives in one base. The old
+// multi-business tables (Website/gBOMBS/BookWorm/HotCake) are retired and
+// prefixed "DELETE - " in Airtable for manual review.
+export const BASE_ID = BASE;
+export const OUTREACH_TABLE_ID = "tblryUfFc1oBsKtDa";
+export const PROGRESS_TABLE_ID = "tbls02Ih2kaa9fhQ6";
+export const REPLY_LOG_TABLE_ID = "tblegcIUuI3ow1Cgy";
+export const LINKEDIN_TABLE_ID = "tbljLKppcc89M5Iz1";
+export const HUBS_TABLE_ID = "tblolqShJlWbCHoX4";
 
-export const TIERS: Record<Tier, { label: string; baseId: string; table: string; tableId: string; color: string }> = {
-  godzi: { label: "GODZ-i", baseId: BASE_MUSIC, table: "Website", tableId: "tblggdK3pO76ELx0v", color: "#F2C94C" },
-  splitmic: { label: "SplitMic", baseId: BASE_MUSIC, table: "SplitMic", tableId: "tblTDMthhQVuKEyzJ", color: "#56CCF2" },
-  gbombs: { label: "gBOMBS", baseId: BASE_APPS, table: "g-BOMBS Leads", tableId: "tblGKon7vSpqaPkWm", color: "#EF6C9E" },
-  bookworm: { label: "Bookworm", baseId: BASE_APPS, table: "BookWorm Leads", tableId: "tblcLI6qSrZDdzkjt", color: "#C9A66B" },
-  hotcake: { label: "HotCake", baseId: BASE_APPS, table: "HotCake Leads", tableId: "tbl60EXsrcQ8zgXGw", color: "#5FBF7A" },
-};
-
-export function getTable(tier: Tier) {
-  const cfg = TIERS[tier];
-  return new Airtable().base(cfg.baseId)(cfg.table);
+export function getOutreachTable() {
+  return new Airtable().base(BASE as string)(OUTREACH_TABLE_ID);
 }
 
-// Fields shared across all 5 tables after schema unification.
-export const FIELDS = [
-  "Name",
-  "Category",
-  "Channel",
-  "Channel Handle",
-  "Email",
-  "Phone",
-  "Address",
-  "Stage",
-  "Last Contact",
-  "Next Action",
-  "Notes",
-] as const;
+export function getLinkedInTable() {
+  return new Airtable().base(BASE as string)(LINKEDIN_TABLE_ID);
+}
 
-export type LeadFields = {
-  Name?: string;
+export function getHubsTable() {
+  return new Airtable().base(BASE as string)(HUBS_TABLE_ID);
+}
+
+export function getProgressTable() {
+  return new Airtable().base(BASE as string)(PROGRESS_TABLE_ID);
+}
+
+function getReplyLogTable() {
+  return new Airtable().base(BASE as string)(REPLY_LOG_TABLE_ID);
+}
+
+// ---------------------------------------------------------------- contacts
+
+export type ContactFields = {
+  "Name / Target"?: string;
+  Organization?: string;
+  Role?: string;
   Category?: string;
-  Channel?: string[];
-  "Channel Handle"?: string;
+  Priority?: number;
+  "Campaign Day"?: number;
+  "Daily Slot"?: number;
+  "Why They Matter to SplitMic"?: string;
+  "Source / Research Starting Point"?: string;
+  "Verification Status"?: string;
   Email?: string;
-  Phone?: string;
-  Address?: string;
-  Stage?: string;
-  "Last Contact"?: string;
+  "Email Status"?: string;
+  "Email Last Contacted"?: string;
+  "Email Follow-up Date"?: string;
+  "LinkedIn Name"?: string;
+  "LinkedIn URL"?: string;
+  "LinkedIn Status"?: string;
+  "LinkedIn Last Contacted"?: string;
+  "Relationship Status"?: string;
+  "Response Summary"?: string;
+  "Feedback / Pain Point"?: string;
   "Next Action"?: string;
+  "Next Action Date"?: string;
   Notes?: string;
 };
 
-export type Lead = { id: string; fields: LeadFields };
+export type Contact = { id: string; fields: ContactFields };
 
-const CONTENT_QUEUE_TABLE_ID = "tbll3yXqFpeCw0j6S";
+// The email pipeline is a research funnel first: a row earns its way from
+// "Research Needed" to "Ready for Outreach" only once it has a real person or
+// organization and a usable email address.
+export const RELATIONSHIP_STAGES = [
+  "Research Needed",
+  "Ready for Outreach",
+  "Contacted",
+  "Replied",
+  "Engaged",
+  "Meeting",
+  "Follow-up",
+  "Partner",
+  "Not Interested",
+] as const;
 
-export function getContentQueueTable() {
-  return new Airtable().base(BASE_APPS as string)(CONTENT_QUEUE_TABLE_ID);
+export const EMAIL_STATUSES = ["Not Contacted", "Sent", "Replied", "No Response", "Bounced"] as const;
+
+export async function getAllContacts(): Promise<Contact[]> {
+  const records = await getOutreachTable()
+    .select({
+      pageSize: 100,
+      sort: [
+        { field: "Campaign Day", direction: "asc" },
+        { field: "Daily Slot", direction: "asc" },
+      ],
+    })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
 }
 
-const NOTIFICATION_LOG_TABLE_ID = "tblj1yr9DEpiXRPqm";
+// The gate for TODAY'S 10: a record only qualifies once it has a usable email
+// address and has not been emailed yet. Research targets without an address
+// deliberately never surface here -- there is nobody to legitimately write to.
+const READY_TO_EMAIL = "AND(NOT({Email} = ''), OR({Email Status} = 'Not Contacted', {Email Status} = ''))";
 
-function getNotificationLogTable() {
-  return new Airtable().base(BASE_APPS as string)(NOTIFICATION_LOG_TABLE_ID);
+// The next N contacts ready for a first email, in the campaign order baked into
+// the CSV. Deliberately sends nothing -- it only decides who is up next.
+export async function getTodaysContacts(limit = 10): Promise<Contact[]> {
+  const records = await getOutreachTable()
+    .select({
+      pageSize: limit,
+      maxRecords: limit,
+      filterByFormula: READY_TO_EMAIL,
+      sort: [
+        { field: "Campaign Day", direction: "asc" },
+        { field: "Daily Slot", direction: "asc" },
+      ],
+    })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
 }
+
+// Counts for the Today page: how many are actually sendable vs still needing
+// research, so the number 0/10 is never a mystery.
+export async function getEmailPipelineCounts(): Promise<{ ready: number; researchNeeded: number }> {
+  const all = await getOutreachTable()
+    .select({ pageSize: 100, fields: ["Email", "Email Status"] })
+    .all();
+  let ready = 0;
+  let researchNeeded = 0;
+  for (const r of all) {
+    const email = ((r.fields.Email as string) || "").trim();
+    const status = (r.fields["Email Status"] as string) || "Not Contacted";
+    if (!email) researchNeeded++;
+    else if (status === "Not Contacted") ready++;
+  }
+  return { ready, researchNeeded };
+}
+
+// Used by the reply checker to match an inbound sender back to a contact.
+export async function getAllContactsWithEmail(): Promise<Contact[]> {
+  const records = await getOutreachTable()
+    .select({ pageSize: 100, filterByFormula: "NOT({Email} = '')" })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
+}
+
+// --------------------------------------------------------------- linkedin
+// A completely separate pipeline. Prospects are found by hand on LinkedIn each
+// day using the Search tab's terms, then typed in here. Nothing links these
+// records to the 500 email research rows, and nothing needs to.
+
+export const LINKEDIN_STATUSES = [
+  "New",
+  "Contacted",
+  "Connected",
+  "Replied",
+  "Engaged",
+  "Follow-up",
+  "Meeting",
+] as const;
+
+export type LinkedInFields = {
+  Name?: string;
+  Organization?: string;
+  Role?: string;
+  "LinkedIn URL"?: string;
+  "Date Contacted"?: string;
+  Status?: string;
+  Response?: string;
+  Notes?: string;
+  "Next Action"?: string;
+  "Next Action Date"?: string;
+};
+
+export type LinkedInProspect = { id: string; fields: LinkedInFields };
+
+export async function getAllLinkedInProspects(): Promise<LinkedInProspect[]> {
+  const records = await getLinkedInTable()
+    .select({ pageSize: 100, sort: [{ field: "Date Contacted", direction: "desc" }] })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as LinkedInFields }));
+}
+
+// Drives the Today page's LinkedIn counter without any manual tallying.
+// DATETIME_FORMAT is required here: Airtable compares date fields as dates, so
+// a bare `{Date Contacted} = '2026-08-25'` silently matches nothing.
+export async function countLinkedInContactedOn(date: string): Promise<number> {
+  const records = await getLinkedInTable()
+    .select({
+      pageSize: 100,
+      filterByFormula: `DATETIME_FORMAT({Date Contacted}, 'YYYY-MM-DD') = '${date}'`,
+      fields: ["Date Contacted"],
+    })
+    .all();
+  return records.length;
+}
+
+// ------------------------------------------------------- austin music hubs
+// A third dataset, kept deliberately separate from both outreach pipelines.
+// Optional resource: organizations worth a phone call in a spare 20 minutes.
+// Nothing here feeds the daily quota or the 100-day completion logic.
+
+export const HUB_STATUSES = [
+  "Not Contacted",
+  "Called",
+  "Connected",
+  "Follow Up",
+  "Partnership",
+  "Not Relevant",
+] as const;
+
+export type HubFields = {
+  Name?: string;
+  Category?: string;
+  "Who They Reach"?: string;
+  Phone?: string;
+  Email?: string;
+  Website?: string;
+  "Why Call"?: string;
+  Status?: string;
+  "Last Contacted"?: string;
+  Notes?: string;
+};
+
+export type Hub = { id: string; fields: HubFields };
+
+export async function getAllHubs(): Promise<Hub[]> {
+  const records = await getHubsTable()
+    .select({ pageSize: 100, sort: [{ field: "Name", direction: "asc" }] })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as HubFields }));
+}
+
+// ------------------------------------------------------------ day progress
+
+export type ProgressFields = {
+  Date?: string;
+  "Day Number"?: number;
+  Weekday?: string;
+  "Emails Sent"?: number;
+  "LinkedIn Sent"?: number;
+  "Build Objective"?: string;
+  "Build Completed"?: boolean;
+  "Build Notes"?: string;
+  "Deliver Completed"?: boolean;
+  "Feedback Received"?: string;
+  "Needs Follow-up"?: string;
+  "Deliver Next Action"?: string;
+  "Camera Practice"?: boolean;
+  "Content Posted"?: boolean;
+  "Content Platform"?: string;
+  "Content Title"?: string;
+  "Content URL"?: string;
+  Book?: string;
+  "Pages or Chapter"?: string;
+  Learned?: string;
+  Apply?: string;
+  "Deep Work Completed"?: boolean;
+  "Deep Work Notes"?: string;
+};
+
+export async function getProgressForDate(date: string): Promise<ProgressFields | null> {
+  const records = await getProgressTable()
+    .select({ filterByFormula: `{Date} = '${date}'`, maxRecords: 1 })
+    .all();
+  return records.length ? (records[0].fields as ProgressFields) : null;
+}
+
+export async function getAllProgress(): Promise<ProgressFields[]> {
+  const records = await getProgressTable().select({ pageSize: 100 }).all();
+  return records.map((r) => r.fields as ProgressFields);
+}
+
+// One row per calendar date: updates in place if the day already exists so
+// hitting Save Today twice never creates a duplicate day.
+export async function saveProgress(date: string, fields: ProgressFields): Promise<ProgressFields> {
+  const table = getProgressTable();
+  const existing = await table
+    .select({ filterByFormula: `{Date} = '${date}'`, maxRecords: 1 })
+    .all();
+
+  const payload = { ...fields, Date: date };
+  const saved = existing.length
+    ? await table.update([{ id: existing[0].id, fields: payload as never }], { typecast: true })
+    : await table.create([{ fields: payload as never }], { typecast: true });
+  return saved[0].fields as ProgressFields;
+}
+
+// --------------------------------------------------------------- reply log
 
 export async function wasAlreadyNotified(messageId: string): Promise<boolean> {
-  const table = getNotificationLogTable();
-  const records = await table
+  const records = await getReplyLogTable()
     .select({ filterByFormula: `{Message ID} = '${messageId}'`, maxRecords: 1 })
     .all();
   return records.length > 0;
 }
 
 export async function markNotified(messageId: string, fromEmail: string): Promise<void> {
-  const table = getNotificationLogTable();
-  await table.create([
+  await getReplyLogTable().create([
     { fields: { "Message ID": messageId, "From Email": fromEmail, "Notified At": new Date().toISOString() } },
   ]);
-}
-
-// Pulls every lead with an Email set, across all 5 tiers, for reply-matching.
-export async function getAllLeadsWithEmail(): Promise<Array<{ tier: Tier; id: string; fields: LeadFields }>> {
-  const tiers = Object.keys(TIERS) as Tier[];
-  const results = await Promise.all(
-    tiers.map(async (tier) => {
-      const table = getTable(tier);
-      const records = await table
-        .select({ pageSize: 100, filterByFormula: "NOT({Email} = '')" })
-        .all();
-      return records.map((r) => ({ tier, id: r.id, fields: r.fields as LeadFields }));
-    })
-  );
-  return results.flat();
-}
-
-export type QueuedContent = { id: string; content: string; status: string; notes?: string };
-
-export async function getContentQueue(): Promise<QueuedContent[]> {
-  const table = getContentQueueTable();
-  const records = await table.select({ pageSize: 50 }).all();
-  return records.map((r) => ({
-    id: r.id,
-    content: (r.fields.Content as string) || "",
-    status: (r.fields.Status as string) || "New",
-    notes: r.fields.Notes as string | undefined,
-  }));
-}
-
-export async function addContentToQueue(content: string): Promise<QueuedContent> {
-  const table = getContentQueueTable();
-  const created = await table.create([{ fields: { Content: content, Status: "New" } as any }]);
-  const r = created[0];
-  return { id: r.id, content: (r.fields.Content as string) || "", status: (r.fields.Status as string) || "New" };
-}
-
-export async function deleteQueuedContent(id: string): Promise<void> {
-  const table = getContentQueueTable();
-  await table.destroy([id]);
-}
-
-// Counts of leads sitting in "New" stage with an email, i.e. what the next
-// outreach run would actually send to.
-export async function getPendingOutreachCounts(): Promise<Record<Tier, number>> {
-  const tiers = Object.keys(TIERS) as Tier[];
-  const entries = await Promise.all(
-    tiers.map(async (tier) => {
-      const table = getTable(tier);
-      const records = await table
-        .select({ filterByFormula: "AND({Stage} = 'New', NOT({Email} = ''))", pageSize: 100 })
-        .all();
-      return [tier, records.length] as const;
-    })
-  );
-  return Object.fromEntries(entries) as Record<Tier, number>;
 }
