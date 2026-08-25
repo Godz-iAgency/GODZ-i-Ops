@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { austinDateStr } from "@/lib/austinDate";
-import { Plus, X, RefreshCw, Save, Mail, Search, ChevronDown, ExternalLink } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ExternalLink } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
@@ -36,6 +36,7 @@ type ContactFields = {
   Priority?: number;
   "Campaign Day"?: number;
   "Daily Slot"?: number;
+  Phone?: string;
   "Why They Matter to SplitMic"?: string;
   "Source / Research Starting Point"?: string;
   "Verification Status"?: string;
@@ -408,6 +409,11 @@ export default function OutreachBoard() {
                             <Mail size={11} /> No email yet
                           </span>
                         )}
+                        {f.Phone && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-surfaceElevated text-textSecondary flex items-center gap-1">
+                            <Phone size={11} /> {f.Phone}
+                          </span>
+                        )}
                       </div>
 
                       {(lastTouch || f["Next Action"]) && (
@@ -571,6 +577,17 @@ export default function OutreachBoard() {
                       <ExternalLink size={14} /> Compose in Gmail
                     </a>
                   )}
+                  <Field label="Phone">
+                    <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-black/30 border border-border">
+                      <Phone size={16} color="var(--color-muted)" />
+                      <input
+                        value={detail.fields.Phone || ""}
+                        onChange={(e) => setDetailField({ Phone: e.target.value })}
+                        placeholder="Phone"
+                        className="flex-1 min-w-0 text-base bg-transparent outline-none text-foreground placeholder:text-muted"
+                      />
+                    </div>
+                  </Field>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="Status">
                       <select

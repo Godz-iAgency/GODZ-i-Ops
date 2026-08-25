@@ -49,6 +49,7 @@ export type ContactFields = {
   Priority?: number;
   "Campaign Day"?: number;
   "Daily Slot"?: number;
+  Phone?: string;
   "Why They Matter to SplitMic"?: string;
   "Source / Research Starting Point"?: string;
   "Verification Status"?: string;
