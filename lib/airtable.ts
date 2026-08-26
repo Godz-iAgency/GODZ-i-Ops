@@ -266,6 +266,7 @@ export type ProgressFields = {
   Apply?: string;
   "Deep Work Completed"?: boolean;
   "Deep Work Notes"?: string;
+  "Day Note"?: string;
 };
 
 export async function getProgressForDate(date: string): Promise<ProgressFields | null> {

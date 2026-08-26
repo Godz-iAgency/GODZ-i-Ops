@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { austinDateStr } from "@/lib/austinDate";
 import { dayNumber, dateForDay, shortDateForDay, dayOfWeekForDay } from "@/lib/sprint";
-import { X, RefreshCw, Check } from "lucide-react";
+import { X, RefreshCw, Check, Save } from "lucide-react";
 
 type Progress = Record<string, string | number | boolean | undefined>;
 
@@ -48,6 +48,9 @@ export default function HundredDaysTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSavedAt, setNoteSavedAt] = useState<string | null>(null);
 
   const today = austinDateStr();
   const day = dayNumber();
@@ -89,6 +92,36 @@ export default function HundredDaysTab() {
   const selectedDate = selectedDay ? dateForDay(selectedDay) : null;
   const selected = selectedDate ? byDate[selectedDate] : undefined;
   const selectedState = selectedDay ? dayState(selectedDay, selected) : null;
+
+  const openDay = (n: number) => {
+    setSelectedDay(n);
+    setNoteDraft((byDate[dateForDay(n)]?.["Day Note"] as string) || "");
+    setNoteSavedAt(null);
+  };
+
+  const saveNote = async () => {
+    if (!selectedDate || selectedDay == null) return;
+    setNoteSaving(true);
+    try {
+      const res = await fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Date: selectedDate, "Day Note": noteDraft }),
+      });
+      if (!res.ok) throw new Error("Could not save note");
+      setByDate((prev) => ({
+        ...prev,
+        [selectedDate]: { ...prev[selectedDate], Date: selectedDate, "Day Note": noteDraft },
+      }));
+      setNoteSavedAt(
+        new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save note");
+    } finally {
+      setNoteSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -133,7 +166,7 @@ export default function HundredDaysTab() {
           return (
             <button
               key={n}
-              onClick={() => setSelectedDay(n)}
+              onClick={() => openDay(n)}
               className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.08]"
               style={{
                 border: isToday
@@ -199,12 +232,14 @@ export default function HundredDaysTab() {
               </button>
             </div>
 
-            {selectedState?.kind === "rest" ? (
-              <p className="text-base text-muted py-4">Nothing tracked on Sundays.</p>
-            ) : !selected ? (
-              <p className="text-base text-muted py-4">Nothing logged for this day.</p>
-            ) : (
-              <div className="flex flex-col">
+            {selectedState?.kind === "rest" && (
+              <p className="text-base text-muted py-2">Nothing tracked on Sundays.</p>
+            )}
+            {selectedState?.kind !== "rest" && !selected && (
+              <p className="text-base text-muted py-2">Nothing logged for this day.</p>
+            )}
+            {selectedState?.kind !== "rest" && selected && (
+              <div className="flex flex-col mb-2">
                 <Row label="Emails" value={`${selected["Emails Sent"] ?? 0} / 10`} />
                 <Row label="LinkedIn" value={`${selected["LinkedIn Sent"] ?? 0} / 10`} />
                 <Row label="Objective" value={selected["Build Objective"] as string} />
@@ -222,6 +257,29 @@ export default function HundredDaysTab() {
                 <Row label="Deep work" value={selected["Deep Work Notes"] as string} />
               </div>
             )}
+
+            <div className="pt-3 mt-1 border-t border-border">
+              <label className="text-sm uppercase tracking-[0.1em] text-muted font-mono">Note</label>
+              <textarea
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="Anything worth remembering about this day..."
+                rows={4}
+                className="w-full mt-2 text-base px-4 py-3 rounded-xl outline-none resize-none bg-black/30 text-foreground border border-border placeholder:text-muted"
+              />
+              <button
+                onClick={saveNote}
+                disabled={noteSaving}
+                className="w-full mt-2.5 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 text-white disabled:opacity-50 transition-all hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))",
+                  boxShadow: "var(--shadow-cta)",
+                }}
+              >
+                <Save size={15} /> {noteSaving ? "Saving…" : "Save note"}
+              </button>
+              {noteSavedAt && <p className="text-xs text-center text-muted mt-2">Saved at {noteSavedAt}</p>}
+            </div>
           </div>
         </div>
       )}
