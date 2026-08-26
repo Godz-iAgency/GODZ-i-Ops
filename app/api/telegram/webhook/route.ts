@@ -39,6 +39,24 @@ export async function POST(req: NextRequest) {
   }
 
   const update = await req.json();
+
+  // Temporary diagnostic branch: only reachable with the correct webhook
+  // secret above, so it's safe. Reports masked env var info to find a
+  // prod/local mismatch without ever exposing the real values.
+  if (update?.__diag === true) {
+    const chatEnv = process.env.TELEGRAM_CHAT_ID || "";
+    const tokenEnv = process.env.TELEGRAM_BOT_TOKEN || "";
+    return NextResponse.json({
+      envChatId_length: chatEnv.length,
+      envChatId_value_matchesExpected: chatEnv === String(update.expectedChatId || ""),
+      envChatId_hasWhitespace: chatEnv !== chatEnv.trim(),
+      envToken_length: tokenEnv.length,
+      envToken_first4: tokenEnv.slice(0, 4),
+      envToken_last4: tokenEnv.slice(-4),
+      envToken_hasWhitespace: tokenEnv !== tokenEnv.trim(),
+    });
+  }
+
   const message = update?.message;
   const chatId = message?.chat?.id;
   const text = message?.text as string | undefined;
