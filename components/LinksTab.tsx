@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Linkedin, Mail, Share2, Table2, Link2 } from "lucide-react";
+import { Calendar, Linkedin, Mail, Share2, Table2, Link2, Send } from "lucide-react";
 
 const AIRTABLE_BASE = "https://airtable.com/appVoya6LLvnSjCbQ";
 
@@ -10,6 +10,7 @@ const LINKS = [
   { label: "Email", url: "https://mail.google.com/mail/u/0/#inbox", icon: Mail, color: "#71717a", sub: "christopher@godz-iagency.com" },
   { label: "SplitMic", url: "https://www.splitmic.com/", icon: Share2, color: "#5FBF7A" },
   { label: "Airtable", url: AIRTABLE_BASE, icon: Table2, color: "#e8430a", sub: "SplitMic Outreach, LinkedIn, Daily Progress" },
+  { label: "Telegram", url: "https://t.me/godz_i_testingBot", icon: Send, color: "#26A5E4", sub: "Email copywriting bot" },
 ];
 
 export default function LinksTab() {
