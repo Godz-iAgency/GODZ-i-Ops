@@ -2,7 +2,7 @@
 
 import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
 import { dayNumber, sprintStartLabel } from "@/lib/sprint";
-import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Progress = {
@@ -177,6 +177,115 @@ function CheckRow({ checked, onToggle, label }: { checked: boolean; onToggle: ()
 }
 
 // TODAY'S 10: who to email today. Nothing is sent automatically -- each one is
+// Sending real mail is gated by APP_PASSWORD on the server. The password is
+// typed once per device and kept in localStorage -- never in the bundle.
+const PASSWORD_KEY = "godzi-app-password";
+
+function SendPanel({ contact, onSent }: { contact: Contact; onSent: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [bodyText, setBodyText] = useState("");
+  const [password, setPassword] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setPassword(localStorage.getItem(PASSWORD_KEY) || "");
+    } catch {
+      // Private mode or blocked storage -- the field just starts empty.
+    }
+  }, []);
+
+  const send = async () => {
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/contacts/${contact.id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-app-password": password },
+        body: JSON.stringify({ subject, bodyText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not send");
+      try {
+        localStorage.setItem(PASSWORD_KEY, password);
+      } catch {
+        // Not fatal -- the password just has to be retyped next time.
+      }
+      setSent(`Sent. ${data.sentToday}/${data.limit} today.`);
+      onSent();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (sent) {
+    return <p className="text-sm text-center py-2 text-accentLight font-mono">{sent}</p>;
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 bg-black/30 border border-border text-foreground hover:border-accent transition-all"
+      >
+        <Send size={14} /> Write and send from the app
+      </button>
+    );
+  }
+
+  const ready = subject.trim() && bodyText.trim() && password;
+
+  return (
+    <div className="flex flex-col gap-2 p-3 rounded-lg bg-black/30 border border-border">
+      <input
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        placeholder="Subject"
+        className="w-full text-sm px-3 py-2.5 rounded-lg outline-none bg-surface2 text-foreground border border-border placeholder:text-muted"
+      />
+      <textarea
+        value={bodyText}
+        onChange={(e) => setBodyText(e.target.value)}
+        placeholder={`Hi ${(contact.fields["Name / Target"] || "").split(" ")[0] || "there"},`}
+        rows={7}
+        className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none bg-surface2 text-foreground border border-border placeholder:text-muted"
+      />
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="App password"
+        className="w-full text-sm px-3 py-2.5 rounded-lg outline-none bg-surface2 text-foreground border border-border placeholder:text-muted"
+      />
+      <p className="text-xs text-muted leading-relaxed">
+        Your signature, postal address and an unsubscribe link are added automatically.
+      </p>
+      {error && <p className="text-xs text-accentLight">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setOpen(false)}
+          className="px-4 py-2.5 rounded-lg text-sm bg-surface2 border border-border text-textSecondary"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={send}
+          disabled={!ready || sending}
+          className="flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 text-white disabled:opacity-40 transition-all"
+          style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
+        >
+          <Send size={14} /> {sending ? "Sending…" : `Send to ${contact.fields.Email}`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // opened, written by hand, then marked off here. Only contacts with a real
 // email address qualify; research targets stay out of this list by design.
 function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) {
@@ -346,6 +455,17 @@ function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) 
                     </a>
                   )}
                 </div>
+
+                {f.Email && (
+                  <SendPanel
+                    contact={c}
+                    onSent={() => {
+                      setContacts((prev) => prev.filter((x) => x.id !== c.id));
+                      setOpenId(null);
+                      onSentChange(1);
+                    }}
+                  />
+                )}
 
                 <button
                   onClick={() => markSent(c)}

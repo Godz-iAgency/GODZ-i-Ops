@@ -72,6 +72,9 @@ export type ContactFields = {
   "Next Action"?: string;
   "Next Action Date"?: string;
   Notes?: string;
+  "Do Not Contact"?: boolean;
+  "Suppression Reason"?: string;
+  "Suppressed At"?: string;
 };
 
 export type Contact = { id: string; fields: ContactFields };
@@ -109,7 +112,10 @@ export async function getAllContacts(): Promise<Contact[]> {
 // The gate for TODAY'S 10: a record only qualifies once it has a usable email
 // address and has not been emailed yet. Research targets without an address
 // deliberately never surface here -- there is nobody to legitimately write to.
-const READY_TO_EMAIL = "AND(NOT({Email} = ''), OR({Email Status} = 'Not Contacted', {Email Status} = ''))";
+// Anyone who unsubscribed, bounced, or complained is excluded outright: the
+// suppression list wins over every other pipeline rule.
+const READY_TO_EMAIL =
+  "AND(NOT({Email} = ''), NOT({Do Not Contact}), OR({Email Status} = 'Not Contacted', {Email Status} = ''))";
 
 // The next N contacts ready for a first email, in the campaign order baked into
 // the CSV. Deliberately sends nothing -- it only decides who is up next.
@@ -143,6 +149,73 @@ export async function getEmailPipelineCounts(): Promise<{ ready: number; researc
     else if (status === "Not Contacted") ready++;
   }
   return { ready, researchNeeded };
+}
+
+export async function getContactById(id: string): Promise<Contact | null> {
+  try {
+    const record = await getOutreachTable().find(id);
+    return { id: record.id, fields: record.fields as ContactFields };
+  } catch {
+    return null;
+  }
+}
+
+// ------------------------------------------------------------- suppression
+// One switch -- "Do Not Contact" -- gates every send. It is set from three
+// places: an unsubscribe click, an SES bounce, and an SES complaint. Nothing
+// clears it automatically; a person who opted out stays opted out.
+
+export async function suppressContact(id: string, reason: string): Promise<void> {
+  await getOutreachTable().update(
+    [
+      {
+        id,
+        fields: {
+          "Do Not Contact": true,
+          "Suppression Reason": reason,
+          "Suppressed At": new Date().toISOString().slice(0, 10),
+        } as never,
+      },
+    ],
+    { typecast: true }
+  );
+}
+
+// Bounce and complaint notifications identify people by address, not by record
+// id, and the same address can legitimately appear on more than one row.
+export async function suppressByEmail(email: string, reason: string, markBounced: boolean): Promise<number> {
+  const safe = email.replace(/'/g, "\\'");
+  const records = await getOutreachTable()
+    .select({ pageSize: 100, filterByFormula: `LOWER({Email}) = '${safe.toLowerCase()}'` })
+    .all();
+  if (!records.length) return 0;
+
+  await getOutreachTable().update(
+    records.map((r) => ({
+      id: r.id,
+      fields: {
+        "Do Not Contact": true,
+        "Suppression Reason": reason,
+        "Suppressed At": new Date().toISOString().slice(0, 10),
+        ...(markBounced ? { "Email Status": "Bounced" } : {}),
+      } as never,
+    })),
+    { typecast: true }
+  );
+  return records.length;
+}
+
+// Enforces EMAIL_DAILY_LIMIT server-side. Date fields need DATETIME_FORMAT --
+// Airtable compares them as dates, so a bare string equality matches nothing.
+export async function countEmailsSentOn(date: string): Promise<number> {
+  const records = await getOutreachTable()
+    .select({
+      pageSize: 100,
+      filterByFormula: `DATETIME_FORMAT({Email Last Contacted}, 'YYYY-MM-DD') = '${date}'`,
+      fields: ["Email Last Contacted"],
+    })
+    .all();
+  return records.length;
 }
 
 // Used by the reply checker to match an inbound sender back to a contact.
