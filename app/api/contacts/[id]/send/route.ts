@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthorized } from "@/lib/appAuth";
 import { austinDateStr } from "@/lib/austinDate";
 import { sendOutreachEmail } from "@/lib/ses";
 import { getContactById, countEmailsSentOn, getOutreachTable } from "@/lib/airtable";
@@ -8,10 +7,6 @@ import { getContactById, countEmailsSentOn, getOutreachTable } from "@/lib/airta
 // guard here exists because getting one of them wrong is not a bug you can
 // take back once the message has left.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
   const body = (await req.json()) as { subject?: string; bodyText?: string };
   const subject = (body.subject || "").trim();

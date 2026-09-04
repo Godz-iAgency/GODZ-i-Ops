@@ -177,26 +177,13 @@ function CheckRow({ checked, onToggle, label }: { checked: boolean; onToggle: ()
 }
 
 // TODAY'S 10: who to email today. Nothing is sent automatically -- each one is
-// Sending real mail is gated by APP_PASSWORD on the server. The password is
-// typed once per device and kept in localStorage -- never in the bundle.
-const PASSWORD_KEY = "godzi-app-password";
-
 function SendPanel({ contact, onSent }: { contact: Contact; onSent: () => void }) {
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
-  const [password, setPassword] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      setPassword(localStorage.getItem(PASSWORD_KEY) || "");
-    } catch {
-      // Private mode or blocked storage -- the field just starts empty.
-    }
-  }, []);
 
   const send = async () => {
     setSending(true);
@@ -204,16 +191,11 @@ function SendPanel({ contact, onSent }: { contact: Contact; onSent: () => void }
     try {
       const res = await fetch(`/api/contacts/${contact.id}/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-app-password": password },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, bodyText }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not send");
-      try {
-        localStorage.setItem(PASSWORD_KEY, password);
-      } catch {
-        // Not fatal -- the password just has to be retyped next time.
-      }
       setSent(`Sent. ${data.sentToday}/${data.limit} today.`);
       onSent();
     } catch (e) {
@@ -238,7 +220,7 @@ function SendPanel({ contact, onSent }: { contact: Contact; onSent: () => void }
     );
   }
 
-  const ready = subject.trim() && bodyText.trim() && password;
+  const ready = subject.trim() && bodyText.trim();
 
   return (
     <div className="flex flex-col gap-2 p-3 rounded-lg bg-black/30 border border-border">
@@ -254,13 +236,6 @@ function SendPanel({ contact, onSent }: { contact: Contact; onSent: () => void }
         placeholder={`Hi ${(contact.fields["Name / Target"] || "").split(" ")[0] || "there"},`}
         rows={7}
         className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none bg-surface2 text-foreground border border-border placeholder:text-muted"
-      />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="App password"
-        className="w-full text-sm px-3 py-2.5 rounded-lg outline-none bg-surface2 text-foreground border border-border placeholder:text-muted"
       />
       <p className="text-xs text-muted leading-relaxed">
         Your signature, postal address and an unsubscribe link are added automatically.
