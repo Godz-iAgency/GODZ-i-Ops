@@ -370,6 +370,31 @@ export async function saveProgress(date: string, fields: ProgressFields): Promis
 }
 
 // --------------------------------------------------------------- reply log
+// Every inbound reply from someone in the outreach list becomes a row here.
+// It doubles as the dedupe ledger for the cron (Message ID is the key) and as
+// the triage queue the Replies tab reads.
+
+export type ReplyFields = {
+  "Message ID"?: string;
+  "From Email"?: string;
+  "From Name"?: string;
+  "Contact Name"?: string;
+  Organization?: string;
+  "Contact Record ID"?: string;
+  Subject?: string;
+  Body?: string;
+  "Thread ID"?: string;
+  "RFC Message ID"?: string;
+  "Received At"?: string;
+  "Notified At"?: string;
+  Status?: string;
+  Intent?: string;
+  "Suggested Reply"?: string;
+  "My Reply"?: string;
+  "Replied At"?: string;
+};
+
+export type Reply = { id: string; fields: ReplyFields };
 
 export async function wasAlreadyNotified(messageId: string): Promise<boolean> {
   const records = await getReplyLogTable()
@@ -378,8 +403,28 @@ export async function wasAlreadyNotified(messageId: string): Promise<boolean> {
   return records.length > 0;
 }
 
-export async function markNotified(messageId: string, fromEmail: string): Promise<void> {
-  await getReplyLogTable().create([
-    { fields: { "Message ID": messageId, "From Email": fromEmail, "Notified At": new Date().toISOString() } },
-  ]);
+export async function createReply(fields: ReplyFields): Promise<Reply> {
+  const created = await getReplyLogTable().create([{ fields: fields as never }], { typecast: true });
+  return { id: created[0].id, fields: created[0].fields as ReplyFields };
+}
+
+export async function updateReply(id: string, fields: ReplyFields): Promise<Reply> {
+  const updated = await getReplyLogTable().update([{ id, fields: fields as never }], { typecast: true });
+  return { id: updated[0].id, fields: updated[0].fields as ReplyFields };
+}
+
+export async function getReplyById(id: string): Promise<Reply | null> {
+  try {
+    const record = await getReplyLogTable().find(id);
+    return { id: record.id, fields: record.fields as ReplyFields };
+  } catch {
+    return null;
+  }
+}
+
+export async function getAllReplies(): Promise<Reply[]> {
+  const records = await getReplyLogTable()
+    .select({ pageSize: 100, sort: [{ field: "Received At", direction: "desc" }] })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as ReplyFields }));
 }

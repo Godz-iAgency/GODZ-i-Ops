@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { austinDateStr } from "@/lib/austinDate";
-import { sendOutreachEmail } from "@/lib/ses";
+import { sendOutreachEmail } from "@/lib/outreach";
 import { getContactById, countEmailsSentOn, getOutreachTable } from "@/lib/airtable";
 
 // The only route in the app that sends real mail to a real stranger. Every

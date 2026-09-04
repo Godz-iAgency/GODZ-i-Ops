@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import TodayTab from "@/components/TodayTab";
 import OutreachTab from "@/components/OutreachTab";
+import RepliesTab from "@/components/RepliesTab";
 import SearchTab from "@/components/SearchTab";
 import HundredDaysTab from "@/components/HundredDaysTab";
 import ResourcesTab from "@/components/ResourcesTab";
@@ -11,6 +12,7 @@ import ResourcesTab from "@/components/ResourcesTab";
 const TABS = [
   { id: "today", label: "Today" },
   { id: "outreach", label: "Outreach" },
+  { id: "replies", label: "Replies" },
   { id: "hundred", label: "100 Days" },
   { id: "search", label: "Search" },
   { id: "resources", label: "Resources" },
@@ -56,6 +58,7 @@ export default function Home() {
       <main className="max-w-[1280px] mx-auto px-5 sm:px-8 pt-9 pb-16 relative z-[1]">
         {tab === "today" && <TodayTab />}
         {tab === "outreach" && <OutreachTab />}
+        {tab === "replies" && <RepliesTab />}
         {tab === "hundred" && <HundredDaysTab />}
         {tab === "search" && <SearchTab />}
         {tab === "resources" && <ResourcesTab />}
