@@ -397,6 +397,7 @@ export async function saveProgress(date: string, fields: ProgressFields): Promis
 
 export type ReplyFields = {
   "Message ID"?: string;
+  Source?: string;
   "From Email"?: string;
   "From Name"?: string;
   "Contact Name"?: string;

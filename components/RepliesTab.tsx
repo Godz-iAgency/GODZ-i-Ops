@@ -6,6 +6,7 @@ import { RefreshCw, Send, Check, ChevronDown, ChevronUp, Sparkles } from "lucide
 type Reply = {
   id: string;
   fields: {
+    Source?: string;
     "From Email"?: string;
     "From Name"?: string;
     "Contact Name"?: string;
@@ -32,6 +33,15 @@ const INTENT_COLORS: Record<string, string> = {
 
 const FILTERS = ["Needs reply", "All", "Replied"] as const;
 
+// Which business the reply belongs to. Everything is SplitMic until Bookworm
+// has its own list; the filter exists so the two never get mixed up once it does.
+const SOURCES = ["All sources", "SplitMic", "Bookworm"] as const;
+
+const SOURCE_COLORS: Record<string, string> = {
+  SplitMic: "#e8430a",
+  Bookworm: "#56CCF2",
+};
+
 function timeAgo(iso?: string): string {
   if (!iso) return "";
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -47,6 +57,7 @@ export default function RepliesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Needs reply");
+  const [source, setSource] = useState<(typeof SOURCES)[number]>("All sources");
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -71,10 +82,14 @@ export default function RepliesTab() {
   }, [load]);
 
   const shown = useMemo(() => {
-    if (filter === "All") return replies;
-    if (filter === "Replied") return replies.filter((r) => r.fields.Status === "Replied");
-    return replies.filter((r) => r.fields.Status !== "Replied" && r.fields.Status !== "Closed");
-  }, [replies, filter]);
+    // Rows written before the Source field existed have none, so they fall
+    // back to SplitMic rather than vanishing from a filtered view.
+    const bySource =
+      source === "All sources" ? replies : replies.filter((r) => (r.fields.Source || "SplitMic") === source);
+    if (filter === "All") return bySource;
+    if (filter === "Replied") return bySource.filter((r) => r.fields.Status === "Replied");
+    return bySource.filter((r) => r.fields.Status !== "Replied" && r.fields.Status !== "Closed");
+  }, [replies, filter, source]);
 
   const needsReply = replies.filter((r) => r.fields.Status !== "Replied" && r.fields.Status !== "Closed").length;
 
@@ -120,7 +135,7 @@ export default function RepliesTab() {
 
   return (
     <div className="max-w-[900px] mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
         <p className="text-base text-muted">
           {needsReply > 0 ? `${needsReply} waiting on you` : "Nothing waiting. All caught up."}
         </p>
@@ -150,6 +165,32 @@ export default function RepliesTab() {
         </div>
       </div>
 
+      <div className="flex gap-1 bg-surface2 p-1 rounded-full border border-border self-start mb-5 w-fit">
+        {SOURCES.map((s) => {
+          const active = source === s;
+          const dot = SOURCE_COLORS[s];
+          return (
+            <button
+              key={s}
+              onClick={() => setSource(s)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap"
+              style={{
+                background: active ? "var(--color-accent)" : "transparent",
+                color: active ? "#0a0705" : "var(--color-muted)",
+              }}
+            >
+              {dot && (
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: active ? "#0a0705" : dot }}
+                />
+              )}
+              {s}
+            </button>
+          );
+        })}
+      </div>
+
       {error && (
         <div className="px-4 py-3 rounded-xl text-base mb-4 bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
           {error}
@@ -172,6 +213,7 @@ export default function RepliesTab() {
           const f = r.fields;
           const isOpen = openId === r.id;
           const intent = f.Intent || "Other";
+          const src = f.Source || "SplitMic";
           return (
             <div key={r.id} className="rounded-xl bg-surface2 border border-border overflow-hidden">
               <button onClick={() => open(r)} className="w-full flex items-start gap-3 px-4 py-3.5 text-left">
@@ -184,6 +226,15 @@ export default function RepliesTab() {
                     <p className="text-base font-semibold text-foreground truncate">
                       {f["Contact Name"] || f["From Name"] || f["From Email"]}
                     </p>
+                    <span
+                      className="text-[11px] px-2 py-0.5 rounded-full font-mono flex-shrink-0 font-semibold"
+                      style={{
+                        background: `${SOURCE_COLORS[src] || "#9B87F5"}22`,
+                        color: SOURCE_COLORS[src] || "#9B87F5",
+                      }}
+                    >
+                      {src}
+                    </span>
                     <span
                       className="text-[11px] px-2 py-0.5 rounded-full font-mono flex-shrink-0"
                       style={{ background: "rgba(255,255,255,0.06)", color: INTENT_COLORS[intent] || "#9B87F5" }}

@@ -119,6 +119,9 @@ export async function GET(req: NextRequest) {
 
     await createReply({
       "Message ID": msg.id,
+      // Only the SplitMic list is matched today. When Bookworm gets its own
+      // table this is where the matched list decides the label.
+      Source: "SplitMic",
       "From Email": msg.fromEmail,
       "From Name": msg.fromName,
       "Contact Name": contact.fields["Name / Target"],
