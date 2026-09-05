@@ -134,6 +134,27 @@ export async function getTodaysContacts(limit = 10): Promise<Contact[]> {
   return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
 }
 
+const NEEDS_EMAIL =
+  "AND({Email} = '', OR({Relationship Status} = 'Research Needed', {Relationship Status} = ''))";
+
+// Feeds the quick-entry list on the Today page: the next batch of targets that
+// only need an email address typed in to become sendable. Ordered the same
+// way as the outreach queue so filling these in feeds today's 10 first.
+export async function getContactsNeedingEmail(limit = 20): Promise<Contact[]> {
+  const records = await getOutreachTable()
+    .select({
+      pageSize: limit,
+      maxRecords: limit,
+      filterByFormula: NEEDS_EMAIL,
+      sort: [
+        { field: "Campaign Day", direction: "asc" },
+        { field: "Daily Slot", direction: "asc" },
+      ],
+    })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
+}
+
 // Counts for the Today page: how many are actually sendable vs still needing
 // research, so the number 0/10 is never a mystery.
 export async function getEmailPipelineCounts(): Promise<{ ready: number; researchNeeded: number }> {

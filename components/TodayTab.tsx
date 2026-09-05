@@ -261,6 +261,120 @@ function SendPanel({ contact, onSent }: { contact: Contact; onSent: () => void }
   );
 }
 
+// Quick entry for the gap Today's 10 exists to protect against: a target with
+// no email is worthless to the queue no matter how well-researched otherwise.
+// This lets an address be typed in right where the problem is surfaced,
+// instead of sending someone hunting through the Outreach board for it.
+function NeedsEmailPanel({ count, onFilled }: { count: number; onFilled: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/contacts/needs-email?limit=20");
+      if (!res.ok) throw new Error("Could not load targets");
+      const data = await res.json();
+      setContacts(data.contacts || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openPanel = () => {
+    setOpen(true);
+    if (contacts.length === 0) load();
+  };
+
+  const save = async (id: string) => {
+    const email = (drafts[id] || "").trim();
+    if (!email) return;
+    setSavingId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Email: email }),
+      });
+      if (!res.ok) throw new Error("Could not save");
+      setContacts((prev) => prev.filter((c) => c.id !== id));
+      onFilled();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  if (count === 0) return null;
+
+  if (!open) {
+    return (
+      <button
+        onClick={openPanel}
+        className="w-full text-left px-4 py-3 rounded-xl bg-surface3 border border-border hover:border-accent transition-all"
+      >
+        <p className="text-sm text-foreground">
+          <span className="font-semibold">{count} targets</span> still need an email address.{" "}
+          <span className="text-accentLight">Add them now →</span>
+        </p>
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-surface3 border border-border p-3.5 flex flex-col gap-2.5">
+      <div className="flex items-center justify-between">
+        <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono">Add missing emails</p>
+        <button onClick={() => setOpen(false)}>
+          <X size={15} color="var(--color-muted)" />
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-accentLight">{error}</p>}
+      {loading && <p className="text-sm italic text-muted px-1">Loading…</p>}
+
+      {!loading && contacts.length === 0 && (
+        <p className="text-sm text-muted px-1">All caught up here for now — refresh Today's 10 to see more.</p>
+      )}
+
+      {contacts.map((c) => (
+        <div key={c.id} className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">{c.fields["Name / Target"]}</p>
+            <p className="text-xs text-muted truncate">
+              {[c.fields.Role, c.fields.Organization].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <input
+            value={drafts[c.id] || ""}
+            onChange={(e) => setDrafts((d) => ({ ...d, [c.id]: e.target.value }))}
+            onKeyDown={(e) => e.key === "Enter" && save(c.id)}
+            placeholder="email@address.com"
+            className="w-48 flex-shrink-0 text-sm px-3 py-2 rounded-lg outline-none bg-black/30 text-foreground border border-border placeholder:text-muted"
+          />
+          <button
+            onClick={() => save(c.id)}
+            disabled={!drafts[c.id]?.trim() || savingId === c.id}
+            className="flex-shrink-0 px-3 py-2 rounded-lg text-white disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
+          >
+            <Check size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // opened, written by hand, then marked off here. Only contacts with a real
 // email address qualify; research targets stay out of this list by design.
 function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) {
@@ -340,16 +454,12 @@ function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) 
           <p className="text-base font-semibold text-foreground mb-1">Nobody is ready to email yet.</p>
           <p className="text-sm text-muted leading-relaxed">
             {researchNeeded > 0
-              ? `${researchNeeded} targets are still missing an email address. Open the Outreach tab, research a target, add their address, and they will appear here.`
+              ? "Add an email address below and they'll queue up here."
               : "Everyone with an address has already been contacted."}
           </p>
         </div>
       )}
-      {!loading && contacts.length > 0 && researchNeeded > 0 && (
-        <p className="text-xs text-muted font-mono px-1">
-          {researchNeeded} targets still need an email address before they can queue up here.
-        </p>
-      )}
+      <NeedsEmailPanel count={researchNeeded} onFilled={() => setResearchNeeded((n) => Math.max(0, n - 1))} />
 
       {contacts.map((c) => {
         const f = c.fields;
