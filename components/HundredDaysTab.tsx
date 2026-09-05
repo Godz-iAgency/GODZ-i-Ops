@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { austinDateStr } from "@/lib/austinDate";
-import { dayNumber, dateForDay, shortDateForDay, dayOfWeekForDay } from "@/lib/sprint";
+import { dayNumber, dateForDay, shortDateForDay, dayOfWeekForDay, weekdayAbbrevForDay } from "@/lib/sprint";
 import { X, RefreshCw, Check, Save } from "lucide-react";
 
 type Progress = Record<string, string | number | boolean | undefined>;
@@ -179,6 +179,9 @@ export default function HundredDaysTab() {
             >
               <span className="text-lg sm:text-xl font-bold">{n}</span>
               <span className="text-[11px] sm:text-xs font-mono opacity-70">{shortDateForDay(n)}</span>
+              <span className="text-[9px] sm:text-[10px] font-mono opacity-50 uppercase tracking-wide">
+                {weekdayAbbrevForDay(n)}
+              </span>
             </button>
           );
         })}

@@ -675,7 +675,7 @@ export default function TodayTab() {
     ? "Rest day · nothing tracked"
     : isSaturday
       ? "4:00 AM - 4:00 PM · Deep work"
-      : "10:00 AM - 4:00 PM · Monday to Friday";
+      : "12:00 PM - 4:00 PM · Monday to Friday";
 
   return (
     <div className="flex flex-col gap-9 max-w-[900px] mx-auto">
@@ -727,7 +727,7 @@ export default function TodayTab() {
 
       {!loading && !isSunday && !isSaturday && (
         <>
-          <Block tag="PROMOTE" time="10:00 AM - 11:00 AM" title="Email Outreach">
+          <Block tag="PROMOTE" time="12:00 PM - 12:40 PM" title="Email Outreach">
             <Counter
               count={progress["Emails Sent"] ?? 0}
               goal={10}
@@ -739,7 +739,7 @@ export default function TodayTab() {
             </div>
           </Block>
 
-          <Block tag="PROMOTE" time="11:00 AM - 12:00 PM" title="LinkedIn Outreach">
+          <Block tag="PROMOTE" time="12:40 PM - 1:20 PM" title="LinkedIn Outreach">
             <LinkedInToday onCountChange={(n) => set({ "LinkedIn Sent": n })} />
             <p className="text-sm text-muted px-1">
               Goal: 10 LinkedIn connections or outreach attempts. Search using the terms on the Search tab,
@@ -747,7 +747,7 @@ export default function TodayTab() {
             </p>
           </Block>
 
-          <Block tag="BUILD" time="12:00 PM - 1:00 PM" title="Today's Highest-Priority SplitMic Build">
+          <Block tag="BUILD" time="1:20 PM - 2:00 PM" title="Today's Highest-Priority SplitMic Build">
             <input
               value={progress["Build Objective"] || ""}
               onChange={(e) => set({ "Build Objective": e.target.value })}
@@ -768,7 +768,7 @@ export default function TodayTab() {
             />
           </Block>
 
-          <Block tag="DELIVER" time="1:00 PM - 2:00 PM" title="Replies, Follow-ups and Feedback">
+          <Block tag="DELIVER" time="2:00 PM - 2:40 PM" title="Replies, Follow-ups and Feedback">
             <CheckRow
               label="Delivery session completed"
               checked={!!progress["Deliver Completed"]}
@@ -796,7 +796,7 @@ export default function TodayTab() {
             />
           </Block>
 
-          <Block tag="PROMOTE" time="2:00 PM - 3:00 PM" title="Camera Practice and Content">
+          <Block tag="PROMOTE" time="2:40 PM - 3:20 PM" title="Camera Practice and Content">
             <CheckRow
               label="Camera practice completed"
               checked={!!progress["Camera Practice"]}
@@ -833,7 +833,7 @@ export default function TodayTab() {
             />
           </Block>
 
-          <Block tag="LEARN" time="3:00 PM - 4:00 PM" title="Reading">
+          <Block tag="LEARN" time="3:20 PM - 4:00 PM" title="Reading">
             <input
               value={progress.Book || ""}
               onChange={(e) => set({ Book: e.target.value })}

@@ -2,7 +2,7 @@ import { austinDateStr } from "./austinDate";
 
 // Single source of truth for the 100-day sprint. Today and 100 Days both read
 // from here so the day counter can never drift between the two tabs.
-export const SPRINT_START = "2026-08-25";
+export const SPRINT_START = "2026-09-07";
 
 const startDate = new Date(SPRINT_START + "T00:00:00");
 
@@ -26,6 +26,12 @@ export function dayOfWeekForDay(n: number): number {
   const d = new Date(startDate);
   d.setDate(d.getDate() + (n - 1));
   return d.getDay();
+}
+
+export function weekdayAbbrevForDay(n: number): string {
+  const d = new Date(startDate);
+  d.setDate(d.getDate() + (n - 1));
+  return d.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 export function sprintStartLabel(): string {
