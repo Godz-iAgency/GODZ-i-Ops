@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.modify", // read, label, archive
   "https://www.googleapis.com/auth/gmail.send", // send outreach + replies
+  "https://www.googleapis.com/auth/calendar.events", // read/write events on the primary calendar
 ].join(" ");
 
 function page(title: string, inner: string): NextResponse {

@@ -8,12 +8,14 @@ import RepliesTab from "@/components/RepliesTab";
 import SearchTab from "@/components/SearchTab";
 import HundredDaysTab from "@/components/HundredDaysTab";
 import ResourcesTab from "@/components/ResourcesTab";
+import CalendarTab from "@/components/CalendarTab";
 
 const TABS = [
   { id: "today", label: "Today" },
   { id: "outreach", label: "Outreach" },
   { id: "replies", label: "Replies" },
   { id: "hundred", label: "100 Days" },
+  { id: "calendar", label: "Calendar" },
   { id: "search", label: "Search" },
   { id: "resources", label: "Resources" },
 ];
@@ -60,6 +62,7 @@ export default function Home() {
         {tab === "outreach" && <OutreachTab />}
         {tab === "replies" && <RepliesTab />}
         {tab === "hundred" && <HundredDaysTab />}
+        {tab === "calendar" && <CalendarTab />}
         {tab === "search" && <SearchTab />}
         {tab === "resources" && <ResourcesTab />}
       </main>
