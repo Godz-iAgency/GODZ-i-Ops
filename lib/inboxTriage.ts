@@ -5,7 +5,8 @@ import {
   deleteGmailLabel,
   listAllMessageIds,
   batchModifyMessages,
-  getMessageSenderAndUnsubscribe,
+  getMessageTriageMeta,
+  MessageTriageMeta,
 } from "./gmail";
 import { getAllContactsWithEmail } from "./airtable";
 
@@ -21,20 +22,16 @@ const EMPTY_LABELS_TO_DELETE = [
   "Marketing Agency",
 ];
 
-// Labels that already carry real mail but were never wired to also drop the
-// INBOX label -- tagging happened without ever decluttering anything.
-const ARCHIVE_ON_SIGHT_LABELS = [
-  "GODZ-i",
-  "LinkedIn",
-  "Finance & Receipts",
-  "Promotion",
-  "Talent Buyers",
-  "Grants for Split Mic",
-];
+// These already carry real mail but were never wired to also drop the INBOX
+// label -- tagging happened without ever decluttering anything. GODZ-i is
+// deliberately excluded: personal mail belongs there AND in the inbox now.
+const ARCHIVE_ON_SIGHT_LABELS = ["LinkedIn", "Finance & Receipts", "Promotion", "Talent Buyers", "Grants for Split Mic"];
 
-// Kept low because this project's Gmail API quota is only 6000 units/min per
-// user -- gmailFetch backs off and retries on a rate-limit hit regardless,
-// but staying modest here means fewer 65s stalls along the way.
+// The five categories Christopher actually wants, plus one catch-all for
+// everything that doesn't fit them.
+const CORE_LABELS = ["SplitMic", "Bookworm", "GODZ-i", "LinkedIn", "Finance & Receipts"];
+const CATCHALL_LABEL = "Tools & Services";
+
 const CONCURRENCY = 4;
 
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -50,20 +47,79 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
   return results;
 }
 
+const RECEIPT_PATTERN =
+  /\b(invoice|receipt|payment (confirmed|received|successful)|purchase confirmed|billing statement|order confirm(ed|ation)|your (bill|statement) is)/i;
+
+export type Category = "SplitMic" | "Bookworm" | "LinkedIn" | "FinanceReceipts" | "ToolsServices" | "GODZi";
+
+// The actual routing rules: known contacts win outright, then platform/content
+// signals, and only truly unmatched, non-bulk mail is treated as personal.
+function classify(
+  meta: Pick<MessageTriageMeta, "fromEmail" | "subject" | "hasUnsubscribe">,
+  splitMicEmails: Set<string>,
+  bookwormEmails: Set<string>
+): Category {
+  const email = meta.fromEmail.toLowerCase();
+  if (splitMicEmails.has(email)) return "SplitMic";
+  if (bookwormEmails.has(email)) return "Bookworm";
+
+  const domain = email.split("@")[1] || "";
+  if (domain.endsWith("linkedin.com")) return "LinkedIn";
+
+  if (RECEIPT_PATTERN.test(meta.subject)) return "FinanceReceipts";
+  if (meta.hasUnsubscribe) return "ToolsServices";
+  return "GODZi";
+}
+
+function labelIdFor(byName: Map<string, { id: string; name: string }>, category: Category): string {
+  const name =
+    category === "SplitMic"
+      ? "SplitMic"
+      : category === "Bookworm"
+        ? "Bookworm"
+        : category === "LinkedIn"
+          ? "LinkedIn"
+          : category === "FinanceReceipts"
+            ? "Finance & Receipts"
+            : category === "ToolsServices"
+              ? CATCHALL_LABEL
+              : "GODZ-i";
+  const label = byName.get(name);
+  if (!label) throw new Error(`Missing label: ${name} -- run the backlog scope first`);
+  return label.id;
+}
+
+// SplitMic/Bookworm and personal (GODZ-i) mail stays visible in the inbox --
+// those are the three things Christopher actually wants to see there.
+// Everything else gets archived once it's filed.
+function staysInInbox(category: Category): boolean {
+  return category === "SplitMic" || category === "Bookworm" || category === "GODZi";
+}
+
 export type InboxTriageResult = {
   scope: "backlog" | "recent";
   emptyLabelsDeleted: string[];
   labelsCreated: string[];
   archivedAlreadyLabeled: number;
+  reclassifiedFromGodzi: Record<string, number>;
   scanned: number;
-  archivedByUnsubscribe: number;
-  splitMicMatched: number;
+  routed: Record<Category, number>;
   leftInInbox: number;
 };
 
-// "backlog" does the one-time label cleanup plus a full sweep of the current
-// inbox. "recent" (the daily cron) only sweeps mail from the last couple days
-// and skips label deletion/creation, which only need to happen once.
+async function fetchContactEmailSets(): Promise<{ splitMic: Set<string>; bookworm: Set<string> }> {
+  // Bookworm has no outreach table yet -- this stays empty until it does,
+  // rather than guessing.
+  const contacts = await getAllContactsWithEmail();
+  const splitMic = new Set(
+    contacts.map((c) => c.fields.Email?.toLowerCase().trim()).filter((e): e is string => !!e)
+  );
+  return { splitMic, bookworm: new Set<string>() };
+}
+
+// "backlog" does the one-time label cleanup, re-sorts everything currently
+// dumped under GODZ-i from the old broad rule, and sweeps the whole inbox.
+// "recent" (the 3x/day cron) only sweeps the last few hours of new mail.
 export async function runInboxTriage(scope: "backlog" | "recent"): Promise<InboxTriageResult> {
   const accessToken = await getAccessToken();
   const labels = await listGmailLabels(accessToken);
@@ -81,7 +137,7 @@ export async function runInboxTriage(scope: "backlog" | "recent"): Promise<Inbox
         emptyLabelsDeleted.push(name);
       }
     }
-    for (const name of ["SplitMic", "Bookworm"]) {
+    for (const name of [...CORE_LABELS, CATCHALL_LABEL]) {
       if (!byName.has(name)) {
         const id = await createGmailLabel(accessToken, name);
         byName.set(name, { id, name });
@@ -90,14 +146,18 @@ export async function runInboxTriage(scope: "backlog" | "recent"): Promise<Inbox
     }
   }
 
-  const godziLabel = byName.get("GODZ-i");
-  const splitMicLabel = byName.get("SplitMic");
-  if (!godziLabel || !splitMicLabel) {
-    throw new Error("GODZ-i or SplitMic label missing -- run the backlog scope at least once first");
+  for (const name of [...CORE_LABELS, CATCHALL_LABEL]) {
+    if (!byName.has(name)) throw new Error(`${name} label missing -- run the backlog scope at least once first`);
   }
 
+  const { splitMic: splitMicEmails, bookworm: bookwormEmails } = await fetchContactEmailSets();
+
   let archivedAlreadyLabeled = 0;
+  const reclassifiedFromGodzi: Record<string, number> = {};
+
   if (scope === "backlog") {
+    // These small labels are already curated correctly -- just get them out
+    // of the inbox.
     const archiveLabelIds = ARCHIVE_ON_SIGHT_LABELS.map((n) => byName.get(n)?.id).filter((id): id is string => !!id);
     const idsToArchive = new Set<string>();
     for (const labelId of archiveLabelIds) {
@@ -108,38 +168,54 @@ export async function runInboxTriage(scope: "backlog" | "recent"): Promise<Inbox
       await batchModifyMessages(accessToken, [...idsToArchive], [], ["INBOX"]);
       archivedAlreadyLabeled = idsToArchive.size;
     }
-  }
 
-  // Everything with no user label at all: check the List-Unsubscribe signal,
-  // and separately match the sender against the real SplitMic contact list
-  // rather than guessing "real person" from a name or subject line.
-  const q = scope === "recent" ? "in:inbox newer_than:2d has:nouserlabels" : "in:inbox has:nouserlabels";
-  const candidateIds = await listAllMessageIds(accessToken, { q });
+    // GODZ-i used to be a catch-all under the old rule (anything bulk landed
+    // there regardless of what it actually was). Re-run every message
+    // currently under it through the real classifier and move out anything
+    // that isn't genuinely personal mail.
+    const godziLabel = byName.get("GODZ-i")!;
+    const godziIds = await listAllMessageIds(accessToken, { labelIds: [godziLabel.id] });
+    const godziMeta = await mapWithConcurrency(godziIds, CONCURRENCY, (id) => getMessageTriageMeta(accessToken, id));
 
-  const contacts = await getAllContactsWithEmail();
-  const contactEmails = new Set(
-    contacts.map((c) => c.fields.Email?.toLowerCase().trim()).filter((e): e is string => !!e)
-  );
-
-  const meta = await mapWithConcurrency(candidateIds, CONCURRENCY, (id) =>
-    getMessageSenderAndUnsubscribe(accessToken, id)
-  );
-
-  const toArchiveAsNotification: string[] = [];
-  const toLabelSplitMic: string[] = [];
-  for (const m of meta) {
-    if (m.hasUnsubscribe) {
-      toArchiveAsNotification.push(m.id);
-    } else if (contactEmails.has(m.fromEmail.toLowerCase())) {
-      toLabelSplitMic.push(m.id);
+    const moves = new Map<Category, string[]>();
+    for (const m of godziMeta) {
+      const category = classify(m, splitMicEmails, bookwormEmails);
+      if (category === "GODZi") continue; // stays put
+      if (!moves.has(category)) moves.set(category, []);
+      moves.get(category)!.push(m.id);
+    }
+    for (const [category, ids] of moves) {
+      if (!ids.length) continue;
+      await batchModifyMessages(accessToken, ids, [labelIdFor(byName, category)], [godziLabel.id]);
+      reclassifiedFromGodzi[category] = ids.length;
     }
   }
 
-  if (toArchiveAsNotification.length) {
-    await batchModifyMessages(accessToken, toArchiveAsNotification, [godziLabel.id], ["INBOX"]);
+  // Everything with no user label at all: classify and route it.
+  const q = scope === "recent" ? "in:inbox newer_than:1d has:nouserlabels" : "in:inbox has:nouserlabels";
+  const candidateIds = await listAllMessageIds(accessToken, { q });
+  const meta = await mapWithConcurrency(candidateIds, CONCURRENCY, (id) => getMessageTriageMeta(accessToken, id));
+
+  const routed: Record<Category, number> = {
+    SplitMic: 0,
+    Bookworm: 0,
+    LinkedIn: 0,
+    FinanceReceipts: 0,
+    ToolsServices: 0,
+    GODZi: 0,
+  };
+  const byCategory = new Map<Category, string[]>();
+  for (const m of meta) {
+    const category = classify(m, splitMicEmails, bookwormEmails);
+    routed[category]++;
+    if (!byCategory.has(category)) byCategory.set(category, []);
+    byCategory.get(category)!.push(m.id);
   }
-  if (toLabelSplitMic.length) {
-    await batchModifyMessages(accessToken, toLabelSplitMic, [splitMicLabel.id], []);
+
+  for (const [category, ids] of byCategory) {
+    if (!ids.length) continue;
+    const removeLabelIds = staysInInbox(category) ? [] : ["INBOX"];
+    await batchModifyMessages(accessToken, ids, [labelIdFor(byName, category)], removeLabelIds);
   }
 
   return {
@@ -147,9 +223,9 @@ export async function runInboxTriage(scope: "backlog" | "recent"): Promise<Inbox
     emptyLabelsDeleted,
     labelsCreated,
     archivedAlreadyLabeled,
+    reclassifiedFromGodzi,
     scanned: candidateIds.length,
-    archivedByUnsubscribe: toArchiveAsNotification.length,
-    splitMicMatched: toLabelSplitMic.length,
-    leftInInbox: candidateIds.length - toArchiveAsNotification.length - toLabelSplitMic.length,
+    routed,
+    leftInInbox: routed.SplitMic + routed.Bookworm + routed.GODZi,
   };
 }

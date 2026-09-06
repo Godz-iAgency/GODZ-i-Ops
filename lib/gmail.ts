@@ -293,21 +293,21 @@ export async function batchModifyMessages(
   }
 }
 
-// A metadata-only fetch (no body) so scanning thousands of messages for the
-// unsubscribe signal stays cheap. List-Unsubscribe is on virtually every
-// newsletter/notification and virtually no real personal reply.
-export async function getMessageSenderAndUnsubscribe(
-  accessToken: string,
-  id: string
-): Promise<{ id: string; fromEmail: string; hasUnsubscribe: boolean }> {
+export type MessageTriageMeta = { id: string; fromEmail: string; subject: string; hasUnsubscribe: boolean };
+
+// A metadata-only fetch (no body) so scanning thousands of messages stays
+// cheap. List-Unsubscribe is on virtually every newsletter/notification and
+// virtually no real personal reply -- the subject/sender then decide which
+// specific bucket a bulk message lands in.
+export async function getMessageTriageMeta(accessToken: string, id: string): Promise<MessageTriageMeta> {
   const res = await gmailFetch(
-    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=List-Unsubscribe`,
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=List-Unsubscribe`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
-  if (!res.ok) return { id, fromEmail: "", hasUnsubscribe: false };
+  if (!res.ok) return { id, fromEmail: "", subject: "", hasUnsubscribe: false };
   const data = await res.json();
   const headers: Array<{ name: string; value: string }> = data.payload?.headers || [];
   const header = (n: string) => headers.find((h) => h.name.toLowerCase() === n.toLowerCase())?.value || "";
   const { fromEmail } = parseFromHeader(header("From"));
-  return { id, fromEmail, hasUnsubscribe: !!header("List-Unsubscribe") };
+  return { id, fromEmail, subject: header("Subject"), hasUnsubscribe: !!header("List-Unsubscribe") };
 }

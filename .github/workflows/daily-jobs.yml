@@ -6,7 +6,7 @@ on:
   schedule:
     - cron: "0 13 * * 1-5" # 08:00 Austin, weekdays - pipeline report
     - cron: "*/10 13-23 * * *" # every 10 min during the work day - reply alerts
-    - cron: "30 12 * * *" # 07:30 Austin, daily - inbox triage sweep
+    - cron: "30 12,18,0 * * *" # 07:30 / 13:30 / 19:30 Austin - inbox triage sweep, 3x/day
   workflow_dispatch:
     inputs:
       job:
@@ -33,7 +33,7 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
   triage-inbox:
-    if: github.event.schedule == '30 12 * * *' || github.event.inputs.job == 'triage-inbox'
+    if: github.event.schedule == '30 12,18,0 * * *' || github.event.inputs.job == 'triage-inbox'
     runs-on: ubuntu-latest
     steps:
       - run: |
