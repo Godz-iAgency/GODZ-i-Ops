@@ -11,6 +11,57 @@ const WELCOME: ChatMessage = {
   text: "Ask me anything about your outreach pipeline, replies, LinkedIn, calendar, or inbox.",
 };
 
+// Responses can take a while (Gemini's own latency plus however many tool
+// calls it makes), so this walks through believable stages rather than
+// leaving a bare spinner sitting there. It has no real signal on what the
+// model is actually doing -- it advances on a timer and parks on the last
+// stage for however long the real request takes.
+const LOADING_STAGES = [
+  { text: "Reading your question...", target: 18 },
+  { text: "Checking your data sources...", target: 38 },
+  { text: "Cross-referencing your pipeline and calendar...", target: 58 },
+  { text: "Pulling the details together...", target: 78 },
+  { text: "Drafting a response...", target: 92 },
+];
+
+function LoadingIndicator() {
+  const [stageIndex, setStageIndex] = useState(0);
+
+  useEffect(() => {
+    setStageIndex(0);
+    const interval = setInterval(() => {
+      setStageIndex((i) => Math.min(i + 1, LOADING_STAGES.length - 1));
+    }, 2200);
+    return () => clearInterval(interval);
+  }, []);
+
+  const stage = LOADING_STAGES[stageIndex];
+
+  return (
+    <div
+      className="self-start flex flex-col gap-2.5 rounded-2xl px-4 py-3 text-sm border border-border w-[260px]"
+      style={{ background: "var(--color-surface-2)" }}
+    >
+      <div className="flex items-center gap-2 text-muted">
+        <Loader2 size={14} className="animate-spin shrink-0" />
+        <span key={stageIndex} className="assistant-stage-text">
+          {stage.text}
+        </span>
+      </div>
+      <div className="h-1.5 w-full rounded-full overflow-hidden bg-border">
+        <div
+          className="h-full rounded-full assistant-progress-fill"
+          style={{
+            width: `${stage.target}%`,
+            background: "linear-gradient(90deg, var(--color-accent), var(--color-accent-light), var(--color-accent))",
+            transition: "width 1.8s cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function AssistantTab() {
   const [messages, setMessages] = useLocalStorage<ChatMessage[]>("assistant-chat-v1", [WELCOME]);
   const [input, setInput] = useState("");
@@ -70,14 +121,7 @@ export default function AssistantTab() {
             {m.text}
           </div>
         ))}
-        {loading && (
-          <div
-            className="self-start flex items-center gap-2 rounded-2xl px-4 py-3 text-sm text-muted border border-border"
-            style={{ background: "var(--color-surface-2)" }}
-          >
-            <Loader2 size={14} className="animate-spin" /> Thinking...
-          </div>
-        )}
+        {loading && <LoadingIndicator />}
         {error && (
           <div className="self-start rounded-2xl px-4 py-3 text-sm border border-red-500/40 bg-red-500/10 text-red-400">
             {error}
