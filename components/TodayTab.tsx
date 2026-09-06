@@ -727,6 +727,9 @@ export default function TodayTab() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // UI-only for now: Bookworm has no pipeline yet, so its side is a
+  // placeholder until that outreach table exists.
+  const [business, setBusiness] = useState<"SplitMic" | "Bookworm">("SplitMic");
 
   const today = austinDateStr();
   const day = dayNumber();
@@ -782,9 +785,26 @@ export default function TodayTab() {
   return (
     <div className="flex flex-col gap-9 max-w-[900px] mx-auto">
       <div>
-        <p className="text-sm tracking-[0.3em] uppercase text-accent font-bold font-mono mb-2">
-          SplitMic / Command Center
-        </p>
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
+          <p className="text-sm tracking-[0.3em] uppercase text-accent font-bold font-mono">
+            {business} / Command Center
+          </p>
+          <div className="flex gap-1 bg-surface2 p-1 rounded-full border border-border">
+            {(["SplitMic", "Bookworm"] as const).map((b) => (
+              <button
+                key={b}
+                onClick={() => setBusiness(b)}
+                className="px-4 py-1.5 rounded-full text-sm font-semibold transition-all"
+                style={{
+                  background: business === b ? "var(--color-accent)" : "transparent",
+                  color: business === b ? "#0a0705" : "var(--color-muted)",
+                }}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        </div>
         <h1 className="text-[44px] sm:text-[56px] font-extrabold tracking-[-0.03em] leading-none text-foreground">
           {header}
         </h1>
@@ -793,6 +813,17 @@ export default function TodayTab() {
         </p>
       </div>
 
+      {business === "Bookworm" && (
+        <div className="px-6 py-10 rounded-2xl bg-surface2 border border-border text-center">
+          <p className="text-2xl font-bold text-foreground mb-2">Not set up yet.</p>
+          <p className="text-base text-muted">
+            Bookworm doesn&apos;t have an outreach pipeline yet. Once it does, its own daily tasks will show up here.
+          </p>
+        </div>
+      )}
+
+      {business === "SplitMic" && (
+        <>
       {error && (
         <div className="px-4 py-3 rounded-xl text-base bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
           {error}
@@ -935,6 +966,8 @@ export default function TodayTab() {
           </Block>
 
           <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
+        </>
+      )}
         </>
       )}
     </div>
