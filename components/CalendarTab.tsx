@@ -41,6 +41,7 @@ export default function CalendarTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,10 +143,17 @@ export default function CalendarTab() {
             <button
               key={cell.date}
               onClick={() => setSelectedDate(cell.date)}
-              className="aspect-square sm:aspect-[4/3] rounded-xl p-2 flex flex-col items-start text-left transition-all hover:border-accent"
+              onMouseEnter={() => setHoveredDate(cell.date)}
+              onMouseLeave={() => setHoveredDate((d) => (d === cell.date ? null : d))}
+              className="aspect-square sm:aspect-[4/3] rounded-xl p-2 flex flex-col items-start text-left transition-all"
               style={{
                 background: dayEvents.length ? "rgba(232,67,10,0.08)" : "rgba(255,255,255,0.02)",
-                border: isToday ? "2px solid #fff" : "1px solid var(--color-border)",
+                border:
+                  hoveredDate === cell.date
+                    ? "2px solid var(--color-accent)"
+                    : isToday
+                      ? "2px solid #fff"
+                      : "1px solid var(--color-border)",
               }}
             >
               <span
