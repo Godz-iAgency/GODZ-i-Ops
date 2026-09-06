@@ -36,11 +36,13 @@ You have read-only tools into his real data:
 - get_daily_progress: his daily marketing/build/deliver log
 - search_gmail: his real Gmail inbox, using normal Gmail search syntax (e.g. "from:x@y.com", "after:2026/09/01", "subject:invoice")
 - list_calendar_events: his real Google Calendar, for a given date range
+- get_tasks_for_date: everything on his plate for one specific day -- calendar events, outreach/LinkedIn follow-ups due that day, and the daily progress log
 
 Rules:
 - Only answer from tool results. Never invent names, numbers, dates, emails, or event details.
 - If a tool returns nothing relevant, say so plainly instead of guessing.
 - Call tools whenever a question needs current data rather than asking him to go look it up.
+- For any question about his schedule or "tasks" on a day (today, a specific date, "this week"), use get_tasks_for_date for each day in question rather than only checking the calendar -- a day's tasks include follow-ups due and his progress log, not just calendar events.
 - Be concise and direct, like a text from a sharp assistant, not a report. Skip headers and heavy bullet formatting unless listing several items actually helps.
 - This is a plain-text chat bubble, not a markdown renderer. Never use asterisks, bold, italics, or heading syntax -- write plain sentences.
 - You are currently read-only. If asked to send an email, create/edit a calendar event, or change any data, say plainly that you can't take that action yet.`;
@@ -149,6 +151,18 @@ const TOOLS = [
         endDate: { type: "STRING", description: "End date, YYYY-MM-DD (inclusive)." },
       },
       required: ["startDate", "endDate"],
+    },
+  },
+  {
+    name: "get_tasks_for_date",
+    description:
+      "Get everything on his plate for one specific day: calendar events, outreach/LinkedIn follow-ups due that day, and his daily progress log. Use this for any question about his schedule or tasks for a day.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        date: { type: "STRING", description: "The date to check, YYYY-MM-DD." },
+      },
+      required: ["date"],
     },
   },
 ];
@@ -306,6 +320,49 @@ async function toolListCalendarEvents(args: { startDate: string; endDate: string
   };
 }
 
+// One day's worth of everything: calendar events plus follow-ups due that day
+// from both outreach pipelines plus the progress log. "Tasks for a day" isn't
+// a single Airtable table -- it's these three sources combined.
+async function toolGetTasksForDate(args: { date: string }) {
+  const date = args.date;
+  const timeMin = `${date}T00:00:00${chicagoOffset(date)}`;
+  const nextDay = addDaysStr(date, 1);
+  const timeMax = `${nextDay}T00:00:00${chicagoOffset(nextDay)}`;
+
+  const [events, contacts, linkedin, progress] = await Promise.all([
+    listEvents(timeMin, timeMax),
+    getAllContacts(),
+    getAllLinkedInProspects(),
+    getProgressForDate(date),
+  ]);
+
+  const followUpsDue = [
+    ...contacts
+      .filter((c) => c.fields["Next Action Date"] === date)
+      .map((c) => ({
+        source: "email outreach",
+        name: c.fields["Name / Target"],
+        organization: c.fields.Organization,
+        action: c.fields["Next Action"],
+      })),
+    ...linkedin
+      .filter((p) => p.fields["Next Action Date"] === date)
+      .map((p) => ({
+        source: "linkedin",
+        name: p.fields.Name,
+        organization: p.fields.Organization,
+        action: p.fields["Next Action"],
+      })),
+  ];
+
+  return {
+    date,
+    calendarEvents: events.map((e) => ({ title: e.title, start: e.start, end: e.end, allDay: e.allDay })),
+    followUpsDue,
+    progressLog: progress || null,
+  };
+}
+
 async function executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
   switch (name) {
     case "search_contacts":
@@ -322,6 +379,8 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
       return toolSearchGmail(args as { query: string; maxResults?: number });
     case "list_calendar_events":
       return toolListCalendarEvents(args as { startDate: string; endDate: string });
+    case "get_tasks_for_date":
+      return toolGetTasksForDate(args as { date: string });
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -329,15 +388,18 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
 
 // -------------------------------------------------------------------- loop
 
-// Function-response messages use role "user" per the Gemini REST API's
-// function-calling contract -- there is no separate "function" role there.
-export async function runAssistant(history: ChatMessage[]): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  const contents: GeminiContent[] = history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
-
-  for (let step = 0; step < 6; step++) {
+// Gemini returns 503 "high demand" fairly often and it's almost always gone
+// within a couple seconds -- worth a couple quick retries before surfacing
+// an error to Christopher.
+async function callGemini(apiKey: string, contents: GeminiContent[]): Promise<GeminiPart[]> {
+  const delays = [0, 1500, 4000];
+  let lastError = "";
+  for (const delay of delays) {
+    if (delay) await sleep(delay);
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
       {
@@ -350,9 +412,26 @@ export async function runAssistant(history: ChatMessage[]): Promise<string> {
         }),
       }
     );
-    if (!res.ok) throw new Error(`Assistant error (${res.status}): ${(await res.text()).slice(0, 300)}`);
-    const data = await res.json();
-    const parts: GeminiPart[] = data.candidates?.[0]?.content?.parts || [];
+    if (res.ok) {
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts || [];
+    }
+    lastError = `Assistant error (${res.status}): ${(await res.text()).slice(0, 300)}`;
+    if (res.status !== 503) throw new Error(lastError);
+  }
+  throw new Error(lastError);
+}
+
+// Function-response messages use role "user" per the Gemini REST API's
+// function-calling contract -- there is no separate "function" role there.
+export async function runAssistant(history: ChatMessage[]): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+
+  const contents: GeminiContent[] = history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
+
+  for (let step = 0; step < 6; step++) {
+    const parts = await callGemini(apiKey, contents);
     const calls = parts.filter((p) => p.functionCall);
 
     if (calls.length === 0) {
