@@ -1,4 +1,4 @@
-const MODEL = "gemini-3.6-flash";
+const MODEL = "gemini-3.5-flash-lite";
 
 export const INTENTS = [
   "Interested",

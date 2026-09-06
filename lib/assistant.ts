@@ -10,7 +10,7 @@ import {
 import { searchGmailMessages } from "./gmail";
 import { listEvents, chicagoOffset } from "./googleCalendar";
 
-const MODEL = "gemini-3.6-flash";
+const MODEL = "gemini-3.5-flash-lite";
 
 export type ChatMessage = { role: "user" | "model"; text: string };
 
