@@ -6,13 +6,14 @@ on:
   schedule:
     - cron: "0 13 * * 1-5" # 08:00 Austin, weekdays - pipeline report
     - cron: "*/10 13-23 * * *" # every 10 min during the work day - reply alerts
+    - cron: "30 12 * * *" # 07:30 Austin, daily - inbox triage sweep
   workflow_dispatch:
     inputs:
       job:
         description: "Which job to run"
         required: true
         type: choice
-        options: [daily-report, check-replies]
+        options: [daily-report, check-replies, triage-inbox]
 
 jobs:
   daily-report:
@@ -29,4 +30,12 @@ jobs:
     steps:
       - run: |
           curl -sf "${{ secrets.APP_URL }}/api/cron/check-replies" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+  triage-inbox:
+    if: github.event.schedule == '30 12 * * *' || github.event.inputs.job == 'triage-inbox'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sf "${{ secrets.APP_URL }}/api/cron/triage-inbox?scope=recent" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

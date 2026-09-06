@@ -2,7 +2,7 @@ const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN) {
     throw new Error("Missing GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN");
   }
@@ -196,4 +196,118 @@ export async function sendGmailMessage({ rawMime, threadId }: SendArgs): Promise
   if (!res.ok) throw new Error(`Gmail send failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
   return { id: data.id, threadId: data.threadId };
+}
+
+// --------------------------------------------------------- inbox triage
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// This project's Gmail API quota is 6000 units/min per user -- easy to blow
+// through when scanning thousands of messages. Rather than tune request
+// pacing to a unit budget that could change, this just backs off and retries
+// whenever Google says the rate limit was hit, so a scan of any size finishes
+// on its own instead of dying partway through.
+async function gmailFetch(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 403 && res.status !== 429) return res;
+    const body = await res.text();
+    if (!/rateLimitExceeded|RATE_LIMIT_EXCEEDED|quota/i.test(body)) {
+      return new Response(body, { status: res.status, headers: res.headers });
+    }
+    await sleep(65_000);
+  }
+  return fetch(url, init);
+}
+
+export type GmailLabel = { id: string; name: string };
+
+export async function listGmailLabels(accessToken: string): Promise<GmailLabel[]> {
+  const res = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Gmail labels list failed: ${res.status} ${await res.text()}`);
+  const data = await res.json();
+  return (data.labels || []).map((l: { id: string; name: string }) => ({ id: l.id, name: l.name }));
+}
+
+export async function createGmailLabel(accessToken: string, name: string): Promise<string> {
+  const res = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name, labelListVisibility: "labelShow", messageListVisibility: "show" }),
+  });
+  if (!res.ok) throw new Error(`Gmail create label failed: ${res.status} ${await res.text()}`);
+  return (await res.json()).id as string;
+}
+
+export async function deleteGmailLabel(accessToken: string, labelId: string): Promise<void> {
+  const res = await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/labels/${labelId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok && res.status !== 404) throw new Error(`Gmail delete label failed: ${res.status} ${await res.text()}`);
+}
+
+// `labelIds` is an AND filter (message must carry every id given); `q` is
+// normal Gmail search syntax. Paginates to collect every match rather than
+// just the first page, since triage needs the full set.
+export async function listAllMessageIds(
+  accessToken: string,
+  params: { q?: string; labelIds?: string[] }
+): Promise<string[]> {
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
+    url.searchParams.set("maxResults", "500");
+    if (params.q) url.searchParams.set("q", params.q);
+    for (const id of params.labelIds || []) url.searchParams.append("labelIds", id);
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const res = await gmailFetch(url.toString(), { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) throw new Error(`Gmail message list failed: ${res.status} ${await res.text()}`);
+    const data = await res.json();
+    for (const m of data.messages || []) ids.push(m.id);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return ids;
+}
+
+// Gmail caps batchModify at 1000 ids per call.
+export async function batchModifyMessages(
+  accessToken: string,
+  ids: string[],
+  addLabelIds: string[],
+  removeLabelIds: string[]
+): Promise<void> {
+  for (let i = 0; i < ids.length; i += 1000) {
+    const chunk = ids.slice(i, i + 1000);
+    const res = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: chunk, addLabelIds, removeLabelIds }),
+    });
+    if (!res.ok) throw new Error(`Gmail batchModify failed: ${res.status} ${await res.text()}`);
+  }
+}
+
+// A metadata-only fetch (no body) so scanning thousands of messages for the
+// unsubscribe signal stays cheap. List-Unsubscribe is on virtually every
+// newsletter/notification and virtually no real personal reply.
+export async function getMessageSenderAndUnsubscribe(
+  accessToken: string,
+  id: string
+): Promise<{ id: string; fromEmail: string; hasUnsubscribe: boolean }> {
+  const res = await gmailFetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=List-Unsubscribe`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return { id, fromEmail: "", hasUnsubscribe: false };
+  const data = await res.json();
+  const headers: Array<{ name: string; value: string }> = data.payload?.headers || [];
+  const header = (n: string) => headers.find((h) => h.name.toLowerCase() === n.toLowerCase())?.value || "";
+  const { fromEmail } = parseFromHeader(header("From"));
+  return { id, fromEmail, hasUnsubscribe: !!header("List-Unsubscribe") };
 }
