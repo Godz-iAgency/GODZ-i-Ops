@@ -131,12 +131,30 @@ function toGoogleBody(input: NewEvent) {
       end: { date: end.toISOString().slice(0, 10) },
     };
   }
-  const start = new Date(`${input.date}T${input.time}:00`);
-  const end = new Date(start.getTime() + (input.durationMinutes ?? 60) * 60000);
+  // `new Date("2026-09-10T09:00:00")` (no offset) parses as local time in
+  // whatever timezone the SERVER runs in, which on Vercel is UTC -- not
+  // Central. That silently turned "9:00 AM" into 4am/3am Central depending on
+  // the time of year. Building an explicit offset sidesteps the server's
+  // timezone entirely.
+  const startIso = `${input.date}T${input.time}:00${chicagoOffset(input.date)}`;
+  const end = new Date(new Date(startIso).getTime() + (input.durationMinutes ?? 60) * 60000);
   return {
     summary: input.title,
     description: input.description,
-    start: { dateTime: start.toISOString(), timeZone },
+    start: { dateTime: startIso, timeZone },
     end: { dateTime: end.toISOString(), timeZone },
   };
+}
+
+// Central alternates between -05:00 (CDT) and -06:00 (CST); this asks the
+// platform's own timezone database which one applies on the given date
+// rather than hardcoding a rule that would break every DST transition.
+function chicagoOffset(dateStr: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    timeZoneName: "shortOffset",
+  }).formatToParts(new Date(`${dateStr}T12:00:00Z`));
+  const match = (parts.find((p) => p.type === "timeZoneName")?.value || "GMT-6").match(/GMT([+-]\d+)/);
+  const hours = match ? parseInt(match[1], 10) : -6;
+  return `${hours <= 0 ? "-" : "+"}${String(Math.abs(hours)).padStart(2, "0")}:00`;
 }
