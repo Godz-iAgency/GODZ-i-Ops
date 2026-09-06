@@ -55,7 +55,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-[1280px] mx-auto px-5 sm:px-8 pt-9 pb-16 relative z-[1]">
+      <main className="w-full px-5 sm:px-8 pt-9 pb-16 relative z-[1]">
         {tab === "today" && <TodayTab />}
         {tab === "outreach" && <OutreachTab />}
         {tab === "replies" && <RepliesTab />}

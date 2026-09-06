@@ -23,10 +23,6 @@ type Progress = {
   "Content Platform"?: string;
   "Content Title"?: string;
   "Content URL"?: string;
-  Book?: string;
-  "Pages or Chapter"?: string;
-  Learned?: string;
-  Apply?: string;
   "Deep Work Completed"?: boolean;
   "Deep Work Notes"?: string;
 };
@@ -66,10 +62,6 @@ const emptyProgress: Progress = {
   "Content Platform": "",
   "Content Title": "",
   "Content URL": "",
-  Book: "",
-  "Pages or Chapter": "",
-  Learned: "",
-  Apply: "",
   "Deep Work Completed": false,
   "Deep Work Notes": "",
 };
@@ -784,7 +776,7 @@ export default function TodayTab() {
   const schedule = isSunday
     ? "Rest day · nothing tracked"
     : isSaturday
-      ? "4:00 AM - 4:00 PM · Deep work"
+      ? "8:00 AM - 4:00 PM · Deep work"
       : "12:00 PM - 4:00 PM · Monday to Friday";
 
   return (
@@ -811,13 +803,13 @@ export default function TodayTab() {
       {!loading && isSunday && (
         <div className="px-6 py-10 rounded-2xl bg-surface2 border border-border text-center">
           <p className="text-2xl font-bold text-foreground mb-2">Rest.</p>
-          <p className="text-base text-muted">No outreach, building, content, or reading today.</p>
+          <p className="text-base text-muted">No outreach, building, or content today.</p>
         </div>
       )}
 
       {!loading && isSaturday && (
         <>
-          <Block tag="DEEP WORK" time="4:00 AM - 4:00 PM" title="Saturday Deep Work">
+          <Block tag="DEEP WORK" time="8:00 AM - 4:00 PM" title="Saturday Deep Work">
             <CheckRow
               label="Deep work session completed"
               checked={!!progress["Deep Work Completed"]}
@@ -837,76 +829,26 @@ export default function TodayTab() {
 
       {!loading && !isSunday && !isSaturday && (
         <>
-          <Block tag="PROMOTE" time="12:00 PM - 12:40 PM" title="Email Outreach">
+          <Block tag="MARKETING" time="12:00 PM - 2:00 PM" title="Outreach and Content">
+            <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">Email</p>
             <Counter
               count={progress["Emails Sent"] ?? 0}
               goal={10}
               onChange={(n) => set({ "Emails Sent": n })}
             />
             <p className="text-sm text-muted px-1">Goal: 10 SplitMic 500 contacts</p>
-            <div className="mt-2">
+            <div className="mt-1">
               <TodaysTen onSentChange={(d) => set({ "Emails Sent": (progress["Emails Sent"] ?? 0) + d })} />
             </div>
-          </Block>
 
-          <Block tag="PROMOTE" time="12:40 PM - 1:20 PM" title="LinkedIn Outreach">
+            <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">LinkedIn</p>
             <LinkedInToday onCountChange={(n) => set({ "LinkedIn Sent": n })} />
             <p className="text-sm text-muted px-1">
               Goal: 10 LinkedIn connections or outreach attempts. Search using the terms on the Search tab,
               then log each person here. The count updates itself.
             </p>
-          </Block>
 
-          <Block tag="BUILD" time="1:20 PM - 2:00 PM" title="Today's Highest-Priority SplitMic Build">
-            <input
-              value={progress["Build Objective"] || ""}
-              onChange={(e) => set({ "Build Objective": e.target.value })}
-              placeholder="Today's one objective"
-              className={input}
-            />
-            <CheckRow
-              label="Build session completed"
-              checked={!!progress["Build Completed"]}
-              onToggle={() => set({ "Build Completed": !progress["Build Completed"] })}
-            />
-            <textarea
-              value={progress["Build Notes"] || ""}
-              onChange={(e) => set({ "Build Notes": e.target.value })}
-              placeholder="What did you build?"
-              rows={3}
-              className={area}
-            />
-          </Block>
-
-          <Block tag="DELIVER" time="2:00 PM - 2:40 PM" title="Replies, Follow-ups and Feedback">
-            <CheckRow
-              label="Delivery session completed"
-              checked={!!progress["Deliver Completed"]}
-              onToggle={() => set({ "Deliver Completed": !progress["Deliver Completed"] })}
-            />
-            <textarea
-              value={progress["Feedback Received"] || ""}
-              onChange={(e) => set({ "Feedback Received": e.target.value })}
-              placeholder="What feedback or insight did you receive today?"
-              rows={3}
-              className={area}
-            />
-            <textarea
-              value={progress["Needs Follow-up"] || ""}
-              onChange={(e) => set({ "Needs Follow-up": e.target.value })}
-              placeholder="Who needs a follow-up?"
-              rows={2}
-              className={area}
-            />
-            <input
-              value={progress["Deliver Next Action"] || ""}
-              onChange={(e) => set({ "Deliver Next Action": e.target.value })}
-              placeholder="Next action"
-              className={input}
-            />
-          </Block>
-
-          <Block tag="PROMOTE" time="2:40 PM - 3:20 PM" title="Camera Practice and Content">
+            <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">Content</p>
             <CheckRow
               label="Camera practice completed"
               checked={!!progress["Camera Practice"]}
@@ -943,32 +885,52 @@ export default function TodayTab() {
             />
           </Block>
 
-          <Block tag="LEARN" time="3:20 PM - 4:00 PM" title="Reading">
+          <Block tag="BUILD" time="2:00 PM - 3:00 PM" title="Today's Highest-Priority SplitMic Build">
             <input
-              value={progress.Book || ""}
-              onChange={(e) => set({ Book: e.target.value })}
-              placeholder="Book"
+              value={progress["Build Objective"] || ""}
+              onChange={(e) => set({ "Build Objective": e.target.value })}
+              placeholder="Today's one objective"
               className={input}
             />
-            <input
-              value={progress["Pages or Chapter"] || ""}
-              onChange={(e) => set({ "Pages or Chapter": e.target.value })}
-              placeholder="Pages or chapter"
-              className={input}
+            <CheckRow
+              label="Build session completed"
+              checked={!!progress["Build Completed"]}
+              onToggle={() => set({ "Build Completed": !progress["Build Completed"] })}
             />
             <textarea
-              value={progress.Learned || ""}
-              onChange={(e) => set({ Learned: e.target.value })}
-              placeholder="One thing I learned"
-              rows={2}
+              value={progress["Build Notes"] || ""}
+              onChange={(e) => set({ "Build Notes": e.target.value })}
+              placeholder="What did you build?"
+              rows={3}
+              className={area}
+            />
+          </Block>
+
+          <Block tag="DELIVER" time="3:00 PM - 4:00 PM" title="Replies, Follow-ups and Feedback">
+            <CheckRow
+              label="Delivery session completed"
+              checked={!!progress["Deliver Completed"]}
+              onToggle={() => set({ "Deliver Completed": !progress["Deliver Completed"] })}
+            />
+            <textarea
+              value={progress["Feedback Received"] || ""}
+              onChange={(e) => set({ "Feedback Received": e.target.value })}
+              placeholder="What feedback or insight did you receive today?"
+              rows={3}
               className={area}
             />
             <textarea
-              value={progress.Apply || ""}
-              onChange={(e) => set({ Apply: e.target.value })}
-              placeholder="One thing I can apply"
+              value={progress["Needs Follow-up"] || ""}
+              onChange={(e) => set({ "Needs Follow-up": e.target.value })}
+              placeholder="Who needs a follow-up?"
               rows={2}
               className={area}
+            />
+            <input
+              value={progress["Deliver Next Action"] || ""}
+              onChange={(e) => set({ "Deliver Next Action": e.target.value })}
+              placeholder="Next action"
+              className={input}
             />
           </Block>
 

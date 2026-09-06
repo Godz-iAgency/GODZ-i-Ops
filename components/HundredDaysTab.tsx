@@ -48,6 +48,7 @@ export default function HundredDaysTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteSavedAt, setNoteSavedAt] = useState<string | null>(null);
@@ -167,11 +168,16 @@ export default function HundredDaysTab() {
             <button
               key={n}
               onClick={() => openDay(n)}
+              onMouseEnter={() => setHoveredDay(n)}
+              onMouseLeave={() => setHoveredDay((h) => (h === n ? null : h))}
               className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.08]"
               style={{
-                border: isToday
-                  ? "2px solid #fff"
-                  : `1px solid ${state.complete ? "var(--color-accent)" : "var(--color-border)"}`,
+                border:
+                  hoveredDay === n
+                    ? "2px solid var(--color-accent)"
+                    : isToday
+                      ? "2px solid #fff"
+                      : `1px solid ${state.complete ? "var(--color-accent)" : "var(--color-border)"}`,
                 background,
                 color: state.complete ? "#fff" : isRest ? "rgba(255,255,255,0.25)" : "var(--color-muted)",
                 opacity: n > day + 30 ? 0.5 : 1,

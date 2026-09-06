@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { austinDateStr } from "@/lib/austinDate";
-import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ExternalLink } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
@@ -119,6 +119,7 @@ export default function OutreachBoard() {
   const [detail, setDetail] = useState<Contact | null>(null);
   const [searchByStage, setSearchByStage] = useState<Record<string, string>>({});
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -231,13 +232,28 @@ export default function OutreachBoard() {
             {totals.needsResearch} need an address
           </p>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
-        >
-          <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              setCollapsed((prev) => {
+                const allCollapsed = STAGES.every((s) => prev[s]);
+                const next: Record<string, boolean> = {};
+                for (const s of STAGES) next[s] = !allCollapsed;
+                return next;
+              })
+            }
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all"
+          >
+            {STAGES.every((s) => collapsed[s]) ? "Expand all" : "Collapse all"}
+          </button>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -263,6 +279,32 @@ export default function OutreachBoard() {
           const visible = filtered.slice(0, visibleCount);
           const remaining = filtered.length - visible.length;
           const isOver = overStage === stage;
+          const isCollapsed = !!collapsed[stage];
+
+          if (isCollapsed) {
+            return (
+              <button
+                key={stage}
+                onClick={() => setCollapsed((prev) => ({ ...prev, [stage]: false }))}
+                className="flex-shrink-0 snap-start rounded-2xl flex flex-col items-center gap-3 bg-surface2 border border-border py-4 hover:border-accent transition-all"
+                style={{ width: 52, minHeight: "65vh" }}
+                title={`Expand ${stage}`}
+              >
+                <ChevronRight size={16} color="var(--color-muted)" />
+                <span
+                  className="text-sm px-2 py-0.5 rounded-full bg-surface3 text-muted font-mono flex-shrink-0"
+                >
+                  {stageContacts.length}
+                </span>
+                <span
+                  className="text-sm font-bold text-foreground flex-1"
+                  style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                >
+                  {stage}
+                </span>
+              </button>
+            );
+          }
 
           return (
             <div
@@ -286,7 +328,14 @@ export default function OutreachBoard() {
               }}
             >
               <div className="px-4 py-3.5 flex items-center justify-between border-b border-border">
-                <h3 className="text-base font-bold text-foreground">{stage}</h3>
+                <button
+                  onClick={() => setCollapsed((prev) => ({ ...prev, [stage]: true }))}
+                  className="flex items-center gap-1.5 text-left"
+                  title="Collapse column"
+                >
+                  <ChevronLeft size={15} color="var(--color-muted)" />
+                  <h3 className="text-base font-bold text-foreground">{stage}</h3>
+                </button>
                 <span className="text-sm px-2.5 py-1 rounded-full bg-surface3 text-muted font-mono">
                   {stageContacts.length}
                 </span>
