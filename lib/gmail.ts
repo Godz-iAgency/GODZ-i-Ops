@@ -110,13 +110,10 @@ export function stripQuotedReply(body: string): string {
     .trim();
 }
 
-export async function getRecentInboxMessages(minutesBack: number): Promise<GmailMessage[]> {
+async function fetchMessagesByQuery(query: string, maxResults: number): Promise<GmailMessage[]> {
   const accessToken = await getAccessToken();
-  const afterSeconds = Math.floor(Date.now() / 1000) - minutesBack * 60;
   const listRes = await fetch(
-    `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(
-      `in:inbox after:${afterSeconds}`
-    )}&maxResults=25`,
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${maxResults}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!listRes.ok) throw new Error(`Gmail list failed: ${listRes.status} ${await listRes.text()}`);
@@ -148,6 +145,19 @@ export async function getRecentInboxMessages(minutesBack: number): Promise<Gmail
     })
   );
   return messages.filter((m): m is GmailMessage => m !== null);
+}
+
+export async function getRecentInboxMessages(minutesBack: number): Promise<GmailMessage[]> {
+  const afterSeconds = Math.floor(Date.now() / 1000) - minutesBack * 60;
+  return fetchMessagesByQuery(`in:inbox after:${afterSeconds}`, 25);
+}
+
+// Lets the assistant search the real inbox with normal Gmail search syntax
+// (e.g. "from:x@y.com", "subject:invoice", "after:2026/09/01") instead of a
+// fixed lookback window.
+export async function searchGmailMessages(query: string, maxResults = 10): Promise<GmailMessage[]> {
+  const capped = Math.min(Math.max(maxResults, 1), 20);
+  return fetchMessagesByQuery(query, capped);
 }
 
 // A delivery failure arrives as a normal inbox message from the mail system,

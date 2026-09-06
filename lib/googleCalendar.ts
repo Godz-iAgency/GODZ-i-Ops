@@ -149,7 +149,7 @@ function toGoogleBody(input: NewEvent) {
 // Central alternates between -05:00 (CDT) and -06:00 (CST); this asks the
 // platform's own timezone database which one applies on the given date
 // rather than hardcoding a rule that would break every DST transition.
-function chicagoOffset(dateStr: string): string {
+export function chicagoOffset(dateStr: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Chicago",
     timeZoneName: "shortOffset",

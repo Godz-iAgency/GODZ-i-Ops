@@ -9,6 +9,7 @@ import SearchTab from "@/components/SearchTab";
 import HundredDaysTab from "@/components/HundredDaysTab";
 import ResourcesTab from "@/components/ResourcesTab";
 import CalendarTab from "@/components/CalendarTab";
+import AssistantTab from "@/components/AssistantTab";
 
 const TABS = [
   { id: "today", label: "Today" },
@@ -16,6 +17,7 @@ const TABS = [
   { id: "replies", label: "Replies" },
   { id: "hundred", label: "100 Days" },
   { id: "calendar", label: "Calendar" },
+  { id: "assistant", label: "Assistant" },
   { id: "search", label: "Search" },
   { id: "resources", label: "Resources" },
 ];
@@ -63,6 +65,7 @@ export default function Home() {
         {tab === "replies" && <RepliesTab />}
         {tab === "hundred" && <HundredDaysTab />}
         {tab === "calendar" && <CalendarTab />}
+        {tab === "assistant" && <AssistantTab />}
         {tab === "search" && <SearchTab />}
         {tab === "resources" && <ResourcesTab />}
       </main>
