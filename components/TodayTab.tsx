@@ -25,6 +25,31 @@ type Progress = {
   "Content URL"?: string;
   "Deep Work Completed"?: boolean;
   "Deep Work Notes"?: string;
+  "Bookworm Contacted"?: number;
+  "Bookworm Content Posted"?: boolean;
+  "Bookworm Content Platform"?: string;
+  "Bookworm Featured Person"?: string;
+  "Bookworm Content Title"?: string;
+  "Bookworm Content URL"?: string;
+  "Bookworm Welcomed Members"?: boolean;
+  "Bookworm Started Discussion"?: boolean;
+  "Bookworm Community Notes"?: string;
+};
+
+type BookwormContact = {
+  id: string;
+  fields: {
+    Name?: string;
+    Category?: string;
+    Priority?: string;
+    Opportunity?: string;
+    Angle?: string;
+    Email?: string;
+    Phone?: string;
+    "Channel Handle"?: string;
+    "Relationship Status"?: string;
+    "Next Action"?: string;
+  };
 };
 
 type Contact = {
@@ -64,7 +89,18 @@ const emptyProgress: Progress = {
   "Content URL": "",
   "Deep Work Completed": false,
   "Deep Work Notes": "",
+  "Bookworm Contacted": 0,
+  "Bookworm Content Posted": false,
+  "Bookworm Content Platform": "",
+  "Bookworm Featured Person": "",
+  "Bookworm Content Title": "",
+  "Bookworm Content URL": "",
+  "Bookworm Welcomed Members": false,
+  "Bookworm Started Discussion": false,
+  "Bookworm Community Notes": "",
 };
+
+const BOOKWORM_PRIORITY_ORDER = ["A (Top 10)", "A", "B", "C"];
 
 const input =
   "w-full text-base px-4 py-3 rounded-xl outline-none bg-black/30 text-foreground border border-border placeholder:text-muted";
@@ -721,14 +757,171 @@ function LinkedInToday({ onCountChange }: { onCountChange: (n: number) => void }
   );
 }
 
+// Bookworm's 51 targets have no contact info yet -- unlike SplitMic's queue,
+// the daily job here is usually "find how to reach them" first, then log the
+// touch, rather than sending from a ready address. Goal is 5/day: a much
+// smaller list than the SplitMic 500 doesn't need a 10-a-day pace.
+function BookwormTodayQueue({ onContactedChange }: { onContactedChange: (delta: number) => void }) {
+  const [contacts, setContacts] = useState<BookwormContact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, { Email?: string; "Channel Handle"?: string; Phone?: string }>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/bookworm-contacts");
+      if (!res.ok) throw new Error("Could not load Bookworm targets");
+      const data = await res.json();
+      const queue = (data.contacts as BookwormContact[])
+        .filter((c) => (c.fields["Relationship Status"] || "New") === "New")
+        .sort(
+          (a, b) =>
+            BOOKWORM_PRIORITY_ORDER.indexOf(a.fields.Priority || "") -
+            BOOKWORM_PRIORITY_ORDER.indexOf(b.fields.Priority || "")
+        )
+        .slice(0, 5);
+      setContacts(queue);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const markContacted = async (c: BookwormContact) => {
+    setSaving(c.id);
+    try {
+      const draft = drafts[c.id] || {};
+      const res = await fetch(`/api/bookworm-contacts/${c.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...draft,
+          "Relationship Status": "Contacted",
+          "Last Contact": austinDateStr(),
+        }),
+      });
+      if (!res.ok) throw new Error("Could not save");
+      setContacts((prev) => prev.filter((x) => x.id !== c.id));
+      setOpenId(null);
+      onContactedChange(1);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">
+          Today&apos;s 5 · next up in Bookworm outreach
+        </h4>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
+        </button>
+      </div>
+
+      {error && (
+        <div className="px-4 py-3 rounded-xl text-sm bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
+          {error}
+        </div>
+      )}
+      {loading && <p className="text-sm italic text-muted px-1">Loading…</p>}
+      {!loading && contacts.length === 0 && !error && (
+        <div className="px-4 py-4 rounded-xl bg-surface2 border border-border">
+          <p className="text-base font-semibold text-foreground mb-1">Nobody new left to reach out to.</p>
+          <p className="text-sm text-muted leading-relaxed">
+            Check the Outreach tab for who&apos;s already in progress.
+          </p>
+        </div>
+      )}
+
+      {contacts.map((c) => {
+        const f = c.fields;
+        const open = openId === c.id;
+        const draft = drafts[c.id] || {};
+        return (
+          <div key={c.id} className="rounded-xl bg-surface3 border border-border overflow-hidden">
+            <button
+              onClick={() => setOpenId(open ? null : c.id)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-semibold text-foreground truncate">{f.Name}</p>
+                <p className="text-sm text-muted truncate">{f.Opportunity}</p>
+              </div>
+              {f.Priority && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-accentLight font-mono flex-shrink-0">
+                  {f.Priority}
+                </span>
+              )}
+              {open ? <ChevronUp size={16} color="var(--color-muted)" /> : <ChevronDown size={16} color="var(--color-muted)" />}
+            </button>
+
+            {open && (
+              <div className="px-4 pb-4 flex flex-col gap-3 border-t border-border pt-3.5">
+                {f.Category && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-surfaceElevated text-textSecondary self-start">
+                    {f.Category}
+                  </span>
+                )}
+                {f.Angle && <p className="text-sm text-textSecondary leading-relaxed">{f.Angle}</p>}
+
+                <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">
+                  Found their contact info?
+                </p>
+                <input
+                  value={draft.Email ?? f.Email ?? ""}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [c.id]: { ...d[c.id], Email: e.target.value } }))}
+                  placeholder="Email address"
+                  className={input}
+                />
+                <input
+                  value={draft["Channel Handle"] ?? f["Channel Handle"] ?? ""}
+                  onChange={(e) =>
+                    setDrafts((d) => ({ ...d, [c.id]: { ...d[c.id], "Channel Handle": e.target.value } }))
+                  }
+                  placeholder="Channel handle (@instagram, TikTok...)"
+                  className={input}
+                />
+
+                <button
+                  onClick={() => markContacted(c)}
+                  disabled={saving === c.id}
+                  className="w-full py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 text-white disabled:opacity-50 transition-all"
+                  style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
+                >
+                  <Check size={15} /> Mark contacted
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TodayTab() {
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // UI-only for now: Bookworm has no pipeline yet, so its side is a
-  // placeholder until that outreach table exists.
   const [business, setBusiness] = useState<"SplitMic" | "Bookworm">("SplitMic");
 
   const today = austinDateStr();
@@ -814,12 +1007,93 @@ export default function TodayTab() {
       </div>
 
       {business === "Bookworm" && (
-        <div className="px-6 py-10 rounded-2xl bg-surface2 border border-border text-center">
-          <p className="text-2xl font-bold text-foreground mb-2">Not set up yet.</p>
-          <p className="text-base text-muted">
-            Bookworm doesn&apos;t have an outreach pipeline yet. Once it does, its own daily tasks will show up here.
-          </p>
-        </div>
+        <>
+          {error && (
+            <div className="px-4 py-3 rounded-xl text-base bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
+              {error}
+            </div>
+          )}
+          {loading && <p className="text-base italic text-muted">Loading today…</p>}
+
+          {!loading && (
+            <>
+              <Block tag="OUTREACH" time="Anytime today" title="Austin Book Clubs, Stores and Influencers">
+                <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">Contacted</p>
+                <Counter
+                  count={progress["Bookworm Contacted"] ?? 0}
+                  goal={5}
+                  onChange={(n) => set({ "Bookworm Contacted": n })}
+                />
+                <p className="text-sm text-muted px-1">Goal: 5 Bookworm targets pointed at the free Whop community</p>
+                <div className="mt-1">
+                  <BookwormTodayQueue
+                    onContactedChange={(d) => set({ "Bookworm Contacted": (progress["Bookworm Contacted"] ?? 0) + d })}
+                  />
+                </div>
+              </Block>
+
+              <Block tag="CONTENT" time="Anytime today" title="Today's Book Piece for Whop">
+                <CheckRow
+                  label="Content posted"
+                  checked={!!progress["Bookworm Content Posted"]}
+                  onToggle={() => set({ "Bookworm Content Posted": !progress["Bookworm Content Posted"] })}
+                />
+                <input
+                  value={progress["Bookworm Featured Person"] || ""}
+                  onChange={(e) => set({ "Bookworm Featured Person": e.target.value })}
+                  placeholder="Successful person featured (their favorite/top books)"
+                  className={input}
+                />
+                <input
+                  value={progress["Bookworm Content Title"] || ""}
+                  onChange={(e) => set({ "Bookworm Content Title": e.target.value })}
+                  placeholder="Post title or topic"
+                  className={input}
+                />
+                <select
+                  value={progress["Bookworm Content Platform"] || ""}
+                  onChange={(e) => set({ "Bookworm Content Platform": e.target.value })}
+                  className={input}
+                >
+                  <option value="">Platform…</option>
+                  {["Whop", "Instagram", "TikTok", "YouTube", "Other"].map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={progress["Bookworm Content URL"] || ""}
+                  onChange={(e) => set({ "Bookworm Content URL": e.target.value })}
+                  placeholder="Link (optional)"
+                  className={input}
+                />
+              </Block>
+
+              <Block tag="COMMUNITY" time="Anytime today" title="Whop Community">
+                <CheckRow
+                  label="Welcomed new members"
+                  checked={!!progress["Bookworm Welcomed Members"]}
+                  onToggle={() => set({ "Bookworm Welcomed Members": !progress["Bookworm Welcomed Members"] })}
+                />
+                <CheckRow
+                  label="Started or joined a discussion"
+                  checked={!!progress["Bookworm Started Discussion"]}
+                  onToggle={() => set({ "Bookworm Started Discussion": !progress["Bookworm Started Discussion"] })}
+                />
+                <textarea
+                  value={progress["Bookworm Community Notes"] || ""}
+                  onChange={(e) => set({ "Bookworm Community Notes": e.target.value })}
+                  placeholder="What happened in the community today?"
+                  rows={3}
+                  className={area}
+                />
+              </Block>
+
+              <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
+            </>
+          )}
+        </>
       )}
 
       {business === "SplitMic" && (
