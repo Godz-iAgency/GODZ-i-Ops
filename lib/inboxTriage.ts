@@ -55,7 +55,12 @@ const OWN_EMAIL = "christopher@godz-iagency.com";
 
 // Other personal addresses he's identified as his own. Mail from these is
 // always personal, regardless of anything else. Add more as he provides them.
-const PERSONAL_EMAILS: string[] = [];
+const PERSONAL_EMAILS: string[] = [
+  "christopherdowner11@gmail.com",
+  "krispercsbusiness@gmail.com",
+  "krispercsfitness@gmail.com",
+  "drum.adikofficial@gmail.com",
+];
 
 // Anything Google-related gets its own dedicated label -- same treatment as
 // LinkedIn -- rather than being mixed into GODZ-i or the general catch-all.
