@@ -9,15 +9,19 @@ if (!PAT || !BASE) {
 
 Airtable.configure({ apiKey: PAT });
 
-// Everything the Command Center touches now lives in one base. The old
-// multi-business tables (Website/gBOMBS/BookWorm/HotCake) are retired and
-// prefixed "DELETE - " in Airtable for manual review.
+// Everything the Command Center touches lives in one base ("GODZ-i CRM" --
+// renamed 2026-09-07 from "GODZ-i Music CRM" now that it also holds Bookworm
+// data, not just SplitMic). The old multi-business tables (Website/gBOMBS/
+// HotCake) are retired and prefixed "DELETE - " in Airtable for manual
+// review; BookWorm Leads was migrated forward into Bookworm Outreach below
+// rather than retired, since that data is still live.
 export const BASE_ID = BASE;
 export const OUTREACH_TABLE_ID = "tblryUfFc1oBsKtDa";
 export const PROGRESS_TABLE_ID = "tbls02Ih2kaa9fhQ6";
 export const REPLY_LOG_TABLE_ID = "tblegcIUuI3ow1Cgy";
 export const LINKEDIN_TABLE_ID = "tbljLKppcc89M5Iz1";
 export const HUBS_TABLE_ID = "tblolqShJlWbCHoX4";
+export const BOOKWORM_OUTREACH_TABLE_ID = "tbl7Otn4SbdJpF97E";
 
 export function getOutreachTable() {
   return new Airtable().base(BASE as string)(OUTREACH_TABLE_ID);
@@ -25,6 +29,10 @@ export function getOutreachTable() {
 
 export function getLinkedInTable() {
   return new Airtable().base(BASE as string)(LINKEDIN_TABLE_ID);
+}
+
+export function getBookwormOutreachTable() {
+  return new Airtable().base(BASE as string)(BOOKWORM_OUTREACH_TABLE_ID);
 }
 
 export function getHubsTable() {
@@ -449,4 +457,43 @@ export async function getAllReplies(): Promise<Reply[]> {
     .select({ pageSize: 100, sort: [{ field: "Received At", direction: "desc" }] })
     .all();
   return records.map((r) => ({ id: r.id, fields: r.fields as ReplyFields }));
+}
+
+// --------------------------------------------------------- bookworm outreach
+// A separate, deliberately lighter pipeline from the SplitMic 500: Bookworm
+// has no cold-sales funnel, just a short list of Austin book clubs, stores,
+// libraries, authors, and influencers to point at the free Whop community.
+
+export const BOOKWORM_RELATIONSHIP_STAGES = ["New", "Contacted", "Replied", "Joined Whop", "Not Interested"] as const;
+
+export type BookwormContactFields = {
+  Name?: string;
+  Category?: string;
+  Priority?: string;
+  Opportunity?: string;
+  Angle?: string;
+  Address?: string;
+  Phone?: string;
+  Email?: string;
+  "Channel Handle"?: string;
+  "Relationship Status"?: string;
+  "Next Action"?: string;
+  "Last Contact"?: string;
+  Notes?: string;
+};
+
+export type BookwormContact = { id: string; fields: BookwormContactFields };
+
+export async function getAllBookwormContacts(): Promise<BookwormContact[]> {
+  const records = await getBookwormOutreachTable().select({ pageSize: 100, sort: [{ field: "Name", direction: "asc" }] }).all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as BookwormContactFields }));
+}
+
+export async function getBookwormContactById(id: string): Promise<BookwormContact | null> {
+  try {
+    const record = await getBookwormOutreachTable().find(id);
+    return { id: record.id, fields: record.fields as BookwormContactFields };
+  } catch {
+    return null;
+  }
 }
