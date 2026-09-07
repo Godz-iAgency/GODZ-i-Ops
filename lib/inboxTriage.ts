@@ -27,9 +27,9 @@ const EMPTY_LABELS_TO_DELETE = [
 // deliberately excluded: personal mail belongs there AND in the inbox now.
 const ARCHIVE_ON_SIGHT_LABELS = ["LinkedIn", "Finance & Receipts", "Promotion", "Talent Buyers", "Grants for Split Mic"];
 
-// The five categories Christopher actually wants, plus one catch-all for
+// The categories Christopher actually wants, plus one catch-all for
 // everything that doesn't fit them.
-const CORE_LABELS = ["SplitMic", "Bookworm", "GODZ-i", "LinkedIn", "Finance & Receipts"];
+const CORE_LABELS = ["SplitMic", "Bookworm", "GODZ-i", "LinkedIn", "Google", "Finance & Receipts"];
 const CATCHALL_LABEL = "Tools & Services";
 
 const CONCURRENCY = 4;
@@ -48,42 +48,82 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
 }
 
 const RECEIPT_PATTERN =
-  /\b(invoice|receipt|payment (confirmed|received|successful)|purchase confirmed|billing statement|order confirm(ed|ation)|your (bill|statement) is)/i;
+  /\b(invoice|receipt|payment|purchase confirmed|billing statement|order confirm(ed|ation)|your (bill|statement) is)\b/i;
 
-export type Category = "SplitMic" | "Bookworm" | "LinkedIn" | "FinanceReceipts" | "ToolsServices" | "GODZi";
+// His own address -- self-sent notes always count as personal.
+const OWN_EMAIL = "christopher@godz-iagency.com";
 
-// The actual routing rules: known contacts win outright, then platform/content
-// signals, and only truly unmatched, non-bulk mail is treated as personal.
+// Other personal addresses he's identified as his own. Mail from these is
+// always personal, regardless of anything else. Add more as he provides them.
+const PERSONAL_EMAILS: string[] = [];
+
+// Anything Google-related gets its own dedicated label -- same treatment as
+// LinkedIn -- rather than being mixed into GODZ-i or the general catch-all.
+const GOOGLE_PATTERN = /google workspace|google ads|google play|google search console|google maps|google payments|accounts\.google\.com|googleads/i;
+
+// A missing List-Unsubscribe header does NOT mean a message is personal --
+// most transactional/account notices (security alerts, "new device signed
+// in", admin notices) never carry one. These two patterns catch what that
+// header misses: senders whose local part is a generic automated address,
+// and specific services seen cluttering the inbox.
+const AUTOMATED_LOCALPART_PATTERN =
+  /^(no-?reply|do-?not-?reply|notifications?|alerts?|support|hello|team|info|news|updates?|mailer|automated|welcome|billing)@/i;
+
+const KNOWN_SERVICE_PATTERN =
+  /zoom\.us|squarespace|cloudflare|zenbusiness|score\.org|reddit\.com|microsoft|amazonaws|amazon\.com|higgsfield|fireflies\.ai|mailchimp|buffer(app)?\.com|kroger|intuit|secretary of state|maps-platform/i;
+
+export type Category = "SplitMic" | "Bookworm" | "LinkedIn" | "Google" | "FinanceReceipts" | "ToolsServices" | "GODZi";
+
+// The actual routing rules: his own/known-personal addresses and real
+// contacts win outright, then platform/content signals, and only mail that
+// matches none of the automated signals is treated as personal.
 function classify(
   meta: Pick<MessageTriageMeta, "fromEmail" | "subject" | "hasUnsubscribe">,
   splitMicEmails: Set<string>,
   bookwormEmails: Set<string>
 ): Category {
   const email = meta.fromEmail.toLowerCase();
+  if (email === OWN_EMAIL || PERSONAL_EMAILS.includes(email)) return "GODZi";
   if (splitMicEmails.has(email)) return "SplitMic";
   if (bookwormEmails.has(email)) return "Bookworm";
 
   const domain = email.split("@")[1] || "";
   if (domain.endsWith("linkedin.com")) return "LinkedIn";
+  if (domain.endsWith("google.com") || domain.endsWith("googlemail.com")) return "Google";
 
   if (RECEIPT_PATTERN.test(meta.subject)) return "FinanceReceipts";
-  if (meta.hasUnsubscribe) return "ToolsServices";
+
+  const text = `${email} ${meta.subject}`;
+  if (GOOGLE_PATTERN.test(text)) return "Google";
+
+  const looksAutomated =
+    meta.hasUnsubscribe || AUTOMATED_LOCALPART_PATTERN.test(email) || KNOWN_SERVICE_PATTERN.test(text);
+  if (looksAutomated) return "ToolsServices";
+
   return "GODZi";
 }
 
+function labelNameFor(category: Category): string {
+  switch (category) {
+    case "SplitMic":
+      return "SplitMic";
+    case "Bookworm":
+      return "Bookworm";
+    case "LinkedIn":
+      return "LinkedIn";
+    case "Google":
+      return "Google";
+    case "FinanceReceipts":
+      return "Finance & Receipts";
+    case "ToolsServices":
+      return CATCHALL_LABEL;
+    case "GODZi":
+      return "GODZ-i";
+  }
+}
+
 function labelIdFor(byName: Map<string, { id: string; name: string }>, category: Category): string {
-  const name =
-    category === "SplitMic"
-      ? "SplitMic"
-      : category === "Bookworm"
-        ? "Bookworm"
-        : category === "LinkedIn"
-          ? "LinkedIn"
-          : category === "FinanceReceipts"
-            ? "Finance & Receipts"
-            : category === "ToolsServices"
-              ? CATCHALL_LABEL
-              : "GODZ-i";
+  const name = labelNameFor(category);
   const label = byName.get(name);
   if (!label) throw new Error(`Missing label: ${name} -- run the backlog scope first`);
   return label.id;
@@ -200,6 +240,7 @@ export async function runInboxTriage(scope: "backlog" | "recent"): Promise<Inbox
     SplitMic: 0,
     Bookworm: 0,
     LinkedIn: 0,
+    Google: 0,
     FinanceReceipts: 0,
     ToolsServices: 0,
     GODZi: 0,
