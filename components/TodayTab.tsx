@@ -1,7 +1,7 @@
 "use client";
 
 import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
-import { dayNumber, sprintStartLabel } from "@/lib/sprint";
+import { dayNumber } from "@/lib/sprint";
 import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -916,6 +916,15 @@ function BookwormTodayQueue({ onContactedChange }: { onContactedChange: (delta: 
   );
 }
 
+const HEADER_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"];
+
+// "2026-09-20" -> "Sept 20, 2026". Split by hand rather than via Date so the
+// device's timezone can never shift the day.
+function formatHeaderDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${HEADER_MONTHS[m - 1]} ${d}, ${y}`;
+}
+
 export default function TodayTab() {
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [loading, setLoading] = useState(true);
@@ -968,7 +977,7 @@ export default function TodayTab() {
     }
   };
 
-  const header = day < 1 ? `SPRINT STARTS ${sprintStartLabel()}` : `DAY ${Math.min(day, 100)} OF 100`;
+  const header = formatHeaderDate(today);
   const schedule = isSunday
     ? "Rest day · nothing tracked"
     : isSaturday
