@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2 } from "lucide-react";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 const PAGE_SIZE = 10;
 
@@ -66,6 +67,7 @@ export default function BookwormOutreachBoard() {
   const [form, setForm] = useState<BookwormContactFields>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Contact | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Contact | null>(null);
   const [searchByStage, setSearchByStage] = useState<Record<string, string>>({});
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -143,6 +145,23 @@ export default function BookwormOutreachBoard() {
       setDetail(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeContact = async () => {
+    if (!pendingDelete) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/bookworm-contacts/${pendingDelete.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      setContacts((prev) => prev.filter((c) => c.id !== pendingDelete.id));
+      setDetail((d) => (d?.id === pendingDelete.id ? null : d));
+      setPendingDelete(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete");
+      setPendingDelete(null);
     } finally {
       setSaving(false);
     }
@@ -377,11 +396,24 @@ export default function BookwormOutreachBoard() {
                           <p className="text-base font-semibold truncate text-foreground">{f.Name}</p>
                           <p className="text-sm text-muted truncate">{f.Opportunity}</p>
                         </div>
-                        {f.Priority && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-surfaceElevated text-accentLight font-mono flex-shrink-0">
-                            {f.Priority}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {f.Priority && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-surfaceElevated text-accentLight font-mono">
+                              {f.Priority}
+                            </span>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingDelete(c);
+                            }}
+                            title="Delete contact"
+                            aria-label={`Delete ${f.Name || "contact"}`}
+                            className="p-1 rounded-md text-muted hover:text-accentLight hover:bg-surfaceElevated transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
 
                       <div onClick={() => setDetail(c)} className="flex items-center gap-1.5 flex-wrap">
@@ -609,9 +641,25 @@ export default function BookwormOutreachBoard() {
               >
                 <Save size={17} /> {saving ? "Saving…" : "Save changes"}
               </button>
+              <button
+                onClick={() => setPendingDelete(detail)}
+                disabled={saving}
+                className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-muted border border-border hover:text-accentLight hover:border-accent transition-all disabled:opacity-50"
+              >
+                <Trash2 size={15} /> Delete contact
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDeleteDialog
+          name={pendingDelete.fields.Name || ""}
+          busy={saving}
+          onConfirm={removeContact}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );

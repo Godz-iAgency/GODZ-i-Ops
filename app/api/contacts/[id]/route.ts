@@ -22,3 +22,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updated = await getOutreachTable().update([{ id, fields: fields as never }], { typecast: true });
   return NextResponse.json({ id: updated[0].id, fields: updated[0].fields as ContactFields });
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  await getOutreachTable().destroy([id]);
+  return NextResponse.json({ deleted: id });
+}
