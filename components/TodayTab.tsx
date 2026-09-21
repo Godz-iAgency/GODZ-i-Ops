@@ -2,6 +2,7 @@
 
 import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
 import { dayNumber } from "@/lib/sprint";
+import { TIKTOK_NICHES, TIKTOK_DAILY_GOAL } from "@/lib/bookwormTikTok";
 import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -26,6 +27,7 @@ type Progress = {
   "Deep Work Completed"?: boolean;
   "Deep Work Notes"?: string;
   "Bookworm Contacted"?: number;
+  "Bookworm TikTok Sent"?: number;
   "Bookworm Content Posted"?: boolean;
   "Bookworm Content Platform"?: string;
   "Bookworm Featured Person"?: string;
@@ -90,6 +92,7 @@ const emptyProgress: Progress = {
   "Deep Work Completed": false,
   "Deep Work Notes": "",
   "Bookworm Contacted": 0,
+  "Bookworm TikTok Sent": 0,
   "Bookworm Content Posted": false,
   "Bookworm Content Platform": "",
   "Bookworm Featured Person": "",
@@ -757,6 +760,170 @@ function LinkedInToday({ onCountChange }: { onCountChange: (n: number) => void }
   );
 }
 
+// Bookworm's TikTok outreach mirrors SplitMic's LinkedIn logger: creators are
+// found by hand with the Search tab's terms, so the count comes from what
+// actually got logged today instead of a tally to remember.
+function BookwormTikTokToday({ onCountChange }: { onCountChange: (n: number) => void }) {
+  const today = austinDateStr();
+  const emptyForm = { Name: "", "TikTok Handle": "", Niche: "", "TikTok URL": "" };
+  const [entries, setEntries] = useState<Array<{ id: string; fields: Record<string, string> }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/bookworm-tiktok");
+      if (!res.ok) throw new Error("Could not load TikTok creators");
+      const data = await res.json();
+      const todays = (data.creators || []).filter(
+        (c: { fields: Record<string, string> }) => c.fields["Date Contacted"] === today
+      );
+      setEntries(todays);
+      onCountChange(todays.length);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+    // onCountChange is a fresh closure each render; including it would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const add = async () => {
+    if (!form.Name.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      // Airtable rejects "" for select/url fields, so blank boxes are left off.
+      const payload: Record<string, string> = { ...form, "Date Contacted": today, Status: "DM Sent" };
+      for (const k of Object.keys(payload)) if (payload[k] === "") delete payload[k];
+      const res = await fetch("/api/bookworm-tiktok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Could not save creator");
+      const created = await res.json();
+      const next = [created, ...entries];
+      setEntries(next);
+      onCountChange(next.length);
+      setForm(emptyForm);
+      setOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const count = entries.length;
+  const done = count >= TIKTOK_DAILY_GOAL;
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div
+        className="flex items-center gap-3 px-4 py-3 rounded-xl"
+        style={{
+          border: `1px solid ${done ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
+          background: done ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
+        }}
+      >
+        <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
+          {loading ? "…" : count} / {TIKTOK_DAILY_GOAL}
+        </span>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold text-white transition-all"
+          style={{ background: "var(--color-accent)" }}
+        >
+          <Plus size={14} /> Log creator
+        </button>
+      </div>
+
+      {error && (
+        <div className="px-4 py-3 rounded-xl text-sm bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
+          {error}
+        </div>
+      )}
+
+      {open && (
+        <div className="rounded-xl p-4 bg-surface3 border border-border flex flex-col gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <input
+              autoFocus
+              value={form.Name}
+              onChange={(e) => setForm({ ...form, Name: e.target.value })}
+              placeholder="Creator name"
+              className={input}
+            />
+            <input
+              value={form["TikTok Handle"]}
+              onChange={(e) => setForm({ ...form, "TikTok Handle": e.target.value })}
+              placeholder="@handle"
+              className={input}
+            />
+          </div>
+          <select value={form.Niche} onChange={(e) => setForm({ ...form, Niche: e.target.value })} className={input}>
+            <option value="">Niche…</option>
+            {TIKTOK_NICHES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <input
+            value={form["TikTok URL"]}
+            onChange={(e) => setForm({ ...form, "TikTok URL": e.target.value })}
+            placeholder="Profile URL (optional)"
+            className={input}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={add}
+              disabled={saving}
+              className="flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 text-white disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
+            >
+              <Save size={14} /> {saving ? "Saving…" : "Save"}
+            </button>
+            <button onClick={() => setOpen(false)} className="px-4 py-3 rounded-lg bg-surface2">
+              <X size={15} color="var(--color-muted)" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {entries.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {entries.map((e) => (
+            <div key={e.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface3 border border-border">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{e.fields.Name}</p>
+                <p className="text-xs text-muted truncate">
+                  {[e.fields["TikTok Handle"], e.fields.Niche].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              {e.fields["TikTok URL"] && (
+                <a href={e.fields["TikTok URL"]} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink size={15} color="var(--color-muted)" />
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Bookworm's 51 targets have no contact info yet -- unlike SplitMic's queue,
 // the daily job here is usually "find how to reach them" first, then log the
 // touch, rather than sending from a ready address. Goal is 5/day: a much
@@ -1026,8 +1193,10 @@ export default function TodayTab() {
 
           {!loading && (
             <>
-              <Block tag="OUTREACH" time="Anytime today" title="Austin Book Clubs, Stores and Influencers">
-                <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">Contacted</p>
+              <Block tag="OUTREACH" time="Anytime today" title="Email and TikTok Outreach">
+                <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">
+                  Email · Austin book clubs, stores and influencers
+                </p>
                 <Counter
                   count={progress["Bookworm Contacted"] ?? 0}
                   goal={5}
@@ -1039,6 +1208,14 @@ export default function TodayTab() {
                     onContactedChange={(d) => set({ "Bookworm Contacted": (progress["Bookworm Contacted"] ?? 0) + d })}
                   />
                 </div>
+
+                <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">TikTok · creators</p>
+                <BookwormTikTokToday onCountChange={(n) => set({ "Bookworm TikTok Sent": n })} />
+                <p className="text-sm text-muted px-1">
+                  Goal: {TIKTOK_DAILY_GOAL} creators in personal development and book summaries, invited to partner
+                  on Bookworm. Search using the TikTok terms on the Search tab, then log each creator here. The count
+                  updates itself.
+                </p>
               </Block>
 
               <Block tag="CONTENT" time="Anytime today" title="Today's Book Piece for Whop">

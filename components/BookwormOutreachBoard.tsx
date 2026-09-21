@@ -190,7 +190,7 @@ export default function BookwormOutreachBoard() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Bookworm outreach</h2>
+          <h2 className="text-2xl font-bold text-foreground">Bookworm email</h2>
           <p className="text-sm text-muted font-mono mt-1">
             {totals.total} Austin targets · {totals.contacted} contacted · {totals.joined} joined Whop
           </p>

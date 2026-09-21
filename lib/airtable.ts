@@ -22,6 +22,7 @@ export const REPLY_LOG_TABLE_ID = "tblegcIUuI3ow1Cgy";
 export const LINKEDIN_TABLE_ID = "tbljLKppcc89M5Iz1";
 export const HUBS_TABLE_ID = "tblolqShJlWbCHoX4";
 export const BOOKWORM_OUTREACH_TABLE_ID = "tbl7Otn4SbdJpF97E";
+export const BOOKWORM_TIKTOK_TABLE_ID = "tblKOYrjzZS8xdl60";
 
 export function getOutreachTable() {
   return new Airtable().base(BASE as string)(OUTREACH_TABLE_ID);
@@ -33,6 +34,10 @@ export function getLinkedInTable() {
 
 export function getBookwormOutreachTable() {
   return new Airtable().base(BASE as string)(BOOKWORM_OUTREACH_TABLE_ID);
+}
+
+export function getBookwormTikTokTable() {
+  return new Airtable().base(BASE as string)(BOOKWORM_TIKTOK_TABLE_ID);
 }
 
 export function getHubsTable() {
@@ -496,4 +501,37 @@ export async function getBookwormContactById(id: string): Promise<BookwormContac
   } catch {
     return null;
   }
+}
+
+// ------------------------------------------------------- bookworm tiktok
+// Bookworm's social channel, the counterpart to SplitMic's LinkedIn. Creators
+// in personal development and book/e-book niches are found by hand on TikTok
+// each day (goal 10) using the Search tab's terms, then logged here. Separate
+// from Bookworm Outreach (Austin local targets) on purpose: different audience,
+// different stages, and it feeds its own Today counter.
+
+export const BOOKWORM_TIKTOK_STATUSES = ["New", "DM Sent", "Replied", "In Talks", "Partnered", "Not Interested"] as const;
+
+export type BookwormTikTokFields = {
+  Name?: string;
+  "TikTok Handle"?: string;
+  "TikTok URL"?: string;
+  Followers?: number;
+  Niche?: string;
+  Email?: string;
+  "Date Contacted"?: string;
+  Status?: string;
+  Response?: string;
+  Notes?: string;
+  "Next Action"?: string;
+  "Next Action Date"?: string;
+};
+
+export type BookwormTikTokCreator = { id: string; fields: BookwormTikTokFields };
+
+export async function getAllBookwormTikTokCreators(): Promise<BookwormTikTokCreator[]> {
+  const records = await getBookwormTikTokTable()
+    .select({ pageSize: 100, sort: [{ field: "Date Contacted", direction: "desc" }] })
+    .all();
+  return records.map((r) => ({ id: r.id, fields: r.fields as BookwormTikTokFields }));
 }

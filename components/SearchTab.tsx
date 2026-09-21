@@ -3,6 +3,7 @@
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { useState } from "react";
 import { Plus, Trash2, Check } from "lucide-react";
+import { TIKTOK_NICHES, TIKTOK_DAILY_GOAL, type TikTokNiche } from "@/lib/bookwormTikTok";
 
 // The daily 11:00-12:00 LinkedIn hour runs off these. Grouped the way the
 // Austin music ecosystem actually breaks down, so an hour of searching covers
@@ -73,6 +74,49 @@ const LINKEDIN_SEARCH_GROUPS: Array<{ label: string; terms: string[] }> = [
   },
 ];
 
+// Bookworm's daily 10 creators come from these. One group per niche, keyed by
+// the shared niche list so a group can't exist here without a matching niche
+// to file the creator under (and vice versa) on the TikTok board.
+const TIKTOK_SEARCH_TERMS: Record<Exclude<TikTokNiche, "Other">, string[]> = {
+  BookTok: ["#booktok", "#booktokcommunity", "#bookrecommendations", "#bookreview", "#currentlyreading"],
+  "Self-Improvement": [
+    "#selfimprovement",
+    "#selfimprovementtips",
+    "#selfgrowth",
+    "#selfimprovementjourney",
+    "self improvement books",
+  ],
+  "Personal Development": [
+    "#personaldevelopment",
+    "#personalgrowth",
+    "#growthmindset",
+    "#mindsetshift",
+    "personal development books",
+  ],
+  "Book Summaries": [
+    "#booksummary",
+    "#booksummaries",
+    "book summary in 60 seconds",
+    "3 lessons from this book",
+    "key takeaways from this book",
+  ],
+  "E-books & Kindle": ["#ebooks", "#ebook", "#kindle", "#kindletok", "ebook recommendations"],
+  "Nonfiction & Business Books": [
+    "#nonfictionbooks",
+    "#businessbooks",
+    "#bookstoread",
+    "books that changed my life",
+    "best self help books",
+  ],
+  "Productivity & Habits": ["#productivity", "#habits", "#atomichabits", "#morningroutine", "#deepwork"],
+  "Reading & Learning": ["#readingchallenge", "#readmore", "#speedreading", "#learnontiktok", "#readingtips"],
+  "Money & Mindset": ["#moneymindset", "#wealthmindset", "#financialliteracy", "money books to read", "#investingbooks"],
+};
+
+const TIKTOK_SEARCH_GROUPS = TIKTOK_NICHES.filter((n): n is Exclude<TikTokNiche, "Other"> => n !== "Other").map(
+  (label) => ({ label, terms: TIKTOK_SEARCH_TERMS[label] })
+);
+
 function CopyChip({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const doCopy = async () => {
@@ -107,6 +151,7 @@ type Idea = { id: number; text: string; addedAt: string };
 export default function SearchTab() {
   const [contentLog, setContentLog] = useLocalStorage<Idea[]>("godzi-content-log", []);
   const [newContentIdea, setNewContentIdea] = useState("");
+  const [business, setBusiness] = useState<"SplitMic" | "Bookworm">("SplitMic");
   const today = new Date().toISOString().slice(0, 10);
 
   const addContentIdea = () => {
@@ -120,15 +165,33 @@ export default function SearchTab() {
   return (
     <div className="max-w-[900px] mx-auto flex flex-col gap-9">
       <section className="flex flex-col gap-6">
+        <div className="flex gap-1 bg-surface2 p-1 rounded-full border border-border self-start">
+          {(["SplitMic", "Bookworm"] as const).map((b) => (
+            <button
+              key={b}
+              onClick={() => setBusiness(b)}
+              className="px-5 py-2.5 rounded-full text-base font-semibold transition-all"
+              style={{
+                background: business === b ? "var(--color-accent)" : "transparent",
+                color: business === b ? "#0a0705" : "var(--color-muted)",
+                boxShadow: business === b ? "0 4px 16px rgba(232,67,10,0.35)" : "none",
+              }}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
         <div>
           <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">
-            LinkedIn search terms · tap to copy
+            {business === "SplitMic" ? "LinkedIn" : "TikTok"} search terms · tap to copy
           </h2>
           <p className="text-sm text-muted mt-1.5">
-            11:00 to 12:00. Search, pick 10 people, log them on the Outreach tab.
+            {business === "SplitMic"
+              ? "11:00 to 12:00. Search, pick 10 people, log them on the Outreach tab."
+              : `Anytime today. Search, pick ${TIKTOK_DAILY_GOAL} creators to invite to partner, log them on the Outreach tab under Bookworm, TikTok.`}
           </p>
         </div>
-        {LINKEDIN_SEARCH_GROUPS.map((group) => (
+        {(business === "SplitMic" ? LINKEDIN_SEARCH_GROUPS : TIKTOK_SEARCH_GROUPS).map((group) => (
           <div key={group.label}>
             <h3 className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">
               {group.label}
