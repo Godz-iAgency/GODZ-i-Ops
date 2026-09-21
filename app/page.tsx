@@ -57,7 +57,8 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="w-full px-5 sm:px-8 pt-9 pb-16 relative z-[1]">
+      {/* No z-index here: it would trap the fixed z-50 modals below the sticky z-20 header. */}
+      <main className="w-full px-5 sm:px-8 pt-9 pb-16 relative">
         {tab === "today" && <TodayTab />}
         {tab === "outreach" && <OutreachTab />}
         {tab === "replies" && <RepliesTab />}

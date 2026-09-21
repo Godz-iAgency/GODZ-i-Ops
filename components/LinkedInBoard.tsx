@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { austinDateStr } from "@/lib/austinDate";
 import { Plus, X, RefreshCw, Save, ExternalLink, Search, ChevronDown, Trash2 } from "lucide-react";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 const PAGE_SIZE = 10;
 
@@ -60,6 +61,7 @@ export default function LinkedInBoard() {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<LinkedInFields>(emptyForm);
   const [detail, setDetail] = useState<Prospect | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Prospect | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -136,6 +138,7 @@ export default function LinkedInBoard() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
     } finally {
+      setPendingDelete(null);
       setSaving(false);
     }
   };
@@ -467,7 +470,7 @@ export default function LinkedInBoard() {
                 <Save size={17} /> {saving ? "Saving…" : "Save changes"}
               </button>
               <button
-                onClick={() => remove(detail.id)}
+                onClick={() => setPendingDelete(detail)}
                 disabled={saving}
                 className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-muted border border-border hover:text-accentLight hover:border-accent transition-all disabled:opacity-50"
               >
@@ -476,6 +479,15 @@ export default function LinkedInBoard() {
             </div>
           </div>
         </div>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDeleteDialog
+          name={pendingDelete.fields.Name || ""}
+          busy={saving}
+          onConfirm={() => remove(pendingDelete.id)}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );
