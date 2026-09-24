@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2 } from "lucide-react";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
@@ -73,6 +73,9 @@ export default function BookwormOutreachBoard() {
   const [searchByStage, setSearchByStage] = useState<Record<string, string>>({});
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [activeStage, setActiveStage] = useState(STAGES[0]);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const stageRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,6 +175,45 @@ export default function BookwormOutreachBoard() {
   const setDetailField = (patchFields: BookwormContactFields) =>
     setDetail((d) => (d ? { ...d, fields: { ...d.fields, ...patchFields } } : d));
 
+  const goToStage = useCallback((stage: string) => {
+    const board = boardRef.current;
+    const target = stageRefs.current[stage];
+    if (!board || !target) return;
+    board.scrollTo({ left: Math.max(0, target.offsetLeft - board.offsetLeft - 12), behavior: "smooth" });
+    setActiveStage(stage);
+  }, []);
+
+  const stepStage = (direction: -1 | 1) => {
+    const current = Math.max(0, STAGES.indexOf(activeStage));
+    goToStage(STAGES[Math.min(STAGES.length - 1, Math.max(0, current + direction))]);
+  };
+
+  const trackVisibleStage = () => {
+    const board = boardRef.current;
+    if (!board) return;
+    const maxScroll = board.scrollWidth - board.clientWidth;
+    if (board.scrollLeft <= 4) {
+      setActiveStage(STAGES[0]);
+      return;
+    }
+    if (board.scrollLeft >= maxScroll - 4) {
+      setActiveStage(STAGES[STAGES.length - 1]);
+      return;
+    }
+    let closest = STAGES[0];
+    let closestDistance = Number.POSITIVE_INFINITY;
+    for (const stage of STAGES) {
+      const target = stageRefs.current[stage];
+      if (!target) continue;
+      const distance = Math.abs(target.offsetLeft - board.offsetLeft - board.scrollLeft);
+      if (distance < closestDistance) {
+        closest = stage;
+        closestDistance = distance;
+      }
+    }
+    setActiveStage(closest);
+  };
+
   const byStage = useMemo(() => {
     const map: Record<string, Contact[]> = {};
     for (const s of STAGES) map[s] = [];
@@ -227,7 +269,54 @@ export default function BookwormOutreachBoard() {
         </div>
       )}
 
-      <div className="scrollbar-none -mx-3 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-3 pb-3 sm:mx-0 sm:snap-none sm:px-0">
+      <div className="rounded-2xl border border-border bg-surface2/70 p-2.5">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => stepStage(-1)}
+            disabled={activeStage === STAGES[0]}
+            aria-label="Previous pipeline stage"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"
+          >
+            <ChevronLeft size={19} />
+          </button>
+          <div className="scrollbar-none flex min-w-0 flex-1 gap-2 overflow-x-auto px-0.5 py-0.5">
+            {STAGES.map((stage) => (
+              <button
+                key={stage}
+                onClick={() => goToStage(stage)}
+                aria-current={activeStage === stage ? "step" : undefined}
+                className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all sm:px-3.5 ${
+                  activeStage === stage
+                    ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
+                    : "border-border bg-black/20 text-textSecondary hover:border-borderHover hover:text-white"
+                }`}
+              >
+                {stage}
+                <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">
+                  {(byStage[stage] || []).length}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => stepStage(1)}
+            disabled={activeStage === STAGES[STAGES.length - 1]}
+            aria-label="Next pipeline stage"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"
+          >
+            <ChevronRight size={19} />
+          </button>
+        </div>
+        <p className="px-1 pt-2 text-xs leading-relaxed text-muted">
+          Jump to a stage, use the arrows, swipe on touchscreens, or drag the scrollbar below the columns.
+        </p>
+      </div>
+
+      <div
+        ref={boardRef}
+        onScroll={trackVisibleStage}
+        className="pipeline-scrollbar relative -mx-3 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-3 pb-4 sm:mx-0 sm:snap-none sm:px-0"
+      >
         {STAGES.map((stage) => {
           const stageContacts = byStage[stage] || [];
           const query = (searchByStage[stage] || "").trim().toLowerCase();
@@ -246,6 +335,9 @@ export default function BookwormOutreachBoard() {
             return (
               <button
                 key={stage}
+                ref={(node) => {
+                  stageRefs.current[stage] = node;
+                }}
                 onClick={() => setCollapsed((prev) => ({ ...prev, [stage]: false }))}
                 className="flex-shrink-0 snap-start rounded-2xl flex flex-col items-center gap-3 bg-surface2 border border-border py-4 hover:border-accent transition-all"
                 style={{ width: 52, minHeight: "65vh" }}
@@ -268,6 +360,9 @@ export default function BookwormOutreachBoard() {
           return (
             <div
               key={stage}
+              ref={(node) => {
+                stageRefs.current[stage] = node;
+              }}
               onDragOver={(e) => {
                 e.preventDefault();
                 setOverStage(stage);

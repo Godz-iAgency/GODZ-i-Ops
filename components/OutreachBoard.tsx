@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { austinDateStr } from "@/lib/austinDate";
 import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2 } from "lucide-react";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
@@ -122,6 +122,13 @@ export default function OutreachBoard() {
   const [searchByStage, setSearchByStage] = useState<Record<string, string>>({});
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [activeStage, setActiveStage] = useState(STAGES[0]);
+  const [researchOpen, setResearchOpen] = useState(false);
+  const [researchDrafts, setResearchDrafts] = useState<Record<string, string>>({});
+  const [researchSavingId, setResearchSavingId] = useState<string | null>(null);
+  const [researchError, setResearchError] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const stageRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -222,6 +229,45 @@ export default function OutreachBoard() {
   const setDetailField = (patchFields: ContactFields) =>
     setDetail((d) => (d ? { ...d, fields: { ...d.fields, ...patchFields } } : d));
 
+  const goToStage = useCallback((stage: string) => {
+    const board = boardRef.current;
+    const target = stageRefs.current[stage];
+    if (!board || !target) return;
+    board.scrollTo({ left: Math.max(0, target.offsetLeft - board.offsetLeft - 12), behavior: "smooth" });
+    setActiveStage(stage);
+  }, []);
+
+  const stepStage = (direction: -1 | 1) => {
+    const current = Math.max(0, STAGES.indexOf(activeStage));
+    goToStage(STAGES[Math.min(STAGES.length - 1, Math.max(0, current + direction))]);
+  };
+
+  const trackVisibleStage = () => {
+    const board = boardRef.current;
+    if (!board) return;
+    const maxScroll = board.scrollWidth - board.clientWidth;
+    if (board.scrollLeft <= 4) {
+      setActiveStage(STAGES[0]);
+      return;
+    }
+    if (board.scrollLeft >= maxScroll - 4) {
+      setActiveStage(STAGES[STAGES.length - 1]);
+      return;
+    }
+    let closest = STAGES[0];
+    let closestDistance = Number.POSITIVE_INFINITY;
+    for (const stage of STAGES) {
+      const target = stageRefs.current[stage];
+      if (!target) continue;
+      const distance = Math.abs(target.offsetLeft - board.offsetLeft - board.scrollLeft);
+      if (distance < closestDistance) {
+        closest = stage;
+        closestDistance = distance;
+      }
+    }
+    setActiveStage(closest);
+  };
+
   const byStage = useMemo(() => {
     const map: Record<string, Contact[]> = {};
     for (const s of STAGES) map[s] = [];
@@ -241,6 +287,49 @@ export default function OutreachBoard() {
     return { emailed, ready, needsResearch, total: contacts.length };
   }, [contacts]);
 
+  const researchQueue = useMemo(
+    () =>
+      contacts
+        .filter((c) => !(c.fields.Email || "").trim())
+        .sort(
+          (a, b) =>
+            (a.fields["Campaign Day"] || Number.MAX_SAFE_INTEGER) -
+              (b.fields["Campaign Day"] || Number.MAX_SAFE_INTEGER) ||
+            (a.fields["Daily Slot"] || Number.MAX_SAFE_INTEGER) -
+              (b.fields["Daily Slot"] || Number.MAX_SAFE_INTEGER)
+        ),
+    [contacts]
+  );
+
+  const saveResearchEmail = async (contact: Contact) => {
+    const email = (researchDrafts[contact.id] || "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setResearchError("Enter a complete email address before saving.");
+      return;
+    }
+    setResearchSavingId(contact.id);
+    setResearchError(null);
+    try {
+      const res = await fetch(`/api/contacts/${contact.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Email: email }),
+      });
+      if (!res.ok) throw new Error("Could not save this email address");
+      const updated = await res.json();
+      setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setResearchDrafts((prev) => {
+        const next = { ...prev };
+        delete next[contact.id];
+        return next;
+      });
+    } catch (e) {
+      setResearchError(e instanceof Error ? e.message : "Could not save this email address");
+    } finally {
+      setResearchSavingId(null);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -251,7 +340,14 @@ export default function OutreachBoard() {
             {totals.needsResearch} need an address
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 min-[420px]:flex min-[420px]:w-auto min-[420px]:items-center">
+        <div className="grid w-full grid-cols-2 gap-2 min-[720px]:flex min-[720px]:w-auto min-[720px]:items-center">
+          <button
+            onClick={() => setResearchOpen(true)}
+            disabled={totals.needsResearch === 0}
+            className="col-span-2 flex min-h-11 items-center justify-center gap-2 rounded-full border border-accent/50 bg-[rgba(232,67,10,0.1)] px-4 py-2.5 text-sm font-semibold text-accentLight transition-all hover:border-accent hover:bg-[rgba(232,67,10,0.16)] disabled:opacity-50 min-[720px]:col-span-1"
+          >
+            <Search size={15} /> Research {totals.needsResearch} emails
+          </button>
           <button
             onClick={() =>
               setCollapsed((prev) => {
@@ -281,7 +377,54 @@ export default function OutreachBoard() {
         </div>
       )}
 
-      <div className="scrollbar-none -mx-3 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-3 pb-3 sm:mx-0 sm:snap-none sm:px-0">
+      <div className="rounded-2xl border border-border bg-surface2/70 p-2.5">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => stepStage(-1)}
+            disabled={activeStage === STAGES[0]}
+            aria-label="Previous pipeline stage"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"
+          >
+            <ChevronLeft size={19} />
+          </button>
+          <div className="scrollbar-none flex min-w-0 flex-1 gap-2 overflow-x-auto px-0.5 py-0.5">
+            {STAGES.map((stage) => (
+              <button
+                key={stage}
+                onClick={() => goToStage(stage)}
+                aria-current={activeStage === stage ? "step" : undefined}
+                className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all sm:px-3.5 ${
+                  activeStage === stage
+                    ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
+                    : "border-border bg-black/20 text-textSecondary hover:border-borderHover hover:text-white"
+                }`}
+              >
+                {stage}
+                <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">
+                  {(byStage[stage] || []).length}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => stepStage(1)}
+            disabled={activeStage === STAGES[STAGES.length - 1]}
+            aria-label="Next pipeline stage"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"
+          >
+            <ChevronRight size={19} />
+          </button>
+        </div>
+        <p className="px-1 pt-2 text-xs leading-relaxed text-muted">
+          Jump to a stage, use the arrows, swipe on touchscreens, or drag the scrollbar below the columns.
+        </p>
+      </div>
+
+      <div
+        ref={boardRef}
+        onScroll={trackVisibleStage}
+        className="pipeline-scrollbar relative -mx-3 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-3 pb-4 sm:mx-0 sm:snap-none sm:px-0"
+      >
         {STAGES.map((stage) => {
           const stageContacts = byStage[stage] || [];
           const query = (searchByStage[stage] || "").trim().toLowerCase();
@@ -304,6 +447,9 @@ export default function OutreachBoard() {
             return (
               <button
                 key={stage}
+                ref={(node) => {
+                  stageRefs.current[stage] = node;
+                }}
                 onClick={() => setCollapsed((prev) => ({ ...prev, [stage]: false }))}
                 className="flex-shrink-0 snap-start rounded-2xl flex flex-col items-center gap-3 bg-surface2 border border-border py-4 hover:border-accent transition-all"
                 style={{ width: 52, minHeight: "65vh" }}
@@ -328,6 +474,9 @@ export default function OutreachBoard() {
           return (
             <div
               key={stage}
+              ref={(node) => {
+                stageRefs.current[stage] = node;
+              }}
               onDragOver={(e) => {
                 e.preventDefault();
                 setOverStage(stage);
@@ -558,6 +707,125 @@ export default function OutreachBoard() {
           );
         })}
       </div>
+
+      {researchOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 sm:items-center sm:p-5"
+          onClick={() => setResearchOpen(false)}
+        >
+          <div
+            className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-border bg-surface2 sm:rounded-2xl"
+            style={{ boxShadow: "var(--shadow-elevated)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-border p-4 sm:p-5">
+              <div>
+                <h3 className="text-xl font-bold text-foreground">Research missing emails</h3>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+                  Work the next 20 leads. Find and verify an address, then save it. That lead moves to Ready for
+                  Outreach automatically; the research count drops by one.
+                </p>
+              </div>
+              <button
+                onClick={() => setResearchOpen(false)}
+                aria-label="Close research queue"
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-black/20 text-muted hover:border-accent hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="border-b border-border bg-black/20 px-4 py-3 text-sm text-textSecondary sm:px-5">
+              <span className="font-semibold text-foreground">{researchQueue.length}</span> leads still need an
+              address. New blank-email leads will join this queue; moved leads do not get replaced automatically.
+            </div>
+
+            {researchError && (
+              <div className="mx-4 mt-4 rounded-xl border border-[rgba(232,67,10,0.4)] bg-[rgba(232,67,10,0.1)] px-4 py-3 text-sm text-accentLight sm:mx-5">
+                {researchError}
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5">
+              {researchQueue.length === 0 ? (
+                <div className="rounded-xl border border-border bg-surface3 px-5 py-8 text-center">
+                  <p className="font-semibold text-foreground">Every lead has an email address.</p>
+                  <p className="mt-1 text-sm text-muted">Your research queue is clear.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {researchQueue.slice(0, 20).map((contact) => {
+                    const fields = contact.fields;
+                    const webQuery = encodeURIComponent(
+                      [fields["Name / Target"], fields.Organization, fields.Role, "email"]
+                        .filter(Boolean)
+                        .join(" ")
+                    );
+                    const source = [
+                      fields["Source / Research Starting Point"],
+                      fields["Primary Source URL"],
+                      fields.Website,
+                    ].find((url) => typeof url === "string" && /^https?:\/\//i.test(url));
+                    return (
+                      <div
+                        key={contact.id}
+                        className="grid gap-3 rounded-xl border border-border bg-surface3 p-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(230px,0.8fr)] sm:items-center"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-foreground">{fields["Name / Target"]}</p>
+                          <p className="mt-0.5 truncate text-sm text-muted">
+                            {[fields.Role, fields.Organization].filter(Boolean).join(" · ") || "Research details not set"}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {source && (
+                              <a
+                                href={source}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex min-h-9 items-center gap-1.5 rounded-lg border border-border bg-black/20 px-3 py-2 text-xs text-textSecondary hover:border-accent hover:text-white"
+                              >
+                                <ExternalLink size={13} /> Open source
+                              </a>
+                            )}
+                            <a
+                              href={`https://www.google.com/search?q=${webQuery}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex min-h-9 items-center gap-1.5 rounded-lg border border-border bg-black/20 px-3 py-2 text-xs text-textSecondary hover:border-accent hover:text-white"
+                            >
+                              <Search size={13} /> Search web
+                            </a>
+                          </div>
+                        </div>
+                        <div className="flex min-w-0 gap-2">
+                          <input
+                            type="email"
+                            value={researchDrafts[contact.id] || ""}
+                            onChange={(e) =>
+                              setResearchDrafts((prev) => ({ ...prev, [contact.id]: e.target.value }))
+                            }
+                            onKeyDown={(e) => e.key === "Enter" && saveResearchEmail(contact)}
+                            placeholder="verified@email.com"
+                            aria-label={`Email for ${fields["Name / Target"] || "lead"}`}
+                            className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-black/30 px-3 text-base text-foreground outline-none placeholder:text-muted focus:border-accent"
+                          />
+                          <button
+                            onClick={() => saveResearchEmail(contact)}
+                            disabled={!researchDrafts[contact.id]?.trim() || researchSavingId === contact.id}
+                            className="min-h-11 flex-shrink-0 rounded-lg bg-accent px-3.5 text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-40"
+                          >
+                            {researchSavingId === contact.id ? "Saving…" : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {detail && (
         <div
