@@ -39,11 +39,16 @@
 
 html,
 body {
+  min-height: 100%;
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: 'Montserrat', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+body {
+  min-height: 100dvh;
 }
 
 *,
@@ -74,6 +79,49 @@ textarea,
 input,
 select {
   font-family: 'Montserrat', system-ui, sans-serif;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+@media (hover: none) {
+  .card-hover:hover,
+  .row-hover:hover {
+    transform: none;
+  }
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 .grain-overlay {

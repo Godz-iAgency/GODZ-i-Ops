@@ -1,0 +1,37 @@
+{
+  "actor_id": "clockworks/tiktok-scraper",
+  "hashtags": [
+    "selfimprovement",
+    "personaldevelopment",
+    "selfhelp",
+    "bookrecommendations",
+    "nonfictionbooks",
+    "productivitytips",
+    "mindset",
+    "booktok"
+  ],
+  "search_queries": [
+    "self improvement books",
+    "personal development books",
+    "best self help books",
+    "productivity book recommendations"
+  ],
+  "results_per_source": 100,
+  "recent_videos_per_profile": 15,
+  "profile_batch_size": 50,
+  "filters": {
+    "minimum_followers": 10000,
+    "maximum_followers": 300000,
+    "minimum_engagement_rate_percent": 3.0,
+    "maximum_days_since_last_post": 14
+  },
+  "ranking": {
+    "strategy": "engagement_rate_desc"
+  },
+  "request": {
+    "timeout_seconds": 900,
+    "poll_interval_seconds": 5,
+    "max_retries": 4
+  }
+}
+

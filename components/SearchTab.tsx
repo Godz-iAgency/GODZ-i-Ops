@@ -1,241 +1,139 @@
 "use client";
 
-import { useLocalStorage } from "@/lib/useLocalStorage";
 import { useState } from "react";
-import { Plus, Trash2, Check } from "lucide-react";
-import { TIKTOK_NICHES, TIKTOK_DAILY_GOAL, type TikTokNiche } from "@/lib/bookwormTikTok";
+import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { useLocalStorage } from "@/lib/useLocalStorage";
 
-// The daily 11:00-12:00 LinkedIn hour runs off these. Grouped the way the
-// Austin music ecosystem actually breaks down, so an hour of searching covers
-// one part of the scene properly instead of skimming all of it.
-const LINKEDIN_SEARCH_GROUPS: Array<{ label: string; terms: string[] }> = [
+type Mode = "splitmic-linkedin" | "bookworm-tiktok" | "email";
+type Idea = { id: number; text: string; addedAt: string };
+
+const LINKEDIN_GROUPS = [
+  { label: "Priority 1 · contact first", terms: ["Austin talent buyer", "Austin venue booking manager", "Austin concert promoter"] },
   {
-    label: "Venues & booking",
-    terms: [
-      "Austin venue owner",
-      "Austin music venue owner",
-      "Austin venue booking manager",
-      "Austin talent buyer",
-      "Austin live music booker",
-    ],
+    label: "Priority 2 · decision makers",
+    terms: ["Austin artist manager", "Austin band manager", "Austin festival director", "Austin festival talent buyer", "Austin A&R", "Austin record label owner", "Austin live event producer"],
   },
   {
-    label: "Promoters & festivals",
-    terms: [
-      "Austin concert promoter",
-      "Austin music promoter",
-      "Austin festival director",
-      "Austin festival talent buyer",
-    ],
-  },
-  {
-    label: "Artists & management",
-    terms: [
-      "Austin artist manager",
-      "Austin band manager",
-      "Austin music manager",
-      "Austin musician",
-      "Austin singer songwriter",
-      "Austin band",
-    ],
-  },
-  {
-    label: "Labels & A&R",
-    terms: ["Austin record label owner", "Austin A&R"],
-  },
-  {
-    label: "Organizations & nonprofits",
-    terms: ["Austin music organization director", "Austin music nonprofit director"],
-  },
-  {
-    label: "Production & live events",
-    terms: [
-      "Austin production manager",
-      "Austin live event producer",
-      "Austin concert producer",
-    ],
-  },
-  {
-    label: "Studios, backline & rental",
-    terms: [
-      "Austin recording studio owner",
-      "Austin rehearsal studio owner",
-      "Austin backline company",
-      "Austin instrument rental",
-    ],
-  },
-  {
-    label: "Startups & founders",
-    terms: ["Austin music entrepreneur", "Austin music startup founder"],
-  },
-  {
-    label: "Media & press",
-    terms: ["Austin music journalist", "Austin music podcast", "Austin music radio host"],
+    label: "Priority 3 · ecosystem",
+    terms: ["Austin music organization", "Austin music nonprofit", "Austin recording studio", "Austin rehearsal studio", "Austin backline company", "Austin instrument rental company", "Austin music entrepreneur", "Austin music journalist", "Austin music podcast", "Austin radio host"],
   },
 ];
 
-// Bookworm's daily 10 creators come from these. One group per niche, keyed by
-// the shared niche list so a group can't exist here without a matching niche
-// to file the creator under (and vice versa) on the TikTok board.
-const TIKTOK_SEARCH_TERMS: Record<Exclude<TikTokNiche, "Other">, string[]> = {
-  BookTok: ["#booktok", "#booktokcommunity", "#bookrecommendations", "#bookreview", "#currentlyreading"],
-  "Self-Improvement": [
-    "#selfimprovement",
-    "#selfimprovementtips",
-    "#selfgrowth",
-    "#selfimprovementjourney",
-    "self improvement books",
-  ],
-  "Personal Development": [
-    "#personaldevelopment",
-    "#personalgrowth",
-    "#growthmindset",
-    "#mindsetshift",
-    "personal development books",
-  ],
-  "Book Summaries": [
-    "#booksummary",
-    "#booksummaries",
-    "book summary in 60 seconds",
-    "3 lessons from this book",
-    "key takeaways from this book",
-  ],
-  "E-books & Kindle": ["#ebooks", "#ebook", "#kindle", "#kindletok", "ebook recommendations"],
-  "Nonfiction & Business Books": [
-    "#nonfictionbooks",
-    "#businessbooks",
-    "#bookstoread",
-    "books that changed my life",
-    "best self help books",
-  ],
-  "Productivity & Habits": ["#productivity", "#habits", "#atomichabits", "#morningroutine", "#deepwork"],
-  "Reading & Learning": ["#readingchallenge", "#readmore", "#speedreading", "#learnontiktok", "#readingtips"],
-  "Money & Mindset": ["#moneymindset", "#wealthmindset", "#financialliteracy", "money books to read", "#investingbooks"],
-};
+const TIKTOK_GROUPS = [
+  { label: "Core discovery", terms: ["#selfimprovement", "#personaldevelopment", "#selfhelp", "#bookrecommendations", "#nonfictionbooks", "#productivitytips", "#mindset", "#booktok"] },
+  { label: "Search queries", terms: ["self improvement books", "personal development books", "best self help books", "productivity book recommendations"] },
+];
 
-const TIKTOK_SEARCH_GROUPS = TIKTOK_NICHES.filter((n): n is Exclude<TikTokNiche, "Other"> => n !== "Other").map(
-  (label) => ({ label, terms: TIKTOK_SEARCH_TERMS[label] })
-);
+const BOOKWORM_EMAIL_GROUPS = [
+  {
+    label: "Primary · business consultants",
+    terms: ["Business Consultant", "Management Consultant", "Strategy Consultant", "Growth Consultant", "Leadership Consultant", "Executive Coach", "Operations Consultant", "Marketing Consultant", "Sales Consultant", "Independent Consultant", "Founder", "Principal", "Managing Partner"],
+  },
+  { label: "Secondary audiences", terms: ["book clubs", "libraries", "reading organizations", "authors", "book podcasts", "educational communities"] },
+  { label: "Strategic partnerships · separate list", terms: ["Founders Podcast", "business book authors", "publishers", "large book communities", "book distribution partners"] },
+];
+
+const SPLITMIC_EMAIL_GROUPS = [
+  {
+    label: "Austin music email targets",
+    terms: ["Austin music organizations", "Austin musician groups", "Austin music venues", "Austin talent buyers", "Austin concert promoters", "Austin music festivals", "Austin artist managers", "Austin record labels", "Austin recording studios", "Austin rehearsal studios", "Austin backline companies", "Austin instrument rental companies"],
+  },
+];
 
 function CopyChip({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const doCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch {
-      // ignore
-    }
+  const copy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
   };
   return (
-    <button
-      onClick={doCopy}
-      className="text-sm px-4 py-2 rounded-full text-left flex items-center gap-1.5 transition-all hover:-translate-y-0.5"
-      style={{
-        background: copied ? "var(--color-accent)" : "rgba(255,255,255,0.04)",
-        borderColor: copied ? "var(--color-accent)" : "rgba(255,255,255,0.08)",
-        borderWidth: 1,
-        borderStyle: "solid",
-        color: "#fff",
-      }}
-    >
+    <button onClick={copy} className="flex min-h-11 w-full items-center gap-1.5 rounded-xl border px-4 py-2 text-left text-sm transition-all hover:-translate-y-0.5 min-[420px]:w-auto min-[420px]:rounded-full" style={{ background: copied ? "var(--color-accent)" : "rgba(255,255,255,0.04)", borderColor: copied ? "var(--color-accent)" : "rgba(255,255,255,0.08)", color: "#fff" }}>
       {copied && <Check size={12} strokeWidth={3} />}
       {copied ? "Copied" : text}
     </button>
   );
 }
-
-type Idea = { id: number; text: string; addedAt: string };
+function Groups({ groups }: { groups: Array<{ label: string; terms: string[] }> }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {groups.map((group, index) => (
+        <details key={group.label} open={index === 0} className="group rounded-2xl border border-border bg-surface2">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
+            <span className="text-xs font-bold uppercase leading-relaxed tracking-[0.1em] text-foreground sm:text-sm sm:tracking-[0.12em]">{group.label}</span>
+            <ChevronDown size={16} className="text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="flex flex-wrap gap-2 border-t border-border px-4 py-4 sm:gap-2.5 sm:px-5">
+            {group.terms.map((term) => <CopyChip key={term} text={term} />)}
+          </div>
+        </details>
+      ))}
+    </div>
+  );
+}
 
 export default function SearchTab() {
-  const [contentLog, setContentLog] = useLocalStorage<Idea[]>("godzi-content-log", []);
-  const [newContentIdea, setNewContentIdea] = useState("");
-  const [business, setBusiness] = useState<"SplitMic" | "Bookworm">("SplitMic");
+  const [mode, setMode] = useState<Mode>("splitmic-linkedin");
+  const [emailBusiness, setEmailBusiness] = useState<"Bookworm" | "Splitmic">("Bookworm");
+  const [ideas, setIdeas] = useLocalStorage<Idea[]>("godzi-content-log", []);
+  const [idea, setIdea] = useState("");
   const today = new Date().toISOString().slice(0, 10);
 
-  const addContentIdea = () => {
-    if (!newContentIdea.trim()) return;
-    const id = Math.max(0, ...contentLog.map((c) => c.id)) + 1;
-    setContentLog([{ id, text: newContentIdea.trim(), addedAt: today }, ...contentLog]);
-    setNewContentIdea("");
+  const addIdea = () => {
+    if (!idea.trim()) return;
+    setIdeas([{ id: Date.now(), text: idea.trim(), addedAt: today }, ...ideas]);
+    setIdea("");
   };
-  const removeContentIdea = (id: number) => setContentLog(contentLog.filter((c) => c.id !== id));
+
+  const copy = {
+    "splitmic-linkedin": { eyebrow: "Splitmic → LinkedIn", title: "Who should I contact next?", description: "Start with Priority 1. Tap a search to copy it, find one qualified person, then log the outreach.", groups: LINKEDIN_GROUPS },
+    "bookworm-tiktok": { eyebrow: "Bookworm → TikTok", title: "Find the next qualified creator", description: "The research CLI uses these same configurable terms. Manual searches remain available as a fallback.", groups: TIKTOK_GROUPS },
+    email: { eyebrow: "Email", title: "Find the next email prospect", description: "Routine cold outreach stays separate from strategic partnerships.", groups: emailBusiness === "Bookworm" ? BOOKWORM_EMAIL_GROUPS : SPLITMIC_EMAIL_GROUPS },
+  }[mode];
 
   return (
-    <div className="max-w-[900px] mx-auto flex flex-col gap-9">
-      <section className="flex flex-col gap-6">
-        <div className="flex gap-1 bg-surface2 p-1 rounded-full border border-border self-start">
-          {(["SplitMic", "Bookworm"] as const).map((b) => (
-            <button
-              key={b}
-              onClick={() => setBusiness(b)}
-              className="px-5 py-2.5 rounded-full text-base font-semibold transition-all"
-              style={{
-                background: business === b ? "var(--color-accent)" : "transparent",
-                color: business === b ? "#0a0705" : "var(--color-muted)",
-                boxShadow: business === b ? "0 4px 16px rgba(232,67,10,0.35)" : "none",
-              }}
-            >
-              {b}
-            </button>
-          ))}
-        </div>
-        <div>
-          <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">
-            {business === "SplitMic" ? "LinkedIn" : "TikTok"} search terms · tap to copy
-          </h2>
-          <p className="text-sm text-muted mt-1.5">
-            {business === "SplitMic"
-              ? "11:00 to 12:00. Search, pick 10 people, log them on the Outreach tab."
-              : `Anytime today. Search, pick ${TIKTOK_DAILY_GOAL} creators to invite to partner, log them on the Outreach tab under Bookworm, TikTok.`}
-          </p>
-        </div>
-        {(business === "SplitMic" ? LINKEDIN_SEARCH_GROUPS : TIKTOK_SEARCH_GROUPS).map((group) => (
-          <div key={group.label}>
-            <h3 className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">
-              {group.label}
-            </h3>
-            <div className="flex flex-wrap gap-2.5">
-              {group.terms.map((s) => (
-                <CopyChip key={s} text={s} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section>
-        <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono mb-3.5">Content ideas</h2>
-        <div className="flex gap-2.5 mb-4">
-          <input
-            value={newContentIdea}
-            onChange={(e) => setNewContentIdea(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addContentIdea()}
-            placeholder="What are you researching today?"
-            className="flex-1 min-w-0 text-base px-4 py-3 rounded-xl outline-none bg-white/[0.02] text-foreground border border-border placeholder:text-muted"
-          />
-          <button
-            onClick={addContentIdea}
-            className="px-5 py-3 rounded-xl text-base font-bold flex items-center gap-1.5 text-white"
-            style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
-          >
-            <Plus size={16} /> Add
+    <div className="mx-auto flex max-w-[960px] flex-col gap-5 sm:gap-6">
+      <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-border bg-surface2 p-1 sm:w-auto sm:self-start sm:rounded-full sm:p-1.5">
+        {([["splitmic-linkedin", "Splitmic · LinkedIn"], ["bookworm-tiktok", "Bookworm · TikTok"], ["email", "Email"]] as Array<[Mode, string]>).map(([id, label]) => (
+          <button key={id} onClick={() => setMode(id)} className="min-h-11 rounded-xl px-2 py-2 text-xs font-semibold sm:whitespace-nowrap sm:rounded-full sm:px-5 sm:py-2.5 sm:text-sm" style={{ background: mode === id ? "var(--color-accent)" : "transparent", color: mode === id ? "#0a0705" : "var(--color-muted)" }}>
+            {id === "splitmic-linkedin" ? <><span>Splitmic</span><span className="hidden sm:inline"> · LinkedIn</span></> : id === "bookworm-tiktok" ? <><span>Bookworm</span><span className="hidden sm:inline"> · TikTok</span></> : label}
           </button>
-        </div>
-        <div className="flex flex-col gap-2.5">
-          {contentLog.length === 0 && <p className="text-sm italic text-muted">Nothing added yet.</p>}
-          {contentLog.map((idea) => (
-            <div key={idea.id} className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-surface2 border border-border">
-              <span className="text-base flex-1 text-foreground">{idea.text}</span>
-              <span className="text-xs text-muted font-mono">{idea.addedAt}</span>
-              <button onClick={() => removeContentIdea(idea.id)}>
-                <Trash2 size={15} color="var(--color-muted)" />
-              </button>
-            </div>
+        ))}
+      </div>
+
+      <header>
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-accentLight">{copy.eyebrow}</p>
+        <h1 className="mt-2 text-[clamp(1.75rem,7vw,2.25rem)] font-extrabold leading-tight text-foreground">{copy.title}</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{copy.description}</p>
+      </header>
+
+      {mode === "email" && (
+        <div className="grid w-full grid-cols-2 gap-1 rounded-full border border-border bg-surface2 p-1 sm:w-auto sm:self-start">
+          {(["Bookworm", "Splitmic"] as const).map((business) => (
+            <button key={business} onClick={() => setEmailBusiness(business)} className="rounded-full px-5 py-2 text-sm font-semibold" style={{ background: emailBusiness === business ? "var(--color-accent)" : "transparent", color: emailBusiness === business ? "#0a0705" : "var(--color-muted)" }}>{business}</button>
           ))}
         </div>
-      </section>
+      )}
+
+      <Groups groups={copy.groups} />
+
+      <details className="group rounded-2xl border border-border bg-surface2">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between px-4 py-3.5 text-sm font-semibold text-textSecondary sm:px-5 sm:py-4">Content idea scratchpad<ChevronDown size={16} className="transition-transform group-open:rotate-180" /></summary>
+        <div className="border-t border-border p-4 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input value={idea} onChange={(event) => setIdea(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addIdea()} placeholder="Capture an idea" className="min-w-0 flex-1 rounded-xl border border-border bg-black/25 px-4 py-3 text-foreground outline-none placeholder:text-muted" />
+            <button onClick={addIdea} className="flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-white"><Plus size={15} /> Add</button>
+          </div>
+          <div className="mt-3 flex flex-col gap-2">
+            {ideas.map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-black/20 px-4 py-3">
+                <span className="min-w-0 flex-[1_1_100%] break-words text-sm text-foreground min-[420px]:flex-1">{item.text}</span><span className="font-mono text-xs text-muted">{item.addedAt}</span>
+                <button onClick={() => setIdeas(ideas.filter((candidate) => candidate.id !== item.id))} className="ml-auto flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5" aria-label="Delete idea"><Trash2 size={14} className="text-muted" /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

@@ -134,13 +134,13 @@ export default function RepliesTab() {
   };
 
   return (
-    <div className="max-w-[900px] mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+    <div className="mx-auto max-w-[960px]">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <p className="text-base text-muted">
           {needsReply > 0 ? `${needsReply} waiting on you` : "Nothing waiting. All caught up."}
         </p>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1 bg-surface2 p-1 rounded-full border border-border">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+          <div className="scrollbar-none flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full border border-border bg-surface2 p-1 sm:flex-none">
             {FILTERS.map((f) => (
               <button
                 key={f}
@@ -158,14 +158,14 @@ export default function RepliesTab() {
           <button
             onClick={load}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface2 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
 
-      <div className="flex gap-1 bg-surface2 p-1 rounded-full border border-border self-start mb-5 w-fit">
+      <div className="scrollbar-none mb-5 flex max-w-full gap-1 self-start overflow-x-auto rounded-full border border-border bg-surface2 p-1">
         {SOURCES.map((s) => {
           const active = source === s;
           const dot = SOURCE_COLORS[s];
@@ -216,7 +216,7 @@ export default function RepliesTab() {
           const src = f.Source || "SplitMic";
           return (
             <div key={r.id} className="rounded-xl bg-surface2 border border-border overflow-hidden">
-              <button onClick={() => open(r)} className="w-full flex items-start gap-3 px-4 py-3.5 text-left">
+              <button onClick={() => open(r)} className="flex w-full items-start gap-2.5 px-3 py-3.5 text-left sm:gap-3 sm:px-4">
                 <span
                   className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
                   style={{ background: INTENT_COLORS[intent] || "#9B87F5" }}
@@ -251,7 +251,7 @@ export default function RepliesTab() {
                     {[f.Organization, f.Subject].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                <span className="text-xs text-muted font-mono flex-shrink-0 mt-1">{timeAgo(f["Received At"])}</span>
+                <span className="mt-1 hidden flex-shrink-0 font-mono text-xs text-muted min-[420px]:block">{timeAgo(f["Received At"])}</span>
                 {isOpen ? (
                   <ChevronUp size={16} color="var(--color-muted)" className="flex-shrink-0 mt-1" />
                 ) : (
@@ -292,7 +292,7 @@ export default function RepliesTab() {
                           className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none bg-black/30 text-foreground border border-border placeholder:text-muted"
                         />
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 min-[420px]:flex-row">
                         <button
                           onClick={() => close(r)}
                           className="px-4 py-2.5 rounded-lg text-sm bg-surface3 border border-border text-textSecondary hover:text-white transition-all"

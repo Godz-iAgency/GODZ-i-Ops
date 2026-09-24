@@ -1,4 +1,4 @@
-const MODEL = "gemini-3.5-flash-lite";
+import { GEMINI_MODEL as MODEL } from "./geminiModel";
 
 export const INTENTS = [
   "Interested",

@@ -4,13 +4,17 @@ import {
   getAllLinkedInProspects,
   getAllHubs,
   getAllReplies,
+  getAllBookwormContacts,
+  getAllBookwormTikTokCreators,
   getProgressForDate,
   getAllProgress,
 } from "./airtable";
 import { searchGmailMessages } from "./gmail";
 import { listEvents, chicagoOffset } from "./googleCalendar";
+import { getFollowUps, getWeeklyExecution } from "./execution";
+import { GEMINI_MODEL } from "./geminiModel";
 
-const MODEL = "gemini-3.5-flash-lite";
+const MODEL = GEMINI_MODEL;
 
 export type ChatMessage = { role: "user" | "model"; text: string };
 
@@ -34,6 +38,11 @@ You have read-only tools into his real data:
 - search_hubs: Austin music-industry hubs/venues resource list
 - get_replies: triaged replies to outreach emails, with intent classification and a suggested response already drafted
 - get_daily_progress: his daily marketing/build/deliver log
+- get_followups: follow-ups due from every Splitmic and Bookworm channel
+- get_tiktok_creators: qualified Bookworm TikTok creators and their raw metrics
+- get_bookworm_prospects: Bookworm email and partnership prospects
+- get_execution_objectives: the build and delivery objectives for a date
+- get_weekly_metrics: compact outreach and completion totals for the week
 - search_gmail: his real Gmail inbox, using normal Gmail search syntax (e.g. "from:x@y.com", "after:2026/09/01", "subject:invoice")
 - list_calendar_events: his real Google Calendar, for a given date range
 - get_tasks_for_date: everything on his plate for one specific day -- calendar events, outreach/LinkedIn follow-ups due that day, and the daily progress log
@@ -124,6 +133,61 @@ const TOOLS = [
         date: { type: "STRING", description: "A specific date as YYYY-MM-DD. Omit to get recent days instead." },
         recentDays: { type: "NUMBER", description: "When date is omitted, how many recent days to return. Default 7, max 30." },
       },
+    },
+  },
+  {
+    name: "get_followups",
+    description: "Get all Splitmic and Bookworm follow-ups due on a date, grouped by real outreach records.",
+    parameters: {
+      type: "OBJECT",
+      properties: { date: { type: "STRING", description: "Date as YYYY-MM-DD." } },
+      required: ["date"],
+    },
+  },
+  {
+    name: "get_tiktok_creators",
+    description: "Find Bookworm TikTok creators using follower, engagement, activity, list, and contact filters.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        minFollowers: { type: "NUMBER" },
+        maxFollowers: { type: "NUMBER" },
+        minEngagement: { type: "NUMBER", description: "Minimum average engagement percentage, e.g. 5 for 5%." },
+        maxDaysSincePost: { type: "NUMBER" },
+        list: { type: "STRING", description: "Primary or Reserve." },
+        contacted: { type: "BOOLEAN" },
+        limit: { type: "NUMBER", description: "Default 5, max 30." },
+      },
+    },
+  },
+  {
+    name: "get_bookworm_prospects",
+    description: "Search Bookworm email and partnership prospects.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        status: { type: "STRING" },
+        query: { type: "STRING" },
+        limit: { type: "NUMBER", description: "Default 15, max 30." },
+      },
+    },
+  },
+  {
+    name: "get_execution_objectives",
+    description: "Get the one build objective and one delivery objective for a date.",
+    parameters: {
+      type: "OBJECT",
+      properties: { date: { type: "STRING", description: "Date as YYYY-MM-DD." } },
+      required: ["date"],
+    },
+  },
+  {
+    name: "get_weekly_metrics",
+    description: "Get compact marketing, build, delivery, and outreach totals for the week containing a date.",
+    parameters: {
+      type: "OBJECT",
+      properties: { date: { type: "STRING", description: "Any date in the desired week, YYYY-MM-DD." } },
+      required: ["date"],
     },
   },
   {
@@ -291,6 +355,102 @@ async function toolGetProgress(args: { date?: string; recentDays?: number }) {
   return { days: sorted.slice(0, limit) };
 }
 
+async function toolGetFollowUps(args: { date: string }) {
+  const results = await getFollowUps(args.date);
+  return {
+    date: args.date,
+    total: results.length,
+    counts: results.reduce<Record<string, number>>((acc, item) => {
+      acc[item.channel] = (acc[item.channel] || 0) + 1;
+      return acc;
+    }, {}),
+    results,
+  };
+}
+
+async function toolGetTikTokCreators(args: {
+  minFollowers?: number;
+  maxFollowers?: number;
+  minEngagement?: number;
+  maxDaysSincePost?: number;
+  list?: string;
+  contacted?: boolean;
+  limit?: number;
+}) {
+  const all = await getAllBookwormTikTokCreators();
+  const filtered = all.filter((creator) => {
+    const fields = creator.fields;
+    if (fields.Excluded) return false;
+    if (args.list && (fields.List || "Primary") !== args.list) return false;
+    if (args.minFollowers != null && (fields.Followers ?? -1) < args.minFollowers) return false;
+    if (args.maxFollowers != null && (fields.Followers ?? Number.POSITIVE_INFINITY) > args.maxFollowers) return false;
+    if (args.minEngagement != null && (fields["Average Engagement Rate %"] ?? -1) < args.minEngagement) return false;
+    if (args.maxDaysSincePost != null && (fields["Days Since Last Post"] ?? Number.POSITIVE_INFINITY) > args.maxDaysSincePost) return false;
+    const contacted = !!fields["Date Contacted"] || !["", "New"].includes(fields.Status || "New");
+    if (args.contacted != null && contacted !== args.contacted) return false;
+    return true;
+  });
+  const limit = clampLimit(args.limit, 5, 30);
+  return {
+    totalMatches: filtered.length,
+    results: filtered
+      .sort((a, b) => (b.fields["Average Engagement Rate %"] || 0) - (a.fields["Average Engagement Rate %"] || 0))
+      .slice(0, limit)
+      .map((creator) => ({
+        name: creator.fields["Display Name"] || creator.fields.Name,
+        username: creator.fields["TikTok Handle"],
+        followers: creator.fields.Followers,
+        averageViews: creator.fields["Average Views"],
+        engagementRatePercent: creator.fields["Average Engagement Rate %"],
+        followerToAverageViewsRatio: creator.fields["Follower To Avg Views Ratio"],
+        daysSinceLastPost: creator.fields["Days Since Last Post"],
+        bio: creator.fields.Bio,
+        profileUrl: creator.fields["TikTok URL"],
+        list: creator.fields.List || "Primary",
+        status: creator.fields.Status || "New",
+      })),
+  };
+}
+
+async function toolGetBookwormProspects(args: { status?: string; query?: string; limit?: number }) {
+  const all = await getAllBookwormContacts();
+  const filtered = all.filter((contact) => {
+    if (args.status && contact.fields["Relationship Status"] !== args.status) return false;
+    return matchesQuery(args.query, [contact.fields.Name, contact.fields.Category, contact.fields.Opportunity, contact.fields.Notes]);
+  });
+  const limit = clampLimit(args.limit, 15, 30);
+  return {
+    totalMatches: filtered.length,
+    results: filtered.slice(0, limit).map((contact) => ({
+      name: contact.fields.Name,
+      category: contact.fields.Category,
+      email: contact.fields.Email,
+      status: contact.fields["Relationship Status"],
+      nextAction: contact.fields["Next Action"],
+      nextActionDate: contact.fields["Next Action Date"],
+      profileUrl: contact.fields["Profile URL"],
+      notes: contact.fields.Notes,
+    })),
+  };
+}
+
+async function toolGetExecutionObjectives(args: { date: string }) {
+  const progress = await getProgressForDate(args.date);
+  return {
+    date: args.date,
+    build: progress
+      ? { project: progress["Build Project"], objective: progress["Build Objective"], status: progress["Build Status"] || (progress["Build Completed"] ? "Complete" : "Not Started"), notes: progress["Build Notes"] }
+      : null,
+    delivery: progress
+      ? { objective: progress["Delivery Objective"], status: progress["Delivery Status"] || (progress["Deliver Completed"] ? "Complete" : "Not Started"), recipient: progress["Delivery Recipient"], link: progress["Delivery Link"], notes: progress["Delivery Notes"] }
+      : null,
+  };
+}
+
+async function toolGetWeeklyMetrics(args: { date: string }) {
+  return getWeeklyExecution(args.date);
+}
+
 async function toolSearchGmail(args: { query: string; maxResults?: number }) {
   const messages = await searchGmailMessages(args.query, args.maxResults);
   return {
@@ -329,31 +489,11 @@ async function toolGetTasksForDate(args: { date: string }) {
   const nextDay = addDaysStr(date, 1);
   const timeMax = `${nextDay}T00:00:00${chicagoOffset(nextDay)}`;
 
-  const [events, contacts, linkedin, progress] = await Promise.all([
+  const [events, followUpsDue, progress] = await Promise.all([
     listEvents(timeMin, timeMax),
-    getAllContacts(),
-    getAllLinkedInProspects(),
+    getFollowUps(date),
     getProgressForDate(date),
   ]);
-
-  const followUpsDue = [
-    ...contacts
-      .filter((c) => c.fields["Next Action Date"] === date)
-      .map((c) => ({
-        source: "email outreach",
-        name: c.fields["Name / Target"],
-        organization: c.fields.Organization,
-        action: c.fields["Next Action"],
-      })),
-    ...linkedin
-      .filter((p) => p.fields["Next Action Date"] === date)
-      .map((p) => ({
-        source: "linkedin",
-        name: p.fields.Name,
-        organization: p.fields.Organization,
-        action: p.fields["Next Action"],
-      })),
-  ];
 
   return {
     date,
@@ -375,6 +515,16 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
       return toolGetReplies(args);
     case "get_daily_progress":
       return toolGetProgress(args);
+    case "get_followups":
+      return toolGetFollowUps(args as { date: string });
+    case "get_tiktok_creators":
+      return toolGetTikTokCreators(args);
+    case "get_bookworm_prospects":
+      return toolGetBookwormProspects(args);
+    case "get_execution_objectives":
+      return toolGetExecutionObjectives(args as { date: string });
+    case "get_weekly_metrics":
+      return toolGetWeeklyMetrics(args as { date: string });
     case "search_gmail":
       return toolSearchGmail(args as { query: string; maxResults?: number });
     case "list_calendar_events":

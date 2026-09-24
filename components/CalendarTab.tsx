@@ -95,25 +95,25 @@ export default function CalendarTab() {
   };
 
   return (
-    <div className="max-w-[900px] mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-2xl font-bold text-foreground">{monthLabel}</h2>
+    <div className="mx-auto max-w-[960px]">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-foreground sm:text-2xl">{monthLabel}</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => changeMonth(-1)}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface2 text-textSecondary transition-all hover:border-accent hover:text-white sm:h-9 sm:w-9"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={() => setMonthStart(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; })}
-            className="px-4 py-2 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all"
+            className="min-h-11 rounded-full border border-border bg-surface2 px-4 py-2 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:min-h-9"
           >
             Today
           </button>
           <button
             onClick={() => changeMonth(1)}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface2 text-textSecondary transition-all hover:border-accent hover:text-white sm:h-9 sm:w-9"
           >
             <ChevronRight size={16} />
           </button>
@@ -126,15 +126,15 @@ export default function CalendarTab() {
         </div>
       )}
 
-      <div className="grid grid-cols-7 gap-2 mb-2">
+      <div className="-mx-2 mb-2 grid grid-cols-7 gap-0.5 sm:mx-0 sm:gap-2">
         {WEEKDAYS.map((w) => (
-          <div key={w} className="text-center text-xs uppercase tracking-[0.1em] text-muted font-mono py-1">
+          <div key={w} className="py-1 text-center font-mono text-[10px] uppercase tracking-[0.06em] text-muted sm:text-xs sm:tracking-[0.1em]">
             {w}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div className="-mx-2 grid grid-cols-7 gap-0.5 sm:mx-0 sm:gap-2">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`blank-${i}`} />;
           const dayEvents = eventsByDate[cell.date] || [];
@@ -145,7 +145,7 @@ export default function CalendarTab() {
               onClick={() => setSelectedDate(cell.date)}
               onMouseEnter={() => setHoveredDate(cell.date)}
               onMouseLeave={() => setHoveredDate((d) => (d === cell.date ? null : d))}
-              className="aspect-square sm:aspect-[4/3] rounded-xl p-2 flex flex-col items-start text-left transition-all"
+              className="flex aspect-square min-w-0 flex-col items-start rounded-lg p-1 text-left transition-all sm:aspect-[4/3] sm:rounded-xl sm:p-2"
               style={{
                 background: dayEvents.length ? "rgba(232,67,10,0.08)" : "rgba(255,255,255,0.02)",
                 border:
@@ -157,12 +157,17 @@ export default function CalendarTab() {
               }}
             >
               <span
-                className="text-sm font-bold flex-shrink-0"
+                className="flex-shrink-0 text-xs font-bold sm:text-sm"
                 style={{ color: isToday ? "#fff" : "var(--color-muted)" }}
               >
                 {cell.day}
               </span>
-              <div className="flex flex-col gap-0.5 mt-1 w-full overflow-hidden">
+              <div className="mt-auto flex w-full gap-0.5 overflow-hidden sm:hidden">
+                {dayEvents.slice(0, 3).map((event) => (
+                  <span key={event.id} className="h-1.5 w-1.5 rounded-full bg-accent" />
+                ))}
+              </div>
+              <div className="mt-1 hidden w-full flex-col gap-0.5 overflow-hidden sm:flex">
                 {dayEvents.slice(0, 2).map((e) => (
                   <span
                     key={e.id}
@@ -262,9 +267,9 @@ function DayModal({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl p-6 bg-surface2 border border-border max-h-[85vh] overflow-y-auto"
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-surface2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-h-[85vh] sm:rounded-2xl sm:p-6"
         style={{ boxShadow: "var(--shadow-elevated)" }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -39,7 +39,7 @@ function LoadingIndicator() {
 
   return (
     <div
-      className="self-start flex flex-col gap-2.5 rounded-2xl px-4 py-3 text-sm border border-border w-[260px]"
+      className="flex w-full max-w-[280px] flex-col gap-2.5 self-start rounded-2xl border border-border px-4 py-3 text-sm"
       style={{ background: "var(--color-surface-2)" }}
     >
       <div className="flex items-center gap-2 text-muted">
@@ -105,12 +105,12 @@ export default function AssistantTab() {
   }
 
   return (
-    <div className="flex flex-col max-w-[800px] mx-auto h-[calc(100vh-220px)] min-h-[500px]">
-      <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
+    <div className="mx-auto flex h-[calc(100dvh-11.5rem-env(safe-area-inset-bottom))] min-h-[420px] max-w-[900px] flex-col lg:h-[calc(100dvh-10.5rem)] lg:min-h-[500px]">
+      <div className="scrollbar-none flex flex-1 flex-col gap-3 overflow-y-auto pb-4 pr-0.5 sm:pr-2">
         {messages.map((m, i) => (
           <div
             key={i}
-            className="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
+            className="max-w-[92%] break-words rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap sm:max-w-[82%]"
             style={{
               alignSelf: m.role === "user" ? "flex-end" : "flex-start",
               background: m.role === "user" ? "var(--color-accent)" : "var(--color-surface-2)",
@@ -130,19 +130,19 @@ export default function AssistantTab() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex items-end gap-2 border-t border-border pt-4">
+      <div className="flex items-end gap-2 border-t border-border bg-bg pt-3 sm:pt-4">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Ask about your pipeline, replies, calendar, inbox..."
           rows={2}
-          className="flex-1 resize-none rounded-xl bg-surface2 border border-border px-4 py-3 text-sm placeholder:text-muted focus:outline-none focus:border-accent"
+          className="min-h-12 min-w-0 flex-1 resize-none rounded-xl border border-border bg-surface2 px-3.5 py-3 text-sm placeholder:text-muted focus:border-accent focus:outline-none sm:px-4"
         />
         <button
           onClick={send}
           disabled={loading || !input.trim()}
-          className="flex items-center justify-center rounded-xl w-11 h-11 shrink-0 disabled:opacity-40"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl disabled:opacity-40"
           style={{ background: "var(--color-accent)", color: "#0a0705" }}
         >
           <Send size={18} />

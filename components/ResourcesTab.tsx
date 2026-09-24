@@ -13,15 +13,15 @@ export default function ResourcesTab() {
   const [section, setSection] = useState<"links" | "hubs">("links");
 
   return (
-    <div className="flex flex-col gap-5 max-w-[900px] mx-auto">
-      <div className="flex gap-2 bg-surface2 p-1.5 rounded-full border border-border self-start">
+    <div className="mx-auto flex max-w-[960px] flex-col gap-5">
+      <div className="grid w-full grid-cols-2 gap-1 rounded-full border border-border bg-surface2 p-1 sm:w-auto sm:self-start sm:gap-2 sm:p-1.5">
         {SECTIONS.map((s) => {
           const active = section === s.id;
           return (
             <button
               key={s.id}
               onClick={() => setSection(s.id)}
-              className="px-5 py-2.5 rounded-full text-base font-semibold transition-all whitespace-nowrap"
+              className="min-h-11 rounded-full px-3 py-2.5 text-sm font-semibold transition-all sm:whitespace-nowrap sm:px-5 sm:text-base"
               style={{
                 background: active ? "var(--color-accent)" : "transparent",
                 color: active ? "#0a0705" : "var(--color-muted)",

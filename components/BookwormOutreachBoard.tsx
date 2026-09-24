@@ -6,8 +6,8 @@ import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 const PAGE_SIZE = 10;
 
-// Bookworm has no cold-sales funnel -- the only real question for each
-// contact is whether they've joined the free Whop community yet.
+// Existing community records stay in this table, while new routine email
+// outreach prioritizes business consultants and keeps partnerships separate.
 const STAGES = ["New", "Contacted", "Replied", "Joined Whop", "Not Interested"];
 
 const PRIORITIES = ["A (Top 10)", "A", "B", "C"];
@@ -24,6 +24,8 @@ type BookwormContactFields = {
   "Channel Handle"?: string;
   "Relationship Status"?: string;
   "Next Action"?: string;
+  "Next Action Date"?: string;
+  "Profile URL"?: string;
   "Last Contact"?: string;
   Notes?: string;
 };
@@ -192,10 +194,10 @@ export default function BookwormOutreachBoard() {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Bookworm email</h2>
           <p className="text-sm text-muted font-mono mt-1">
-            {totals.total} Austin targets · {totals.contacted} contacted · {totals.joined} joined Whop
+            {totals.total} prospects · {totals.contacted} contacted · primary ICP: business consultants
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 min-[420px]:flex min-[420px]:w-auto min-[420px]:items-center">
           <button
             onClick={() =>
               setCollapsed((prev) => {
@@ -205,14 +207,14 @@ export default function BookwormOutreachBoard() {
                 return next;
               })
             }
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:px-5"
           >
             {STAGES.every((s) => collapsed[s]) ? "Expand all" : "Collapse all"}
           </button>
           <button
             onClick={load}
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-5"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -225,7 +227,7 @@ export default function BookwormOutreachBoard() {
         </div>
       )}
 
-      <div className="flex gap-3.5 overflow-x-auto pb-3 snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="scrollbar-none -mx-3 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-3 pb-3 sm:mx-0 sm:snap-none sm:px-0">
         {STAGES.map((stage) => {
           const stageContacts = byStage[stage] || [];
           const query = (searchByStage[stage] || "").trim().toLowerCase();
@@ -475,9 +477,9 @@ export default function BookwormOutreachBoard() {
       </div>
 
       {detail && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70" onClick={() => setDetail(null)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" onClick={() => setDetail(null)}>
           <div
-            className="w-full max-w-lg rounded-2xl p-6 bg-surface2 border border-border max-h-[90vh] overflow-y-auto"
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-border bg-surface2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-6"
             style={{ boxShadow: "var(--shadow-elevated)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -485,7 +487,7 @@ export default function BookwormOutreachBoard() {
               <input
                 value={detail.fields.Name || ""}
                 onChange={(e) => setDetailField({ Name: e.target.value })}
-                className="text-2xl font-bold bg-transparent outline-none flex-1 min-w-0 text-foreground"
+                className="min-w-0 flex-1 bg-transparent text-xl font-bold text-foreground outline-none sm:text-2xl"
               />
               <button onClick={() => setDetail(null)} className="mt-1">
                 <X size={20} color="var(--color-muted)" />
@@ -555,6 +557,15 @@ export default function BookwormOutreachBoard() {
                 />
               </Field>
 
+              <Field label="Profile URL">
+                <input
+                  value={detail.fields["Profile URL"] || ""}
+                  onChange={(e) => setDetailField({ "Profile URL": e.target.value })}
+                  placeholder="LinkedIn or website profile"
+                  className={inputCls}
+                />
+              </Field>
+
               <div className="pt-1">
                 <p className="text-xs uppercase tracking-[0.2em] text-accent font-bold font-mono mb-2.5">Contact</p>
                 <div className="flex flex-col gap-3">
@@ -610,15 +621,23 @@ export default function BookwormOutreachBoard() {
                         className={inputCls}
                       />
                     </Field>
-                    <Field label="Last contact">
+                    <Field label="Follow-up date">
                       <input
                         type="date"
-                        value={detail.fields["Last Contact"] || ""}
-                        onChange={(e) => setDetailField({ "Last Contact": e.target.value })}
+                        value={detail.fields["Next Action Date"] || ""}
+                        onChange={(e) => setDetailField({ "Next Action Date": e.target.value })}
                         className={inputCls}
                       />
                     </Field>
                   </div>
+                  <Field label="Last contact">
+                    <input
+                      type="date"
+                      value={detail.fields["Last Contact"] || ""}
+                      onChange={(e) => setDetailField({ "Last Contact": e.target.value })}
+                      className={inputCls}
+                    />
+                  </Field>
                   <Field label="Notes">
                     <textarea
                       value={detail.fields.Notes || ""}

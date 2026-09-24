@@ -16,9 +16,9 @@ export default function ConfirmDeleteDialog({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 z-[60] bg-black/80" onClick={onCancel}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4" onClick={onCancel}>
       <div
-        className="w-full max-w-sm rounded-2xl p-6 bg-surface2 border border-border"
+        className="w-full max-w-sm rounded-t-2xl border border-border bg-surface2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-6"
         style={{ boxShadow: "var(--shadow-elevated)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -27,7 +27,7 @@ export default function ConfirmDeleteDialog({
           <span className="text-foreground font-semibold">{name || "Untitled"}</span> will be removed from Airtable.
           This can&rsquo;t be undone from here.
         </p>
-        <div className="flex gap-2.5 mt-6">
+        <div className="mt-6 flex flex-col gap-2.5 min-[380px]:flex-row">
           <button
             onClick={onCancel}
             disabled={busy}

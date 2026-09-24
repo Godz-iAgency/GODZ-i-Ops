@@ -168,18 +168,18 @@ export default function LinkedInBoard() {
   const remaining = filtered.length - shown.length;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">LinkedIn</h2>
+          <h2 className="text-xl font-bold text-foreground sm:text-2xl">LinkedIn</h2>
           <p className="text-sm text-muted font-mono mt-1">
             {prospects.length} tracked · {todayCount}/10 added today
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 min-[420px]:flex min-[420px]:w-auto min-[420px]:items-center">
           <button
             onClick={() => setAdding((a) => !a)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-bold text-white transition-all sm:px-5"
             style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
           >
             <Plus size={15} /> Add prospect
@@ -187,7 +187,7 @@ export default function LinkedInBoard() {
           <button
             onClick={load}
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-5"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -269,8 +269,8 @@ export default function LinkedInBoard() {
         </div>
       )}
 
-      <div className="flex gap-2.5 flex-wrap items-center">
-        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface2 border border-border flex-1 min-w-[200px]">
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-border bg-surface2 px-3.5 py-2.5">
           <Search size={15} color="var(--color-muted)" />
           <input
             value={query}
@@ -282,7 +282,7 @@ export default function LinkedInBoard() {
             className="flex-1 min-w-0 text-base bg-transparent outline-none text-foreground placeholder:text-muted"
           />
         </div>
-        <div className="flex gap-1.5 overflow-x-auto bg-surface2 p-1.5 rounded-full border border-border">
+        <div className="scrollbar-none flex w-full gap-1.5 overflow-x-auto rounded-full border border-border bg-surface2 p-1.5 sm:w-auto">
           {["All", ...STATUSES].map((s) => (
             <button
               key={s}
@@ -347,11 +347,11 @@ export default function LinkedInBoard() {
 
       {detail && (
         <div
-          className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5"
           onClick={() => setDetail(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl p-6 bg-surface2 border border-border max-h-[90vh] overflow-y-auto"
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-border bg-surface2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-6"
             style={{ boxShadow: "var(--shadow-elevated)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -359,7 +359,7 @@ export default function LinkedInBoard() {
               <input
                 value={detail.fields.Name || ""}
                 onChange={(e) => setDetailField({ Name: e.target.value })}
-                className="text-2xl font-bold bg-transparent outline-none flex-1 min-w-0 text-foreground"
+                className="min-w-0 flex-1 bg-transparent text-xl font-bold text-foreground outline-none sm:text-2xl"
               />
               <button onClick={() => setDetail(null)} className="mt-1">
                 <X size={20} color="var(--color-muted)" />

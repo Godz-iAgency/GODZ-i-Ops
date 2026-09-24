@@ -23,6 +23,7 @@ export const LINKEDIN_TABLE_ID = "tbljLKppcc89M5Iz1";
 export const HUBS_TABLE_ID = "tblolqShJlWbCHoX4";
 export const BOOKWORM_OUTREACH_TABLE_ID = "tbl7Otn4SbdJpF97E";
 export const BOOKWORM_TIKTOK_TABLE_ID = "tblKOYrjzZS8xdl60";
+export const EXECUTION_SETTINGS_TABLE = "Execution Settings";
 
 export function getOutreachTable() {
   return new Airtable().base(BASE as string)(OUTREACH_TABLE_ID);
@@ -46,6 +47,10 @@ export function getHubsTable() {
 
 export function getProgressTable() {
   return new Airtable().base(BASE as string)(PROGRESS_TABLE_ID);
+}
+
+export function getExecutionSettingsTable() {
+  return new Airtable().base(BASE as string)(EXECUTION_SETTINGS_TABLE);
 }
 
 function getReplyLogTable() {
@@ -279,6 +284,9 @@ export type LinkedInFields = {
   Name?: string;
   Organization?: string;
   Role?: string;
+  Category?: string;
+  Location?: string;
+  Email?: string;
   "LinkedIn URL"?: string;
   "Date Contacted"?: string;
   Status?: string;
@@ -355,9 +363,18 @@ export type ProgressFields = {
   Weekday?: string;
   "Emails Sent"?: number;
   "LinkedIn Sent"?: number;
+  "Bookworm Emails Sent"?: number;
+  "Bookworm TikTok Sent"?: number;
+  "Build Project"?: string;
   "Build Objective"?: string;
+  "Build Status"?: string;
   "Build Completed"?: boolean;
   "Build Notes"?: string;
+  "Delivery Objective"?: string;
+  "Delivery Status"?: string;
+  "Delivery Recipient"?: string;
+  "Delivery Link"?: string;
+  "Delivery Notes"?: string;
   "Deliver Completed"?: boolean;
   "Feedback Received"?: string;
   "Needs Follow-up"?: string;
@@ -483,6 +500,8 @@ export type BookwormContactFields = {
   "Channel Handle"?: string;
   "Relationship Status"?: string;
   "Next Action"?: string;
+  "Next Action Date"?: string;
+  "Profile URL"?: string;
   "Last Contact"?: string;
   Notes?: string;
 };
@@ -514,9 +533,24 @@ export const BOOKWORM_TIKTOK_STATUSES = ["New", "DM Sent", "Replied", "In Talks"
 
 export type BookwormTikTokFields = {
   Name?: string;
+  "Display Name"?: string;
+  "TikTok User ID"?: string;
   "TikTok Handle"?: string;
   "TikTok URL"?: string;
   Followers?: number;
+  Following?: number;
+  "Total Likes"?: number;
+  "Average Views"?: number;
+  "Average Engagement Rate %"?: number;
+  "Follower To Avg Views Ratio"?: number;
+  "Days Since Last Post"?: number;
+  "Last Post Date"?: string;
+  Bio?: string;
+  "Discovery Source"?: string;
+  "Discovery Category"?: string;
+  List?: string;
+  Excluded?: boolean;
+  "Enriched At"?: string;
   Niche?: string;
   Email?: string;
   "Date Contacted"?: string;
@@ -534,4 +568,46 @@ export async function getAllBookwormTikTokCreators(): Promise<BookwormTikTokCrea
     .select({ pageSize: 100, sort: [{ field: "Date Contacted", direction: "desc" }] })
     .all();
   return records.map((r) => ({ id: r.id, fields: r.fields as BookwormTikTokFields }));
+}
+
+// ------------------------------------------------------ execution settings
+
+export type ExecutionSettings = {
+  "SplitMic LinkedIn Target": number;
+  "SplitMic Email Target": number;
+  "Bookworm TikTok Target": number;
+  "Bookworm Email Target": number;
+};
+
+export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
+  "SplitMic LinkedIn Target": 10,
+  "SplitMic Email Target": 5,
+  "Bookworm TikTok Target": 10,
+  "Bookworm Email Target": 5,
+};
+
+export async function getExecutionSettings(): Promise<{ id: string | null; settings: ExecutionSettings }> {
+  const records = await getExecutionSettingsTable().select({ maxRecords: 1 }).all();
+  if (!records.length) return { id: null, settings: DEFAULT_EXECUTION_SETTINGS };
+  const fields = records[0].fields as Partial<ExecutionSettings>;
+  return {
+    id: records[0].id,
+    settings: {
+      "SplitMic LinkedIn Target": Number(fields["SplitMic LinkedIn Target"] ?? 10),
+      "SplitMic Email Target": Number(fields["SplitMic Email Target"] ?? 5),
+      "Bookworm TikTok Target": Number(fields["Bookworm TikTok Target"] ?? 10),
+      "Bookworm Email Target": Number(fields["Bookworm Email Target"] ?? 5),
+    },
+  };
+}
+
+export async function saveExecutionSettings(settings: ExecutionSettings): Promise<ExecutionSettings> {
+  const current = await getExecutionSettings();
+  const fields = { Name: "Default", ...settings };
+  if (current.id) {
+    await getExecutionSettingsTable().update([{ id: current.id, fields: fields as never }], { typecast: true });
+  } else {
+    await getExecutionSettingsTable().create([{ fields: fields as never }], { typecast: true });
+  }
+  return settings;
 }

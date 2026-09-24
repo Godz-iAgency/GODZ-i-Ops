@@ -5,3 +5,8 @@ node_modules
 npm-debug.log*
 .DS_Store
 *.tsbuildinfo
+.local-backups/
+data/bookworm-tiktok/
+.cache/bookworm-tiktok/
+__pycache__/
+*.pyc

@@ -175,9 +175,9 @@ export default function HubsBoard() {
   const uncontacted = hubs.filter((h) => (h.fields.Status || "Not Contacted") === "Not Contacted").length;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Austin Music Hubs</h2>
+        <h2 className="text-xl font-bold text-foreground sm:text-2xl">Austin Music Hubs</h2>
         <p className="text-base text-muted mt-1">
           High-leverage Austin music organizations to contact when I have spare time.
         </p>
@@ -186,10 +186,10 @@ export default function HubsBoard() {
         </p>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="grid grid-cols-2 gap-2 min-[420px]:flex min-[420px]:flex-wrap min-[420px]:items-center">
         <button
           onClick={findOneToCall}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl text-base font-bold text-white transition-all hover:-translate-y-0.5"
+          className="flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 sm:px-5 sm:text-base"
           style={{
             background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))",
             boxShadow: "var(--shadow-cta)",
@@ -200,7 +200,7 @@ export default function HubsBoard() {
         <button
           onClick={load}
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+          className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-surface2 px-3 py-3 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-5"
         >
           <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
         </button>
@@ -270,7 +270,7 @@ export default function HubsBoard() {
         />
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto bg-surface2 p-1.5 rounded-full border border-border">
+      <div className="scrollbar-none flex gap-1.5 overflow-x-auto rounded-full border border-border bg-surface2 p-1.5">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -375,11 +375,11 @@ export default function HubsBoard() {
 
       {detail && (
         <div
-          className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5"
           onClick={() => setDetail(null)}
         >
           <div
-            className="w-full max-w-md rounded-2xl p-6 bg-surface2 border border-border max-h-[90vh] overflow-y-auto"
+            className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-surface2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-6"
             style={{ boxShadow: "var(--shadow-elevated)" }}
             onClick={(e) => e.stopPropagation()}
           >

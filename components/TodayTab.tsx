@@ -3,7 +3,7 @@
 import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
 import { dayNumber } from "@/lib/sprint";
 import { TIKTOK_NICHES, TIKTOK_DAILY_GOAL } from "@/lib/bookwormTikTok";
-import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send } from "lucide-react";
+import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send, Settings2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Progress = {
@@ -12,9 +12,17 @@ type Progress = {
   Weekday?: string;
   "Emails Sent"?: number;
   "LinkedIn Sent"?: number;
+  "Bookworm Emails Sent"?: number;
+  "Build Project"?: string;
   "Build Objective"?: string;
+  "Build Status"?: string;
   "Build Completed"?: boolean;
   "Build Notes"?: string;
+  "Delivery Objective"?: string;
+  "Delivery Status"?: string;
+  "Delivery Recipient"?: string;
+  "Delivery Link"?: string;
+  "Delivery Notes"?: string;
   "Deliver Completed"?: boolean;
   "Feedback Received"?: string;
   "Needs Follow-up"?: string;
@@ -77,9 +85,17 @@ const PLATFORMS = ["LinkedIn", "Instagram", "TikTok", "YouTube", "X", "Facebook"
 const emptyProgress: Progress = {
   "Emails Sent": 0,
   "LinkedIn Sent": 0,
+  "Bookworm Emails Sent": 0,
+  "Build Project": "",
   "Build Objective": "",
+  "Build Status": "Not Started",
   "Build Completed": false,
   "Build Notes": "",
+  "Delivery Objective": "",
+  "Delivery Status": "Not Started",
+  "Delivery Recipient": "",
+  "Delivery Link": "",
+  "Delivery Notes": "",
   "Deliver Completed": false,
   "Feedback Received": "",
   "Needs Follow-up": "",
@@ -408,7 +424,7 @@ function NeedsEmailPanel({ count, onFilled }: { count: number; onFilled: () => v
 
 // opened, written by hand, then marked off here. Only contacts with a real
 // email address qualify; research targets stay out of this list by design.
-function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) {
+function TodaysTen({ onSentChange, limit }: { onSentChange: (delta: number) => void; limit: number }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [researchNeeded, setResearchNeeded] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -420,7 +436,7 @@ function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) 
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/contacts/today?limit=10");
+      const res = await fetch(`/api/contacts/today?limit=${Math.max(1, limit)}`);
       if (!res.ok) throw new Error("Could not load today's contacts");
       const data = await res.json();
       setContacts(data.contacts);
@@ -430,7 +446,7 @@ function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [limit]);
 
   useEffect(() => {
     load();
@@ -463,7 +479,7 @@ function TodaysTen({ onSentChange }: { onSentChange: (delta: number) => void }) 
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">
-          Today&apos;s 10 · next up in the SplitMic 500
+          Next {limit} · SplitMic email queue
         </h4>
         <button
           onClick={load}
@@ -1329,7 +1345,7 @@ export default function TodayTab() {
             />
             <p className="text-sm text-muted px-1">Goal: 10 SplitMic 500 contacts</p>
             <div className="mt-1">
-              <TodaysTen onSentChange={(d) => set({ "Emails Sent": (progress["Emails Sent"] ?? 0) + d })} />
+              <TodaysTen limit={10} onSentChange={(d) => set({ "Emails Sent": (progress["Emails Sent"] ?? 0) + d })} />
             </div>
 
             <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">LinkedIn</p>

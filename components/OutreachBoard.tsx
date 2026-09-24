@@ -251,7 +251,7 @@ export default function OutreachBoard() {
             {totals.needsResearch} need an address
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 min-[420px]:flex min-[420px]:w-auto min-[420px]:items-center">
           <button
             onClick={() =>
               setCollapsed((prev) => {
@@ -261,14 +261,14 @@ export default function OutreachBoard() {
                 return next;
               })
             }
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:px-5"
           >
             {STAGES.every((s) => collapsed[s]) ? "Expand all" : "Collapse all"}
           </button>
           <button
             onClick={load}
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-5"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -281,7 +281,7 @@ export default function OutreachBoard() {
         </div>
       )}
 
-      <div className="flex gap-3.5 overflow-x-auto pb-3 snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="scrollbar-none -mx-3 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-3 pb-3 sm:mx-0 sm:snap-none sm:px-0">
         {STAGES.map((stage) => {
           const stageContacts = byStage[stage] || [];
           const query = (searchByStage[stage] || "").trim().toLowerCase();
@@ -561,11 +561,11 @@ export default function OutreachBoard() {
 
       {detail && (
         <div
-          className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 z-50 bg-black/70"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5"
           onClick={() => setDetail(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl p-6 bg-surface2 border border-border max-h-[90vh] overflow-y-auto"
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-border bg-surface2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-6"
             style={{ boxShadow: "var(--shadow-elevated)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -573,7 +573,7 @@ export default function OutreachBoard() {
               <input
                 value={detail.fields["Name / Target"] || ""}
                 onChange={(e) => setDetailField({ "Name / Target": e.target.value })}
-                className="text-2xl font-bold bg-transparent outline-none flex-1 min-w-0 text-foreground"
+                className="min-w-0 flex-1 bg-transparent text-xl font-bold text-foreground outline-none sm:text-2xl"
               />
               <button onClick={() => setDetail(null)} className="mt-1">
                 <X size={20} color="var(--color-muted)" />

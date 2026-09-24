@@ -25,7 +25,7 @@ export default function LinksTab() {
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-4 px-5 py-5 rounded-xl bg-surface2 border border-border transition-all hover:border-accent hover:-translate-y-0.5"
+            className="flex min-h-20 items-center gap-3 rounded-xl border border-border bg-surface2 px-4 py-4 transition-all hover:-translate-y-0.5 hover:border-accent sm:gap-4 sm:px-5 sm:py-5"
           >
             <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface3">
               <Icon size={20} color={link.color} />

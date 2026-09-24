@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import OutreachBoard from "./OutreachBoard";
 import LinkedInBoard from "./LinkedInBoard";
 import BookwormOutreachBoard from "./BookwormOutreachBoard";
-import BookwormTikTokBoard from "./BookwormTikTokBoard";
+import QualifiedTikTokBoard from "./QualifiedTikTokBoard";
 
 type Business = "SplitMic" | "Bookworm";
 type Pipeline = "email" | "social";
@@ -33,15 +33,27 @@ export default function OutreachTab() {
   });
   const pipeline = pipelineByBusiness[business];
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedBusiness = params.get("business");
+    const requestedPipeline = params.get("pipeline");
+    if (requestedBusiness === "SplitMic" || requestedBusiness === "Bookworm") {
+      setBusiness(requestedBusiness);
+      if (requestedPipeline === "email" || requestedPipeline === "social") {
+        setPipelineByBusiness((current) => ({ ...current, [requestedBusiness]: requestedPipeline }));
+      }
+    }
+  }, []);
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-1 bg-surface2 p-1 rounded-full border border-border self-start">
+    <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="grid w-full grid-cols-2 gap-1 rounded-full border border-border bg-surface2 p-1 sm:w-auto">
           {(["SplitMic", "Bookworm"] as const).map((b) => (
             <button
               key={b}
               onClick={() => setBusiness(b)}
-              className="px-5 py-2.5 rounded-full text-base font-semibold transition-all"
+              className="rounded-full px-4 py-2.5 text-sm font-semibold transition-all sm:px-5 sm:text-base"
               style={{
                 background: business === b ? "var(--color-accent)" : "transparent",
                 color: business === b ? "#0a0705" : "var(--color-muted)",
@@ -53,14 +65,14 @@ export default function OutreachTab() {
           ))}
         </div>
 
-        <div className="flex gap-2 bg-surface2 p-1.5 rounded-full border border-border self-start">
+        <div className="grid w-full grid-cols-2 gap-1 rounded-full border border-border bg-surface2 p-1 sm:w-auto sm:gap-2 sm:p-1.5">
           {PIPELINES[business].map((p) => {
             const active = pipeline === p.id;
             return (
               <button
                 key={p.id}
                 onClick={() => setPipelineByBusiness((prev) => ({ ...prev, [business]: p.id }))}
-                className="px-6 py-2.5 rounded-full text-base font-semibold transition-all"
+                className="rounded-full px-4 py-2.5 text-sm font-semibold transition-all sm:px-6 sm:text-base"
                 style={{
                   background: active ? "var(--color-accent)" : "transparent",
                   color: active ? "#0a0705" : "var(--color-muted)",
@@ -83,7 +95,7 @@ export default function OutreachTab() {
       ) : pipeline === "email" ? (
         <BookwormOutreachBoard />
       ) : (
-        <BookwormTikTokBoard />
+        <QualifiedTikTokBoard />
       )}
     </div>
   );
