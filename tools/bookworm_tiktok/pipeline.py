@@ -98,6 +98,41 @@ def rank(creators: list[Creator], strategy: str) -> list[Creator]:
     raise ValueError(f"Unknown ranking strategy: {strategy}")
 
 
+def prioritize_for_enrichment(
+    creators: Iterable[Creator],
+    config: dict[str, Any],
+    now: datetime,
+    video_limit: int,
+) -> list[Creator]:
+    """Put likely Primary creators first before the paid profile-enrichment step."""
+    filters = config["filters"]
+    minimum_followers = int(filters["minimum_followers"])
+    maximum_followers = int(filters["maximum_followers"])
+    minimum_engagement = float(filters["minimum_engagement_rate_percent"])
+    maximum_days = int(filters["maximum_days_since_last_post"])
+    candidates = list(creators)
+    for creator in candidates:
+        creator.calculate_metrics(now, video_limit)
+
+    def priority(creator: Creator) -> tuple[bool, bool, bool, bool, float, int]:
+        followers = creator.follower_count
+        engagement = creator.average_engagement_rate_percent
+        days = creator.days_since_last_post
+        in_primary_range = followers is not None and minimum_followers <= followers <= maximum_followers
+        engaged = engagement is not None and engagement >= minimum_engagement
+        active = days is not None and days <= maximum_days
+        return (
+            active and engaged and in_primary_range,
+            active and engaged,
+            active,
+            in_primary_range,
+            engagement if engagement is not None else -1,
+            followers if followers is not None else -1,
+        )
+
+    return sorted(candidates, key=priority, reverse=True)
+
+
 def _csv_row(creator: Creator) -> dict[str, Any]:
     return {
         "Username": creator.username,
@@ -192,15 +227,16 @@ class Pipeline:
             merge_creator_maps(creators, parsed)
 
         stats.unique_creators_discovered = len(creators)
-        usernames = [creator.username for creator in creators.values() if creator.username]
-        if self.max_creators:
+        video_limit = int(self.config.get("recent_videos_per_profile", 10))
+        prioritized = prioritize_for_enrichment(creators.values(), self.config, datetime.now(timezone.utc), video_limit)
+        usernames = [creator.username for creator in prioritized if creator.username]
+        if self.max_creators is not None:
             usernames = usernames[: self.max_creators]
             allowed = {username.lower() for username in usernames}
             creators = {key: creator for key, creator in creators.items() if creator.username.lower() in allowed}
 
         enriched_keys: set[str] = set()
         batch_size = int(self.config.get("profile_batch_size", 50))
-        video_limit = int(self.config.get("recent_videos_per_profile", 15))
         for index, batch in enumerate(_batched(usernames, batch_size), start=1):
             payload = {
                 "profiles": batch,
@@ -225,7 +261,7 @@ class Pipeline:
         now = datetime.now(timezone.utc)
         for creator in creators.values():
             creator.calculate_metrics(now, video_limit)
-        stats.profiles_enriched = sum(1 for creator in creators.values() if creator.videos)
+        stats.profiles_enriched = len(enriched_keys)
 
         primary, reserve, discarded = classify(creators.values(), self.config)
         strategy = self.config.get("ranking", {}).get("strategy", "engagement_rate_desc")

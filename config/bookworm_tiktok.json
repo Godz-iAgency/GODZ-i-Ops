@@ -16,9 +16,15 @@
     "best self help books",
     "productivity book recommendations"
   ],
-  "results_per_source": 100,
-  "recent_videos_per_profile": 15,
+  "results_per_source": 20,
+  "recent_videos_per_profile": 10,
   "profile_batch_size": 50,
+  "budget": {
+    "maximum_usd": 5.0,
+    "safety_reserve_usd": 0.1,
+    "result_price_per_1000_usd": 3.7,
+    "actor_start_price_usd": 0.001
+  },
   "filters": {
     "minimum_followers": 10000,
     "maximum_followers": 300000,
@@ -34,4 +40,3 @@
     "max_retries": 4
   }
 }
-

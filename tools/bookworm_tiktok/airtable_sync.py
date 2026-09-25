@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -21,8 +23,20 @@ class AirtableSync:
     def _request(self, method: str, url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         body = json.dumps(payload).encode("utf-8") if payload is not None else None
         request = urllib.request.Request(url, data=body, method=method, headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return json.loads(response.read().decode("utf-8"))
+        for attempt in range(5):
+            try:
+                with urllib.request.urlopen(request, timeout=60) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as error:
+                if error.code != 429 and error.code < 500:
+                    raise
+                if attempt == 4:
+                    raise
+                retry_after = error.headers.get("Retry-After")
+                delay = float(retry_after) if retry_after else min(8.0, 0.5 * (2**attempt))
+                self.log.warning("Airtable request throttled or unavailable; retrying in %.1fs", delay)
+                time.sleep(delay)
+        raise RuntimeError("Airtable request failed after retries")
 
     def existing(self) -> dict[str, str]:
         result: dict[str, str] = {}
@@ -81,6 +95,7 @@ class AirtableSync:
         for records, method in ((creates, "POST"), (updates, "PATCH")):
             for start in range(0, len(records), 10):
                 self._request(method, f"{self.base_url}?typecast=true", {"records": records[start : start + 10]})
+                time.sleep(0.22)
         summary = {"created": len(creates), "updated": len(updates)}
         self.log.info("Airtable sync complete: %s", summary)
         return summary

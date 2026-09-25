@@ -3,9 +3,10 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
+from tools.bookworm_tiktok.cli import budget_plan
 from tools.bookworm_tiktok.models import Creator, Video
 from tools.bookworm_tiktok.parser import merge_creator_maps, parse_items
-from tools.bookworm_tiktok.pipeline import classify, rank
+from tools.bookworm_tiktok.pipeline import classify, prioritize_for_enrichment, rank
 
 
 class ParserTests(unittest.TestCase):
@@ -34,12 +35,15 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(errors, 0)
         self.assertEqual(len(creators), 1)
         self.assertEqual(len(creators["u1"].videos), 2)
+        self.assertEqual(creators["u1"].discovery_category, "hashtag:booktok")
 
     def test_username_merges_when_discovery_lacks_user_id(self) -> None:
         discovery, _ = parse_items([{"authorMeta": {"name": "reader"}}], "search:books")
-        enriched, _ = parse_items([{"id": "v1", "playCount": 100, "authorMeta": {"id": "u1", "name": "reader"}}])
+        enriched, _ = parse_items([{"id": "v1", "playCount": 100, "authorMeta": {"id": "u1", "name": "reader"}}], "profile-batch:1")
         merge_creator_maps(discovery, enriched)
         self.assertEqual(len(discovery), 1)
+        creator = next(iter(discovery.values()))
+        self.assertEqual(creator.discovery_sources, ["search:books"])
 
 
 class MetricTests(unittest.TestCase):
@@ -78,7 +82,43 @@ class MetricTests(unittest.TestCase):
         high = Creator(key="2", username="high", average_engagement_rate_percent=8)
         self.assertEqual([item.username for item in rank([low, high], "engagement_rate_desc")], ["high", "low"])
 
+    def test_paid_enrichment_prioritizes_likely_primary_creator(self) -> None:
+        now = datetime(2026, 9, 24, tzinfo=timezone.utc)
+        stale = Creator(
+            key="stale",
+            username="stale",
+            follower_count=20_000,
+            videos=[Video("s", 1000, 200, 0, 0, "2026-08-01T12:00:00Z")],
+        )
+        likely_primary = Creator(
+            key="primary",
+            username="primary",
+            follower_count=20_000,
+            videos=[Video("p", 1000, 50, 0, 0, "2026-09-23T12:00:00Z")],
+        )
+        config = {"filters": {"minimum_followers": 10_000, "maximum_followers": 300_000, "minimum_engagement_rate_percent": 3, "maximum_days_since_last_post": 14}}
+        ordered = prioritize_for_enrichment([stale, likely_primary], config, now, 10)
+        self.assertEqual(ordered[0].username, "primary")
+
+
+class BudgetTests(unittest.TestCase):
+    def test_five_dollar_plan_keeps_a_safety_reserve(self) -> None:
+        config = {
+            "hashtags": [str(index) for index in range(8)],
+            "search_queries": [str(index) for index in range(4)],
+            "recent_videos_per_profile": 10,
+            "profile_batch_size": 50,
+            "budget": {
+                "maximum_usd": 5,
+                "safety_reserve_usd": 0.1,
+                "result_price_per_1000_usd": 3.7,
+                "actor_start_price_usd": 0.001,
+            },
+        }
+        plan = budget_plan(config, 20)
+        self.assertEqual(plan["max_creators"], 108)
+        self.assertLessEqual(plan["estimated_cost_usd"], 4.9)
+
 
 if __name__ == "__main__":
     unittest.main()
-

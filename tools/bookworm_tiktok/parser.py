@@ -74,6 +74,8 @@ def parse_item(item: dict[str, Any], fallback_source: str | None = None) -> Crea
         return None
     username = str(username or user_id).lstrip("@")
     key = str(user_id or username).lower()
+    is_profile_enrichment = bool(fallback_source and fallback_source.startswith("profile-batch:"))
+    discovery_source = _source(item, fallback_source)
     creator = Creator(
         key=key,
         username=username,
@@ -84,7 +86,8 @@ def parse_item(item: dict[str, Any], fallback_source: str | None = None) -> Crea
         total_likes=_integer(_first(author.get("heart"), author.get("hearts"), author.get("likeCount"), item.get("likeCount"))),
         bio=_first(author.get("signature"), author.get("bio"), item.get("bio")),
         profile_url=_first(author.get("profileUrl"), author.get("url"), item.get("profileUrl"), item.get("url") if item.get("type") == "profile" else None),
-        discovery_sources=[_source(item, fallback_source)],
+        discovery_sources=[] if is_profile_enrichment else [discovery_source],
+        discovery_category=None if is_profile_enrichment else discovery_source,
     )
     video_id = _first(item.get("id"), item.get("videoId"))
     views = _first(item.get("playCount"), item.get("viewCount"), item.get("views"), _nested(item, "stats", "playCount"))
