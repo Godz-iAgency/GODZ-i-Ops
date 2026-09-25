@@ -183,14 +183,37 @@ export default function QualifiedTikTokBoard() {
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search creator, handle, bio, or source" className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted" />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 lg:grid-cols-4">
-          <select value={listFilter} onChange={(event) => setListFilter(event.target.value)} className={input}><option>Primary</option><option>Reserve</option><option>All</option></select>
-          <select value={contactFilter} onChange={(event) => setContactFilter(event.target.value as ContactFilter)} className={input}><option>Not Contacted</option><option>Contacted</option><option>All</option></select>
-          <select value={category} onChange={(event) => setCategory(event.target.value)} className={input}><option>All</option>{categories.map((value) => <option key={value}>{value}</option>)}</select>
-          <label className="text-xs text-muted">Active within<input type="number" value={maxDays} onChange={(event) => setMaxDays(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
+          <label className="text-xs text-muted">
+            Creator list
+            <select value={listFilter} onChange={(event) => setListFilter(event.target.value)} className={`${input} mt-1`}>
+              <option value="Primary">Primary — qualified</option>
+              <option value="Reserve">Reserve — backup</option>
+              <option value="All">All lists</option>
+            </select>
+          </label>
+          <label className="text-xs text-muted">
+            Outreach status
+            <select value={contactFilter} onChange={(event) => setContactFilter(event.target.value as ContactFilter)} className={`${input} mt-1`}>
+              <option value="Not Contacted">Not contacted</option>
+              <option value="Contacted">Contacted</option>
+              <option value="All">All statuses</option>
+            </select>
+          </label>
+          <label className="text-xs text-muted">
+            Discovery category
+            <select value={category} onChange={(event) => setCategory(event.target.value)} className={`${input} mt-1`}>
+              <option value="All">All categories</option>
+              {categories.map((value) => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-muted">Active within (days)<input type="number" value={maxDays} onChange={(event) => setMaxDays(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
           <label className="text-xs text-muted">Min followers<input type="number" value={minFollowers} onChange={(event) => setMinFollowers(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
           <label className="text-xs text-muted">Max followers<input type="number" value={maxFollowers} onChange={(event) => setMaxFollowers(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
           <label className="text-xs text-muted">Min engagement %<input type="number" step="0.1" value={minEngagement} onChange={(event) => setMinEngagement(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
         </div>
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          Primary creators meet the qualification targets. Reserve creators are still active and engaged but fall outside the primary follower range.
+        </p>
       </div>
 
       {!loading && filtered.length === 0 && (
