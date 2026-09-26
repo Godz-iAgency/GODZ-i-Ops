@@ -1121,6 +1121,7 @@ export default function TodayTab() {
   const dow = austinDayOfWeek();
   const isSunday = dow === 0;
   const isSaturday = dow === 6;
+  const isWeekend = isSunday || isSaturday;
   const weekday = new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
 
   useEffect(() => {
@@ -1161,11 +1162,9 @@ export default function TodayTab() {
   };
 
   const header = formatHeaderDate(today);
-  const schedule = isSunday
-    ? "Rest day · nothing tracked"
-    : isSaturday
-      ? "8:00 AM - 4:00 PM · Deep work"
-      : "12:00 PM - 4:00 PM · Monday to Friday";
+  const schedule = isWeekend
+    ? "8:00 AM - 4:00 PM · Deep work"
+    : "12:00 PM - 4:00 PM · Monday to Friday";
 
   return (
     <div className="flex flex-col gap-9 max-w-[900px] mx-auto">
@@ -1207,16 +1206,9 @@ export default function TodayTab() {
           )}
           {loading && <p className="text-base italic text-muted">Loading today…</p>}
 
-          {!loading && isSunday && (
-            <div className="px-6 py-10 rounded-2xl bg-surface2 border border-border text-center">
-              <p className="text-2xl font-bold text-foreground mb-2">Rest.</p>
-              <p className="text-base text-muted">No outreach, community work, or content today.</p>
-            </div>
-          )}
-
-          {!loading && isSaturday && (
+          {!loading && isWeekend && (
             <>
-              <Block tag="DEEP WORK" time="8:00 AM - 4:00 PM" title="Saturday Deep Work">
+              <Block tag="DEEP WORK" time="8:00 AM - 4:00 PM" title={`${weekday} Deep Work`}>
                 <CheckRow
                   label="Deep work session completed"
                   checked={!!progress["Deep Work Completed"]}
@@ -1234,7 +1226,7 @@ export default function TodayTab() {
             </>
           )}
 
-          {!loading && !isSunday && !isSaturday && (
+          {!loading && !isWeekend && (
             <>
               <Block tag="OUTREACH" time="Anytime today" title="Email and TikTok Outreach">
                 <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">
@@ -1334,16 +1326,9 @@ export default function TodayTab() {
       )}
       {loading && <p className="text-base italic text-muted">Loading today…</p>}
 
-      {!loading && isSunday && (
-        <div className="px-6 py-10 rounded-2xl bg-surface2 border border-border text-center">
-          <p className="text-2xl font-bold text-foreground mb-2">Rest.</p>
-          <p className="text-base text-muted">No outreach, building, or content today.</p>
-        </div>
-      )}
-
-      {!loading && isSaturday && (
+      {!loading && isWeekend && (
         <>
-          <Block tag="DEEP WORK" time="8:00 AM - 4:00 PM" title="Saturday Deep Work">
+          <Block tag="DEEP WORK" time="8:00 AM - 4:00 PM" title={`${weekday} Deep Work`}>
             <CheckRow
               label="Deep work session completed"
               checked={!!progress["Deep Work Completed"]}
@@ -1361,7 +1346,7 @@ export default function TodayTab() {
         </>
       )}
 
-      {!loading && !isSunday && !isSaturday && (
+      {!loading && !isWeekend && (
         <>
           <Block tag="MARKETING" time="12:00 PM - 2:00 PM" title="Outreach and Content">
             <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">Email</p>
