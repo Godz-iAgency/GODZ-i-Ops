@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { austinDateStr } from "@/lib/austinDate";
 import { Plus, X, RefreshCw, Save, ExternalLink, Search, ChevronDown, Trash2 } from "lucide-react";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import { readApiJson } from "@/lib/apiClient";
 
 const PAGE_SIZE = 10;
 
@@ -73,8 +74,7 @@ export default function LinkedInBoard() {
     setError(null);
     try {
       const res = await fetch("/api/linkedin");
-      if (!res.ok) throw new Error("Failed to load LinkedIn prospects");
-      const data = await res.json();
+      const data = await readApiJson<{ prospects: Prospect[] }>(res, "Could not load SplitMic LinkedIn prospects.");
       setProspects(data.prospects);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -96,8 +96,7 @@ export default function LinkedInBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, "Date Contacted": form["Date Contacted"] || today }),
       });
-      if (!res.ok) throw new Error("Failed to save prospect");
-      const created = await res.json();
+      const created = await readApiJson<Prospect>(res, "Could not save this LinkedIn prospect.");
       setProspects((prev) => [created, ...prev]);
       setForm(emptyForm);
       setAdding(false);
@@ -117,8 +116,7 @@ export default function LinkedInBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(detail.fields),
       });
-      if (!res.ok) throw new Error("Failed to save");
-      const updated = await res.json();
+      const updated = await readApiJson<Prospect>(res, "Could not save this LinkedIn prospect.");
       setProspects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
       setDetail(null);
     } catch (e) {
@@ -195,8 +193,11 @@ export default function LinkedInBoard() {
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-xl text-base bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
-          {error}
+        <div className="flex flex-col gap-3 rounded-xl border border-[rgba(232,67,10,0.4)] bg-[rgba(232,67,10,0.1)] px-4 py-3 text-sm text-accentLight sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          <button onClick={load} disabled={loading} className="min-h-10 flex-shrink-0 rounded-lg border border-accent/50 px-3 font-semibold text-foreground hover:bg-white/[0.04] disabled:opacity-50">
+            {loading ? "Checking…" : "Try again"}
+          </button>
         </div>
       )}
 

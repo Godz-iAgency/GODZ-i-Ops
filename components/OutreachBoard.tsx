@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { austinDateStr } from "@/lib/austinDate";
+import { readApiJson } from "@/lib/apiClient";
 import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2, List, Columns3, ArrowRight, CheckCircle2 } from "lucide-react";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
@@ -138,8 +139,7 @@ export default function OutreachBoard() {
     setError(null);
     try {
       const res = await fetch(refresh ? "/api/contacts?refresh=1" : "/api/contacts");
-      if (!res.ok) throw new Error("Failed to load from Airtable");
-      const data = await res.json();
+      const data = await readApiJson<{ contacts: Contact[] }>(res, "Could not load SplitMic outreach records.");
       setContacts(data.contacts);
       setSearchByStage({});
       setVisibleByStage({});
@@ -180,8 +180,7 @@ export default function OutreachBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, "Relationship Status": stage }),
       });
-      if (!res.ok) throw new Error("Failed to save contact");
-      const created = await res.json();
+      const created = await readApiJson<Contact>(res, "Could not save this contact.");
       setContacts((prev) => [...prev, created]);
       setForm(emptyForm);
       setAddingStage(null);
@@ -201,8 +200,7 @@ export default function OutreachBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(detail.fields),
       });
-      if (!res.ok) throw new Error("Failed to save");
-      const updated = await res.json();
+      const updated = await readApiJson<Contact>(res, "Could not save this contact.");
       setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       setDetail(null);
     } catch (e) {
@@ -345,8 +343,7 @@ export default function OutreachBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Email: email }),
       });
-      if (!res.ok) throw new Error("Could not save this email address");
-      const updated = await res.json();
+      const updated = await readApiJson<Contact>(res, "Could not save this email address.");
       setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       setResearchDrafts((prev) => {
         const next = { ...prev };
@@ -372,21 +369,6 @@ export default function OutreachBoard() {
             <div key={item} className="h-44 animate-pulse rounded-2xl border border-border bg-surface2" />
           ))}
         </div>
-      </div>
-    );
-  }
-
-  if (error && contacts.length === 0) {
-    return (
-      <div className="rounded-2xl border border-[rgba(232,67,10,0.4)] bg-[rgba(232,67,10,0.1)] p-5">
-        <h2 className="text-lg font-bold text-foreground">Airtable did not respond</h2>
-        <p className="mt-2 text-sm text-accentLight">{error}</p>
-        <button
-          onClick={() => load(true)}
-          className="mt-4 min-h-11 rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-white"
-        >
-          Try again
-        </button>
       </div>
     );
   }
@@ -437,8 +419,15 @@ export default function OutreachBoard() {
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-xl text-base bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
-          {error}
+        <div className="flex flex-col gap-3 rounded-xl border border-[rgba(232,67,10,0.4)] bg-[rgba(232,67,10,0.1)] px-4 py-3 text-sm text-accentLight sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          <button
+            onClick={() => load(true)}
+            disabled={loading}
+            className="min-h-10 flex-shrink-0 rounded-lg border border-accent/50 px-3 font-semibold text-foreground hover:bg-white/[0.04] disabled:opacity-50"
+          >
+            {loading ? "Checking…" : "Try again"}
+          </button>
         </div>
       )}
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Ban, Check, ExternalLink, Plus, RefreshCw, Save, Search, X } from "lucide-react";
 import { austinDateStr } from "@/lib/austinDate";
+import { readApiJson } from "@/lib/apiClient";
 
 type Fields = {
   Name?: string;
@@ -74,8 +75,7 @@ export default function QualifiedTikTokBoard() {
     setError(null);
     try {
       const response = await fetch("/api/bookworm-tiktok");
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not load TikTok creators");
+      const data = await readApiJson<{ creators: Creator[] }>(response, "Could not load TikTok creators.");
       setCreators(data.creators || []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load TikTok creators");
@@ -95,8 +95,7 @@ export default function QualifiedTikTokBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(fields),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not update creator");
+      const data = await readApiJson<Creator>(response, "Could not update this creator.");
       setCreators((current) => current.map((item) => item.id === data.id ? data : item));
       setSelected((current) => current?.id === data.id ? data : current);
       return data as Creator;
@@ -117,8 +116,7 @@ export default function QualifiedTikTokBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newCreator),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not save creator");
+      const data = await readApiJson<Creator>(response, "Could not save this creator.");
       setCreators((current) => [data, ...current]);
       setNewCreator({ Status: "New", List: "Primary" });
       setAdding(false);
@@ -165,7 +163,14 @@ export default function QualifiedTikTokBoard() {
         </div>
       </div>
 
-      {error && <div className="rounded-xl border border-[rgba(232,67,10,0.4)] bg-[rgba(232,67,10,0.1)] px-4 py-3 text-sm text-accentLight">{error}</div>}
+      {error && (
+        <div className="flex flex-col gap-3 rounded-xl border border-[rgba(232,67,10,0.4)] bg-[rgba(232,67,10,0.1)] px-4 py-3 text-sm text-accentLight sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          <button onClick={load} disabled={loading} className="min-h-10 flex-shrink-0 rounded-lg border border-accent/50 px-3 font-semibold text-foreground hover:bg-white/[0.04] disabled:opacity-50">
+            {loading ? "Checking…" : "Try again"}
+          </button>
+        </div>
+      )}
 
       {adding && (
         <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border bg-surface2 p-5 sm:grid-cols-2">

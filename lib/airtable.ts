@@ -105,6 +105,7 @@ type AirtableListResponse = {
   records?: Array<{ id: string; fields: ContactFields }>;
   offset?: string;
   error?: { type?: string; message?: string };
+  errors?: Array<{ error?: string; message?: string }>;
 };
 
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -136,7 +137,12 @@ async function getAllContactsPaced(): Promise<Contact[]> {
         continue;
       }
       if (!response.ok) {
-        throw new Error(payload.error?.message || `Airtable returned HTTP ${response.status}`);
+        const failure = payload.errors?.[0];
+        throw new Error(
+          [failure?.error, failure?.message, payload.error?.type, payload.error?.message]
+            .filter(Boolean)
+            .join(": ") || `Airtable returned HTTP ${response.status}`
+        );
       }
       break;
     }
