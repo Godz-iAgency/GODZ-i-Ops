@@ -40,9 +40,10 @@ Discovery evidence is used to prioritize likely Primary matches before the
 paid profile step. The CLI prints the maximum estimated spend before it starts.
 
 Use `APIFY_API_TOKEN`. The existing `APIFY_API_KEY` name remains supported as a
-legacy alias. Google Sheets sync uses `APP_URL` and `CRON_SECRET` to call the
-protected Command Center import endpoint; the application then writes with its
-server-side Google Sheets service account.
+legacy alias. Google Sheets sync uses `GOOGLE_SHEETS_SPREADSHEET_ID`,
+`GOOGLE_SHEETS_CLIENT_EMAIL`, and `GOOGLE_SHEETS_PRIVATE_KEY` to write directly
+with the service account. Install `tools/bookworm_tiktok/requirements.txt`
+before the first run if `cryptography` is not already available.
 
 Edit `config/bookworm_tiktok.json` to change discovery terms, limits,
 qualification thresholds, batching, or ranking. The ranking strategy is kept

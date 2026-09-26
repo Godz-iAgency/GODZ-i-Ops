@@ -131,7 +131,11 @@ def main(argv: list[str] | None = None) -> int:
         print("Missing APIFY_API_TOKEN (APIFY_API_KEY is accepted as a legacy alias).", file=sys.stderr)
         return 2
     if not args.no_sync_google_sheets:
-        missing_sync = [name for name in ("APP_URL", "CRON_SECRET") if not os.getenv(name)]
+        missing_sync = [
+            name
+            for name in ("GOOGLE_SHEETS_SPREADSHEET_ID", "GOOGLE_SHEETS_CLIENT_EMAIL", "GOOGLE_SHEETS_PRIVATE_KEY")
+            if not os.getenv(name)
+        ]
         if missing_sync:
             print(f"Missing Google Sheets sync variables: {', '.join(missing_sync)}", file=sys.stderr)
             return 2
@@ -183,12 +187,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Creators discarded: {stats.creators_discarded}")
 
     if not args.no_sync_google_sheets:
-        app_url = os.getenv("APP_URL")
-        import_secret = os.getenv("CRON_SECRET")
-        if not app_url or not import_secret:
-            print("APP_URL and CRON_SECRET are required for the Google Sheets sync.", file=sys.stderr)
-            return 2
-        summary = GoogleSheetsSync(app_url, import_secret).sync([*primary, *reserve])
+        summary = GoogleSheetsSync(
+            os.environ["GOOGLE_SHEETS_SPREADSHEET_ID"],
+            os.environ["GOOGLE_SHEETS_CLIENT_EMAIL"],
+            os.environ["GOOGLE_SHEETS_PRIVATE_KEY"],
+        ).sync([*primary, *reserve])
         print(
             "Google Sheets sync: "
             f"{summary['created']} created, {summary['updated']} updated, {summary['skipped']} skipped"
