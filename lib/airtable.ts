@@ -7,7 +7,10 @@ if (!PAT || !BASE) {
   throw new Error("Missing Airtable env vars: AIRTABLE_PAT, AIRTABLE_BASE_MUSIC");
 }
 
-Airtable.configure({ apiKey: PAT });
+// Never let a rate-limited serverless request retry for minutes. Read-heavy
+// paths below pace their own pagination; single-request paths fail fast so the
+// UI can show Retry instead of leaving a Vercel function alive indefinitely.
+Airtable.configure({ apiKey: PAT, noRetryIfRateLimited: true, requestTimeout: 15_000 });
 
 // Everything the Command Center touches lives in one base ("GODZ-i CRM" --
 // renamed 2026-09-07 from "GODZ-i Music CRM" now that it also holds Bookworm
@@ -97,6 +100,60 @@ export type ContactFields = {
 
 export type Contact = { id: string; fields: ContactFields };
 
+type AirtableListResponse = {
+  records?: Array<{ id: string; fields: ContactFields }>;
+  offset?: string;
+  error?: { type?: string; message?: string };
+};
+
+const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+// The SplitMic table spans six Airtable pages. Airtable allows five requests
+// per second per base, so the SDK's immediate page chaining can rate-limit the
+// sixth request even when no other dashboard tab is open. Pace the pages and
+// bound 429 retries so a failed request always finishes.
+async function getAllContactsPaced(): Promise<Contact[]> {
+  const contacts: Contact[] = [];
+  let offset: string | undefined;
+  let page = 0;
+  do {
+    if (page > 0) await wait(275);
+    const query = new URLSearchParams({ pageSize: "100" });
+    if (offset) query.set("offset", offset);
+    const url = `https://api.airtable.com/v0/${encodeURIComponent(BASE as string)}/${OUTREACH_TABLE_ID}?${query}`;
+
+    let payload: AirtableListResponse | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${PAT}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      });
+      payload = (await response.json().catch(() => ({}))) as AirtableListResponse;
+      if (response.status === 429 && attempt < 2) {
+        await wait(5_000);
+        continue;
+      }
+      if (!response.ok) {
+        throw new Error(payload.error?.message || `Airtable returned HTTP ${response.status}`);
+      }
+      break;
+    }
+    if (!payload?.records) throw new Error("Airtable returned no contact records");
+    contacts.push(...payload.records.map((record) => ({ id: record.id, fields: record.fields })));
+    offset = payload.offset;
+    page++;
+  } while (offset);
+
+  return contacts.sort(
+    (a, b) =>
+      (a.fields["Campaign Day"] ?? Number.MAX_SAFE_INTEGER) -
+        (b.fields["Campaign Day"] ?? Number.MAX_SAFE_INTEGER) ||
+      (a.fields["Daily Slot"] ?? Number.MAX_SAFE_INTEGER) -
+        (b.fields["Daily Slot"] ?? Number.MAX_SAFE_INTEGER)
+  );
+}
+
 // The email pipeline is a research funnel first: a row earns its way from
 // "Research Needed" to "Ready for Outreach" only once it has a real person or
 // organization and a usable email address.
@@ -115,16 +172,7 @@ export const RELATIONSHIP_STAGES = [
 export const EMAIL_STATUSES = ["Not Contacted", "Sent", "Replied", "No Response", "Bounced"] as const;
 
 export async function getAllContacts(): Promise<Contact[]> {
-  const records = await getOutreachTable()
-    .select({
-      pageSize: 100,
-      sort: [
-        { field: "Campaign Day", direction: "asc" },
-        { field: "Daily Slot", direction: "asc" },
-      ],
-    })
-    .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
+  return getAllContactsPaced();
 }
 
 // The gate for TODAY'S 10: a record only qualifies once it has a usable email
@@ -176,14 +224,12 @@ export async function getContactsNeedingEmail(limit = 20): Promise<Contact[]> {
 // Counts for the Today page: how many are actually sendable vs still needing
 // research, so the number 0/10 is never a mystery.
 export async function getEmailPipelineCounts(): Promise<{ ready: number; researchNeeded: number }> {
-  const all = await getOutreachTable()
-    .select({ pageSize: 100, fields: ["Email", "Email Status"] })
-    .all();
+  const all = await getAllContactsPaced();
   let ready = 0;
   let researchNeeded = 0;
   for (const r of all) {
-    const email = ((r.fields.Email as string) || "").trim();
-    const status = (r.fields["Email Status"] as string) || "Not Contacted";
+    const email = (r.fields.Email || "").trim();
+    const status = r.fields["Email Status"] || "Not Contacted";
     if (!email) researchNeeded++;
     else if (status === "Not Contacted") ready++;
   }
@@ -259,10 +305,7 @@ export async function countEmailsSentOn(date: string): Promise<number> {
 
 // Used by the reply checker to match an inbound sender back to a contact.
 export async function getAllContactsWithEmail(): Promise<Contact[]> {
-  const records = await getOutreachTable()
-    .select({ pageSize: 100, filterByFormula: "NOT({Email} = '')" })
-    .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
+  return (await getAllContactsPaced()).filter((record) => !!record.fields.Email?.trim());
 }
 
 // --------------------------------------------------------------- linkedin
