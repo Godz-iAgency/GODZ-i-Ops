@@ -32,6 +32,15 @@ export default function OutreachTab() {
     Bookworm: "email",
   });
   const pipeline = pipelineByBusiness[business];
+  const channelLabel = PIPELINES[business].find((item) => item.id === pipeline)?.label || "Email";
+  const workspaceDescription =
+    business === "SplitMic"
+      ? pipeline === "email"
+        ? "Research, contact, and follow up with venues, promoters, and music-industry partners."
+        : "Build professional relationships with SplitMic prospects on LinkedIn."
+      : pipeline === "email"
+        ? "Move Bookworm partners from research to a productive email conversation."
+        : "Review and contact qualified Bookworm creators on TikTok.";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -47,44 +56,62 @@ export default function OutreachTab() {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
-      <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="grid w-full grid-cols-2 gap-1 rounded-full border border-border bg-surface2 p-1 sm:w-auto">
-          {(["SplitMic", "Bookworm"] as const).map((b) => (
-            <button
-              key={b}
-              onClick={() => setBusiness(b)}
-              className="rounded-full px-4 py-2.5 text-sm font-semibold transition-all sm:px-5 sm:text-base"
-              style={{
-                background: business === b ? "var(--color-accent)" : "transparent",
-                color: business === b ? "#0a0705" : "var(--color-muted)",
-                boxShadow: business === b ? "0 4px 16px rgba(232,67,10,0.35)" : "none",
-              }}
-            >
-              {b}
-            </button>
-          ))}
-        </div>
+      <section className="rounded-2xl border border-border bg-surface2/80 p-3.5 sm:p-5">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(460px,auto)] xl:items-center">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accentLight">Outreach workspace</p>
+            <h1 className="mt-1.5 text-2xl font-bold text-foreground sm:text-3xl">
+              {business} <span className="text-muted">·</span> {channelLabel}
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-textSecondary">{workspaceDescription}</p>
+          </div>
 
-        <div className="grid w-full grid-cols-2 gap-1 rounded-full border border-border bg-surface2 p-1 sm:w-auto sm:gap-2 sm:p-1.5">
-          {PIPELINES[business].map((p) => {
-            const active = pipeline === p.id;
-            return (
-              <button
-                key={p.id}
-                onClick={() => setPipelineByBusiness((prev) => ({ ...prev, [business]: p.id }))}
-                className="rounded-full px-4 py-2.5 text-sm font-semibold transition-all sm:px-6 sm:text-base"
-                style={{
-                  background: active ? "var(--color-accent)" : "transparent",
-                  color: active ? "#0a0705" : "var(--color-muted)",
-                  boxShadow: active ? "0 4px 16px rgba(232,67,10,0.35)" : "none",
-                }}
-              >
-                {p.label}
-              </button>
-            );
-          })}
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <div>
+              <p className="mb-1.5 px-1 text-xs font-medium uppercase tracking-[0.12em] text-muted">Business</p>
+              <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-border bg-black/25 p-1">
+                {(["SplitMic", "Bookworm"] as const).map((b) => (
+                  <button
+                    key={b}
+                    onClick={() => setBusiness(b)}
+                    aria-pressed={business === b}
+                    className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
+                      business === b
+                        ? "bg-accent text-white shadow-[0_4px_14px_rgba(232,67,10,0.24)]"
+                        : "text-muted hover:bg-white/[0.04] hover:text-foreground"
+                    }`}
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1.5 px-1 text-xs font-medium uppercase tracking-[0.12em] text-muted">Channel</p>
+              <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-border bg-black/25 p-1">
+                {PIPELINES[business].map((p) => {
+                  const active = pipeline === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setPipelineByBusiness((prev) => ({ ...prev, [business]: p.id }))}
+                      aria-pressed={active}
+                      className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
+                        active
+                          ? "bg-accent text-white shadow-[0_4px_14px_rgba(232,67,10,0.24)]"
+                          : "text-muted hover:bg-white/[0.04] hover:text-foreground"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
       {business === "SplitMic" ? (
         pipeline === "email" ? (

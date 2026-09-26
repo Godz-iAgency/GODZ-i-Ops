@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { austinDateStr } from "@/lib/austinDate";
-import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2 } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2, List, Columns3, ArrowRight, CheckCircle2 } from "lucide-react";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 const PAGE_SIZE = 10;
@@ -123,6 +123,9 @@ export default function OutreachBoard() {
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [activeStage, setActiveStage] = useState(STAGES[0]);
+  const [viewMode, setViewMode] = useState<"queue" | "pipeline">("queue");
+  const [queueQuery, setQueueQuery] = useState("");
+  const [queueVisible, setQueueVisible] = useState(PAGE_SIZE);
   const [researchOpen, setResearchOpen] = useState(false);
   const [researchDrafts, setResearchDrafts] = useState<Record<string, string>>({});
   const [researchSavingId, setResearchSavingId] = useState<string | null>(null);
@@ -230,11 +233,12 @@ export default function OutreachBoard() {
     setDetail((d) => (d ? { ...d, fields: { ...d.fields, ...patchFields } } : d));
 
   const goToStage = useCallback((stage: string) => {
+    setActiveStage(stage);
+    setQueueVisible(PAGE_SIZE);
     const board = boardRef.current;
     const target = stageRefs.current[stage];
     if (!board || !target) return;
     board.scrollTo({ left: Math.max(0, target.offsetLeft - board.offsetLeft - 12), behavior: "smooth" });
-    setActiveStage(stage);
   }, []);
 
   const stepStage = (direction: -1 | 1) => {
@@ -272,7 +276,12 @@ export default function OutreachBoard() {
     const map: Record<string, Contact[]> = {};
     for (const s of STAGES) map[s] = [];
     for (const c of contacts) {
-      const s = c.fields["Relationship Status"] || "New";
+      const savedStage = c.fields["Relationship Status"];
+      const s = savedStage && STAGES.includes(savedStage)
+        ? savedStage
+        : (c.fields.Email || "").trim()
+          ? "Ready for Outreach"
+          : "Research Needed";
       (map[s] ||= []).push(c);
     }
     return map;
@@ -284,8 +293,29 @@ export default function OutreachBoard() {
       (c) => (c.fields.Email || "").trim() && (c.fields["Email Status"] || "Not Contacted") === "Not Contacted"
     ).length;
     const needsResearch = contacts.filter((c) => !(c.fields.Email || "").trim()).length;
-    return { emailed, ready, needsResearch, total: contacts.length };
-  }, [contacts]);
+    const contacted = (byStage.Contacted || []).length;
+    const replied = (byStage.Replied || []).length;
+    return { emailed, ready, needsResearch, contacted, replied, total: contacts.length };
+  }, [contacts, byStage]);
+
+  const filteredQueue = useMemo(() => {
+    const query = queueQuery.trim().toLowerCase();
+    const stageContacts = byStage[activeStage] || [];
+    if (!query) return stageContacts;
+    return stageContacts.filter((contact) =>
+      [
+        contact.fields["Name / Target"],
+        contact.fields.Organization,
+        contact.fields.Role,
+        contact.fields.Category,
+        contact.fields.Email,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [activeStage, byStage, queueQuery]);
 
   const researchQueue = useMemo(
     () =>
@@ -363,39 +393,43 @@ export default function OutreachBoard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Email pipeline</h2>
-          <p className="text-sm text-muted font-mono mt-1">
-            {totals.total} targets · {totals.ready} ready to email · {totals.emailed} emailed ·{" "}
-            {totals.needsResearch} need an address
-          </p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-foreground sm:text-2xl">Email outreach</h2>
+          <p className="mt-1 text-sm text-muted">Work the next best lead, then let the pipeline show the bigger picture.</p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 min-[720px]:flex min-[720px]:w-auto min-[720px]:items-center">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+          <div className="col-span-2 grid grid-cols-2 rounded-xl border border-border bg-surface2 p-1 sm:col-span-1">
+            <button
+              onClick={() => setViewMode("queue")}
+              aria-pressed={viewMode === "queue"}
+              className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all ${
+                viewMode === "queue" ? "bg-surfaceElevated text-foreground" : "text-muted hover:text-white"
+              }`}
+            >
+              <List size={15} /> Queue
+            </button>
+            <button
+              onClick={() => setViewMode("pipeline")}
+              aria-pressed={viewMode === "pipeline"}
+              className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all ${
+                viewMode === "pipeline" ? "bg-surfaceElevated text-foreground" : "text-muted hover:text-white"
+              }`}
+            >
+              <Columns3 size={15} /> Pipeline
+            </button>
+          </div>
           <button
             onClick={() => setResearchOpen(true)}
             disabled={totals.needsResearch === 0}
-            className="col-span-2 flex min-h-11 items-center justify-center gap-2 rounded-full border border-accent/50 bg-[rgba(232,67,10,0.1)] px-4 py-2.5 text-sm font-semibold text-accentLight transition-all hover:border-accent hover:bg-[rgba(232,67,10,0.16)] disabled:opacity-50 min-[720px]:col-span-1"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-accent/50 bg-[rgba(232,67,10,0.1)] px-3 py-2.5 text-sm font-semibold text-accentLight transition-all hover:border-accent hover:bg-[rgba(232,67,10,0.16)] disabled:opacity-50 sm:px-4"
           >
             <Search size={15} /> Research {totals.needsResearch} emails
           </button>
           <button
-            onClick={() =>
-              setCollapsed((prev) => {
-                const allCollapsed = STAGES.every((s) => prev[s]);
-                const next: Record<string, boolean> = {};
-                for (const s of STAGES) next[s] = !allCollapsed;
-                return next;
-              })
-            }
-            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:px-5"
-          >
-            {STAGES.every((s) => collapsed[s]) ? "Expand all" : "Collapse all"}
-          </button>
-          <button
             onClick={() => load(true)}
             disabled={loading}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-5"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-4"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -408,8 +442,275 @@ export default function OutreachBoard() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-surface2/70 p-2.5">
-        <div className="flex items-center gap-2">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+        {[
+          { label: "Total leads", value: totals.total },
+          { label: "Need research", value: totals.needsResearch },
+          { label: "Ready to email", value: totals.ready },
+          { label: "Contacted", value: totals.contacted },
+          { label: "Replies", value: totals.replied },
+        ].map((metric, index) => (
+          <div
+            key={metric.label}
+            className={`rounded-xl border border-border bg-surface2 px-3.5 py-3.5 sm:px-4 ${index === 4 ? "col-span-2 sm:col-span-1" : ""}`}
+          >
+            <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted">{metric.label}</p>
+            <p className="mt-1 text-2xl font-bold text-foreground">{metric.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="grid gap-3 rounded-2xl border border-accent/35 bg-[linear-gradient(115deg,rgba(232,67,10,0.14),rgba(18,18,25,0.9)_65%)] p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
+          <ArrowRight size={19} />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accentLight">Best next action</p>
+          <p className="mt-1 font-semibold text-foreground">
+            {totals.needsResearch > 0
+              ? `Find a verified email for the next research lead.`
+              : totals.ready > 0
+                ? `Send the next ready outreach email.`
+                : "Review follow-ups and replies."}
+          </p>
+          <p className="mt-1 text-sm text-textSecondary">
+            {totals.needsResearch > 0
+              ? `${totals.needsResearch} leads are waiting for an address before they can move forward.`
+              : totals.ready > 0
+                ? `${totals.ready} leads have everything needed for outreach.`
+                : "Your research and ready queues are clear."}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            if (totals.needsResearch > 0) setResearchOpen(true);
+            else if (totals.ready > 0) goToStage("Ready for Outreach");
+            else goToStage("Follow-up");
+          }}
+          className="min-h-11 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white transition-all hover:brightness-110 sm:justify-self-end"
+        >
+          {totals.needsResearch > 0 ? "Start research" : totals.ready > 0 ? "Open ready queue" : "Review follow-ups"}
+        </button>
+      </section>
+
+      <div className="scrollbar-none -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+        {STAGES.map((stage) => (
+          <button
+            key={stage}
+            onClick={() => goToStage(stage)}
+            aria-current={activeStage === stage ? "step" : undefined}
+            className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
+              activeStage === stage
+                ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
+                : "border-border bg-surface2 text-textSecondary hover:border-borderHover hover:text-white"
+            }`}
+          >
+            {stage}
+            <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">
+              {(byStage[stage] || []).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {viewMode === "queue" ? (
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface2">
+            <div className="flex flex-col gap-3 border-b border-border p-3.5 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted">Current queue</p>
+                <h3 className="mt-1 text-lg font-bold text-foreground">{activeStage}</h3>
+              </div>
+              <div className="flex min-w-0 gap-2">
+                <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-black/25 px-3 sm:w-64">
+                  <Search size={15} className="flex-shrink-0 text-muted" />
+                  <input
+                    value={queueQuery}
+                    onChange={(event) => {
+                      setQueueQuery(event.target.value);
+                      setQueueVisible(PAGE_SIZE);
+                    }}
+                    placeholder="Search this queue…"
+                    className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted sm:text-sm"
+                  />
+                </label>
+                <button
+                  onClick={() => setAddingStage(activeStage)}
+                  className="flex min-h-11 flex-shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-surface3 px-3 text-sm font-semibold text-textSecondary transition-all hover:border-accent hover:text-white sm:px-4"
+                >
+                  <Plus size={16} /> <span className="hidden sm:inline">Add lead</span>
+                </button>
+              </div>
+            </div>
+
+            {addingStage === activeStage && (
+              <div className="grid gap-2 border-b border-border bg-black/15 p-3.5 sm:grid-cols-2 lg:grid-cols-4 lg:p-4">
+                <input
+                  autoFocus
+                  value={form["Name / Target"]}
+                  onChange={(event) => setForm({ ...form, "Name / Target": event.target.value })}
+                  placeholder="Name or target"
+                  className={inputCls}
+                />
+                <input
+                  value={form.Organization}
+                  onChange={(event) => setForm({ ...form, Organization: event.target.value })}
+                  placeholder="Organization"
+                  className={inputCls}
+                />
+                <input
+                  value={form.Role}
+                  onChange={(event) => setForm({ ...form, Role: event.target.value })}
+                  placeholder="Role"
+                  className={inputCls}
+                />
+                <input
+                  value={form.Email}
+                  onChange={(event) => setForm({ ...form, Email: event.target.value })}
+                  placeholder="Email"
+                  className={inputCls}
+                />
+                <div className="flex gap-2 sm:col-span-2 lg:col-span-4 lg:justify-end">
+                  <button
+                    onClick={() => {
+                      setAddingStage(null);
+                      setForm(emptyForm);
+                    }}
+                    className="min-h-11 flex-1 rounded-xl border border-border px-4 text-sm text-textSecondary hover:text-white lg:flex-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => createContact(activeStage)}
+                    disabled={saving || !form["Name / Target"]?.trim()}
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-bold text-white disabled:opacity-40 lg:flex-none"
+                  >
+                    <Save size={15} /> Save lead
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="divide-y divide-border">
+              {filteredQueue.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface3 text-muted">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <p className="mt-3 font-semibold text-foreground">
+                    {queueQuery ? "No matching leads" : `The ${activeStage.toLowerCase()} queue is clear.`}
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    {queueQuery ? "Try a different name, organization, role, or email." : "Choose another stage above to keep working."}
+                  </p>
+                </div>
+              ) : (
+                filteredQueue.slice(0, queueVisible).map((contact) => {
+                  const fields = contact.fields;
+                  const lastTouch = fields["Email Last Contacted"] || fields["LinkedIn Last Contacted"];
+                  return (
+                    <article key={contact.id} className="grid gap-3 p-3.5 transition-colors hover:bg-white/[0.025] sm:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)_auto] lg:items-center">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => setDetail(contact)}
+                            className="min-w-0 truncate text-left text-base font-semibold text-foreground hover:text-accentLight"
+                          >
+                            {fields["Name / Target"] || "Unnamed lead"}
+                          </button>
+                          {fields.Priority ? (
+                            <span className="rounded-full bg-surfaceElevated px-2 py-0.5 font-mono text-xs text-accentLight">P{fields.Priority}</span>
+                          ) : null}
+                          {fields["Verification Status"]?.startsWith("Verified") && (
+                            <span className="rounded-full bg-[rgba(95,191,122,0.14)] px-2 py-0.5 font-mono text-xs text-[#6bca85]">Verified</span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 truncate text-sm text-muted">
+                          {[fields.Role, fields.Organization].filter(Boolean).join(" · ") || "Organization and role not set"}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
+                          {fields.Category && <span className="rounded-full bg-surfaceElevated px-2.5 py-1">{fields.Category}</span>}
+                          {fields.Email ? (
+                            <a href={`mailto:${fields.Email}`} className="flex items-center gap-1 rounded-full bg-surfaceElevated px-2.5 py-1 hover:text-white">
+                              <Mail size={11} /> {fields.Email}
+                            </a>
+                          ) : (
+                            <span className="flex items-center gap-1 rounded-full bg-surfaceElevated px-2.5 py-1 text-muted"><Mail size={11} /> No email yet</span>
+                          )}
+                          {fields.Phone && (
+                            <a href={`tel:${fields.Phone}`} className="flex items-center gap-1 rounded-full bg-surfaceElevated px-2.5 py-1 hover:text-white"><Phone size={11} /> {fields.Phone}</a>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 rounded-xl bg-black/20 px-3 py-2.5">
+                        <p className="text-xs uppercase tracking-[0.1em] text-muted">Next action</p>
+                        <p className="mt-1 truncate text-sm text-foreground">{fields["Next Action"] || (fields.Email ? "Review and continue outreach" : "Find and verify an email")}</p>
+                        {lastTouch && <p className="mt-1 font-mono text-xs text-muted">Last contact: {daysAgo(lastTouch)}</p>}
+                      </div>
+
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 lg:flex lg:items-center">
+                        <select
+                          value={activeStage}
+                          onChange={(event) => moveStage(contact.id, event.target.value)}
+                          aria-label={`Move ${fields["Name / Target"] || "lead"} to another stage`}
+                          className="min-h-11 min-w-0 rounded-xl border border-border bg-black/30 px-3 text-sm text-textSecondary outline-none"
+                        >
+                          {STAGES.map((stage) => <option key={stage} value={stage}>Move to: {stage}</option>)}
+                        </select>
+                        <button
+                          onClick={() => fields.Email ? setDetail(contact) : setResearchOpen(true)}
+                          className="min-h-11 rounded-xl border border-border bg-surface3 px-3 text-sm font-semibold text-foreground transition-all hover:border-accent sm:px-4"
+                        >
+                          {fields.Email ? "Open" : "Research"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+
+            {filteredQueue.length > queueVisible && (
+              <div className="border-t border-border p-3">
+                <button
+                  onClick={() => setQueueVisible(filteredQueue.length)}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-black/20 text-sm font-semibold text-textSecondary hover:border-accent hover:text-white"
+                >
+                  <ChevronDown size={15} /> Show {filteredQueue.length - queueVisible} more
+                </button>
+              </div>
+            )}
+          </section>
+
+          <aside className="rounded-2xl border border-border bg-surface2 p-4 xl:self-start xl:sticky xl:top-24">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accentLight">How today moves forward</p>
+            <ol className="mt-4 space-y-4">
+              {[
+                ["1", "Research", "Verify the person and add a usable email."],
+                ["2", "Reach out", "Send a relevant message and log the contact."],
+                ["3", "Follow through", "Move replies, meetings, and partners forward."],
+              ].map(([number, title, description]) => (
+                <li key={number} className="flex gap-3">
+                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-surface3 font-mono text-xs font-bold text-accentLight">{number}</span>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{title}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted">{description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-5 rounded-xl border border-border bg-black/20 p-3">
+              <p className="text-xs leading-relaxed text-textSecondary">
+                Moving a lead changes its stage. It does not create a replacement lead automatically.
+              </p>
+            </div>
+          </aside>
+        </div>
+      ) : (
+        <>
+      <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface2/70 p-2.5 sm:flex-row sm:items-center">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex">
           <button
             onClick={() => stepStage(-1)}
             disabled={activeStage === STAGES[0]}
@@ -418,24 +719,9 @@ export default function OutreachBoard() {
           >
             <ChevronLeft size={19} />
           </button>
-          <div className="scrollbar-none flex min-w-0 flex-1 gap-2 overflow-x-auto px-0.5 py-0.5">
-            {STAGES.map((stage) => (
-              <button
-                key={stage}
-                onClick={() => goToStage(stage)}
-                aria-current={activeStage === stage ? "step" : undefined}
-                className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all sm:px-3.5 ${
-                  activeStage === stage
-                    ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
-                    : "border-border bg-black/20 text-textSecondary hover:border-borderHover hover:text-white"
-                }`}
-              >
-                {stage}
-                <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">
-                  {(byStage[stage] || []).length}
-                </span>
-              </button>
-            ))}
+          <div className="min-w-0 px-2 text-center sm:text-left">
+            <p className="truncate text-sm font-semibold text-foreground">{activeStage}</p>
+            <p className="text-xs text-muted">{(byStage[activeStage] || []).length} leads in this stage</p>
           </div>
           <button
             onClick={() => stepStage(1)}
@@ -446,9 +732,22 @@ export default function OutreachBoard() {
             <ChevronRight size={19} />
           </button>
         </div>
-        <p className="px-1 pt-2 text-xs leading-relaxed text-muted">
-          Jump to a stage, use the arrows, swipe on touchscreens, or drag the scrollbar below the columns.
+        <p className="px-1 text-xs leading-relaxed text-muted sm:ml-2">
+          Swipe, use the arrows, or drag the scrollbar below the columns.
         </p>
+        <button
+          onClick={() =>
+            setCollapsed((prev) => {
+              const allCollapsed = STAGES.every((stage) => prev[stage]);
+              const next: Record<string, boolean> = {};
+              for (const stage of STAGES) next[stage] = !allCollapsed;
+              return next;
+            })
+          }
+          className="min-h-10 flex-shrink-0 rounded-xl border border-border bg-black/20 px-3 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:ml-auto"
+        >
+          {STAGES.every((stage) => collapsed[stage]) ? "Expand all" : "Collapse all"}
+        </button>
       </div>
 
       <div
@@ -738,6 +1037,8 @@ export default function OutreachBoard() {
           );
         })}
       </div>
+        </>
+      )}
 
       {researchOpen && (
         <div
