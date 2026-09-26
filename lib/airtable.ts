@@ -1,16 +1,20 @@
 import Airtable from "airtable";
+import { getGoogleSheetsTable } from "@/lib/googleSheets";
 
 const PAT = process.env.AIRTABLE_PAT;
 const BASE = process.env.AIRTABLE_BASE_MUSIC;
+const USE_GOOGLE_SHEETS = process.env.DATA_PROVIDER === "google-sheets";
 
-if (!PAT || !BASE) {
+if (!USE_GOOGLE_SHEETS && (!PAT || !BASE)) {
   throw new Error("Missing Airtable env vars: AIRTABLE_PAT, AIRTABLE_BASE_MUSIC");
 }
 
 // Never let a rate-limited serverless request retry for minutes. Read-heavy
 // paths below pace their own pagination; single-request paths fail fast so the
 // UI can show Retry instead of leaving a Vercel function alive indefinitely.
-Airtable.configure({ apiKey: PAT, noRetryIfRateLimited: true, requestTimeout: 15_000 });
+if (!USE_GOOGLE_SHEETS) {
+  Airtable.configure({ apiKey: PAT, noRetryIfRateLimited: true, requestTimeout: 15_000 });
+}
 
 // Everything the Command Center touches lives in one base ("GODZ-i CRM" --
 // renamed 2026-09-07 from "GODZ-i Music CRM" now that it also holds Bookworm
@@ -18,7 +22,7 @@ Airtable.configure({ apiKey: PAT, noRetryIfRateLimited: true, requestTimeout: 15
 // HotCake) are retired and prefixed "DELETE - " in Airtable for manual
 // review; BookWorm Leads was migrated forward into Bookworm Outreach below
 // rather than retired, since that data is still live.
-export const BASE_ID = BASE;
+export const BASE_ID = BASE || "google-sheets";
 export const OUTREACH_TABLE_ID = "tblryUfFc1oBsKtDa";
 export const OUTREACH_CACHE_TAG = "airtable-outreach";
 export const PROGRESS_TABLE_ID = "tbls02Ih2kaa9fhQ6";
@@ -29,36 +33,36 @@ export const BOOKWORM_OUTREACH_TABLE_ID = "tbl7Otn4SbdJpF97E";
 export const BOOKWORM_TIKTOK_TABLE_ID = "tblKOYrjzZS8xdl60";
 export const EXECUTION_SETTINGS_TABLE = "Execution Settings";
 
-export function getOutreachTable() {
-  return new Airtable().base(BASE as string)(OUTREACH_TABLE_ID);
+export function getOutreachTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("SplitMic Email") : new Airtable().base(BASE as string)(OUTREACH_TABLE_ID);
 }
 
-export function getLinkedInTable() {
-  return new Airtable().base(BASE as string)(LINKEDIN_TABLE_ID);
+export function getLinkedInTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("SplitMic LinkedIn") : new Airtable().base(BASE as string)(LINKEDIN_TABLE_ID);
 }
 
-export function getBookwormOutreachTable() {
-  return new Airtable().base(BASE as string)(BOOKWORM_OUTREACH_TABLE_ID);
+export function getBookwormOutreachTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Bookworm Email") : new Airtable().base(BASE as string)(BOOKWORM_OUTREACH_TABLE_ID);
 }
 
-export function getBookwormTikTokTable() {
-  return new Airtable().base(BASE as string)(BOOKWORM_TIKTOK_TABLE_ID);
+export function getBookwormTikTokTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Bookworm TikTok") : new Airtable().base(BASE as string)(BOOKWORM_TIKTOK_TABLE_ID);
 }
 
-export function getHubsTable() {
-  return new Airtable().base(BASE as string)(HUBS_TABLE_ID);
+export function getHubsTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Austin Hubs") : new Airtable().base(BASE as string)(HUBS_TABLE_ID);
 }
 
-export function getProgressTable() {
-  return new Airtable().base(BASE as string)(PROGRESS_TABLE_ID);
+export function getProgressTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Daily Progress") : new Airtable().base(BASE as string)(PROGRESS_TABLE_ID);
 }
 
-export function getExecutionSettingsTable() {
-  return new Airtable().base(BASE as string)(EXECUTION_SETTINGS_TABLE);
+export function getExecutionSettingsTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Settings") : new Airtable().base(BASE as string)(EXECUTION_SETTINGS_TABLE);
 }
 
-function getReplyLogTable() {
-  return new Airtable().base(BASE as string)(REPLY_LOG_TABLE_ID);
+function getReplyLogTable(): any {
+  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Replies") : new Airtable().base(BASE as string)(REPLY_LOG_TABLE_ID);
 }
 
 // ---------------------------------------------------------------- contacts
@@ -115,6 +119,13 @@ const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resol
 // sixth request even when no other dashboard tab is open. Pace the pages and
 // bound 429 retries so a failed request always finishes.
 async function getAllContactsPaced(): Promise<Contact[]> {
+  if (USE_GOOGLE_SHEETS) {
+    const records = await getOutreachTable()
+      .select({ sort: [{ field: "Campaign Day", direction: "asc" }, { field: "Daily Slot", direction: "asc" }] })
+      .all();
+    return records.map((record: { id: string; fields: ContactFields }) => ({ id: record.id, fields: record.fields }));
+  }
+
   const contacts: Contact[] = [];
   let offset: string | undefined;
   let page = 0;
@@ -204,7 +215,7 @@ export async function getTodaysContacts(limit = 10): Promise<Contact[]> {
       ],
     })
     .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
+  return records.map((r: { id: string; fields: any }) => ({ id: r.id, fields: r.fields as ContactFields }));
 }
 
 const NEEDS_EMAIL =
@@ -225,7 +236,7 @@ export async function getContactsNeedingEmail(limit = 20): Promise<Contact[]> {
       ],
     })
     .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as ContactFields }));
+  return records.map((r: { id: string; fields: any }) => ({ id: r.id, fields: r.fields as ContactFields }));
 }
 
 // Counts for the Today page: how many are actually sendable vs still needing
@@ -283,7 +294,7 @@ export async function suppressByEmail(email: string, reason: string, markBounced
   if (!records.length) return 0;
 
   await getOutreachTable().update(
-    records.map((r) => ({
+    records.map((r: { id: string }) => ({
       id: r.id,
       fields: {
         "Do Not Contact": true,
@@ -352,7 +363,7 @@ export async function getAllLinkedInProspects(): Promise<LinkedInProspect[]> {
   const records = await getLinkedInTable()
     .select({ pageSize: 100, sort: [{ field: "Date Contacted", direction: "desc" }] })
     .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as LinkedInFields }));
+  return records.map((r: { id: string; fields: any }) => ({ id: r.id, fields: r.fields as LinkedInFields }));
 }
 
 // Drives the Today page's LinkedIn counter without any manual tallying.
@@ -402,7 +413,7 @@ export async function getAllHubs(): Promise<Hub[]> {
   const records = await getHubsTable()
     .select({ pageSize: 100, sort: [{ field: "Name", direction: "asc" }] })
     .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as HubFields }));
+  return records.map((r: { id: string; fields: any }) => ({ id: r.id, fields: r.fields as HubFields }));
 }
 
 // ------------------------------------------------------------ day progress
@@ -415,6 +426,7 @@ export type ProgressFields = {
   "LinkedIn Sent"?: number;
   "Bookworm Emails Sent"?: number;
   "Bookworm TikTok Sent"?: number;
+  "Bookworm Contacted"?: number;
   "Build Project"?: string;
   "Build Objective"?: string;
   "Build Status"?: string;
@@ -441,6 +453,14 @@ export type ProgressFields = {
   "Deep Work Completed"?: boolean;
   "Deep Work Notes"?: string;
   "Day Note"?: string;
+  "Bookworm Content Posted"?: boolean;
+  "Bookworm Content Platform"?: string;
+  "Bookworm Featured Person"?: string;
+  "Bookworm Content Title"?: string;
+  "Bookworm Content URL"?: string;
+  "Bookworm Welcomed Members"?: boolean;
+  "Bookworm Started Discussion"?: boolean;
+  "Bookworm Community Notes"?: string;
 };
 
 export async function getProgressForDate(date: string): Promise<ProgressFields | null> {
@@ -452,7 +472,7 @@ export async function getProgressForDate(date: string): Promise<ProgressFields |
 
 export async function getAllProgress(): Promise<ProgressFields[]> {
   const records = await getProgressTable().select({ pageSize: 100 }).all();
-  return records.map((r) => r.fields as ProgressFields);
+  return records.map((r: { fields: any }) => r.fields as ProgressFields);
 }
 
 // One row per calendar date: updates in place if the day already exists so
@@ -528,7 +548,7 @@ export async function getAllReplies(): Promise<Reply[]> {
   const records = await getReplyLogTable()
     .select({ pageSize: 100, sort: [{ field: "Received At", direction: "desc" }] })
     .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as ReplyFields }));
+  return records.map((r: { id: string; fields: any }) => ({ id: r.id, fields: r.fields as ReplyFields }));
 }
 
 // --------------------------------------------------------- bookworm outreach
@@ -560,7 +580,7 @@ export type BookwormContact = { id: string; fields: BookwormContactFields };
 
 export async function getAllBookwormContacts(): Promise<BookwormContact[]> {
   const records = await getBookwormOutreachTable().select({ pageSize: 100, sort: [{ field: "Name", direction: "asc" }] }).all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as BookwormContactFields }));
+  return records.map((r: { id: string; fields: any }) => ({ id: r.id, fields: r.fields as BookwormContactFields }));
 }
 
 export async function getBookwormContactById(id: string): Promise<BookwormContact | null> {
@@ -617,7 +637,7 @@ export async function getAllBookwormTikTokCreators(): Promise<BookwormTikTokCrea
   const records = await getBookwormTikTokTable()
     .select({ pageSize: 100, sort: [{ field: "Date Contacted", direction: "desc" }] })
     .all();
-  return records.map((r) => ({ id: r.id, fields: r.fields as BookwormTikTokFields }));
+  return records.map((r: { id: string; fields: any }) => ({ id: r.id, fields: r.fields as BookwormTikTokFields }));
 }
 
 // ------------------------------------------------------ execution settings

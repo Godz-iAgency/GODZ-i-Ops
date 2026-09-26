@@ -26,6 +26,20 @@ function describe(error: unknown): string {
 
 export function providerErrorResponse(error: unknown, fallback: string) {
   const details = describe(error);
+  const googleSheets = process.env.DATA_PROVIDER === "google-sheets";
+  if (googleSheets) {
+    const permission = /403|PERMISSION_DENIED|permission/i.test(details);
+    return NextResponse.json(
+      {
+        error: permission
+          ? "Google Sheets access was denied. Confirm the spreadsheet is shared with the GODZ-i service account as an Editor."
+          : fallback,
+        code: permission ? "GOOGLE_SHEETS_PERMISSION" : "GOOGLE_SHEETS_ERROR",
+        retryable: true,
+      },
+      { status: permission ? 503 : 502, headers: { "Cache-Control": "no-store" } }
+    );
+  }
   const billingLimit = /PUBLIC_API_BILLING_LIMIT_EXCEEDED|billing plan limit|maximum number of requests allowed for this month/i.test(details);
   const rateLimit = /429|RATE_LIMIT|too many requests/i.test(details);
 

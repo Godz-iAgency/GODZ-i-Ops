@@ -2,7 +2,7 @@
 
 import { BookOpen, Calendar, Linkedin, Music2, Mail, Share2, Table2, Link2, Send } from "lucide-react";
 
-const AIRTABLE_BASE = "https://airtable.com/appVoya6LLvnSjCbQ";
+const GOOGLE_SHEETS_DATABASE = "https://docs.google.com/spreadsheets/d/1JxOAVxY5VBCaC5bttFHA7Oajfo6u1K8ognN2AwwAy24/edit";
 
 const LINKS = [
   { label: "Booking Calendar", url: "https://app.cal.com/bookings/upcoming", icon: Calendar, color: "#F2C94C" },
@@ -11,7 +11,7 @@ const LINKS = [
   { label: "Email", url: "https://mail.google.com/mail/u/0/#inbox", icon: Mail, color: "#71717a", sub: "christopher@godz-iagency.com" },
   { label: "SplitMic", url: "https://www.splitmic.com/", icon: Share2, color: "#5FBF7A" },
   { label: "Bookworm", url: "https://bookworm-ai.app/admin", icon: BookOpen, color: "#A78BFA", sub: "Admin dashboard" },
-  { label: "Airtable", url: AIRTABLE_BASE, icon: Table2, color: "#e8430a", sub: "SplitMic Outreach, LinkedIn, Daily Progress" },
+  { label: "Google Sheets", url: GOOGLE_SHEETS_DATABASE, icon: Table2, color: "#34A853", sub: "GODZ-i Ops database · outreach, creators, progress" },
   { label: "Telegram", url: "https://t.me/godz_i_testingBot", icon: Send, color: "#26A5E4", sub: "Email copywriting bot" },
 ];
 

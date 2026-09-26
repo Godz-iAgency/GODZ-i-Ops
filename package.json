@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sheets:init": "node --env-file=.env.local --experimental-strip-types scripts/init-google-sheets.ts",
+    "sheets:verify": "node --env-file=.env.local --experimental-strip-types scripts/verify-google-sheets.ts"
   },
   "dependencies": {
     "airtable": "^0.12.2",
