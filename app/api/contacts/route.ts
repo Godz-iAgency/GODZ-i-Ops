@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllContacts, getOutreachTable, ContactFields } from "@/lib/airtable";
+import { revalidateTag } from "next/cache";
+import { getAllContacts, getOutreachTable, ContactFields, OUTREACH_CACHE_TAG } from "@/lib/airtable";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (req.nextUrl.searchParams.get("refresh") === "1") {
+    revalidateTag(OUTREACH_CACHE_TAG, { expire: 0 });
+  }
   const contacts = await getAllContacts();
   return NextResponse.json({ contacts });
 }
@@ -21,5 +25,6 @@ export async function POST(req: NextRequest) {
   };
 
   const created = await getOutreachTable().create([{ fields: fields as never }], { typecast: true });
+  revalidateTag(OUTREACH_CACHE_TAG, { expire: 0 });
   return NextResponse.json({ id: created[0].id, fields: created[0].fields as ContactFields });
 }

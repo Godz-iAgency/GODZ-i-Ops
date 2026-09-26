@@ -20,6 +20,7 @@ Airtable.configure({ apiKey: PAT, noRetryIfRateLimited: true, requestTimeout: 15
 // rather than retired, since that data is still live.
 export const BASE_ID = BASE;
 export const OUTREACH_TABLE_ID = "tblryUfFc1oBsKtDa";
+export const OUTREACH_CACHE_TAG = "airtable-outreach";
 export const PROGRESS_TABLE_ID = "tbls02Ih2kaa9fhQ6";
 export const REPLY_LOG_TABLE_ID = "tblegcIUuI3ow1Cgy";
 export const LINKEDIN_TABLE_ID = "tbljLKppcc89M5Iz1";
@@ -126,7 +127,7 @@ async function getAllContactsPaced(): Promise<Contact[]> {
     for (let attempt = 0; attempt < 3; attempt++) {
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${PAT}` },
-        cache: "no-store",
+        next: { revalidate: false, tags: [OUTREACH_CACHE_TAG] },
         signal: AbortSignal.timeout(15_000),
       });
       payload = (await response.json().catch(() => ({}))) as AirtableListResponse;

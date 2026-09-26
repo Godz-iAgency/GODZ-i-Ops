@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOutreachTable, ContactFields } from "@/lib/airtable";
+import { revalidateTag } from "next/cache";
+import { getOutreachTable, ContactFields, OUTREACH_CACHE_TAG } from "@/lib/airtable";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,11 +21,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Meta API refuses to add choices to an existing select field, so this is the
   // only way the pipeline stages stay in sync with the code.
   const updated = await getOutreachTable().update([{ id, fields: fields as never }], { typecast: true });
+  revalidateTag(OUTREACH_CACHE_TAG, { expire: 0 });
   return NextResponse.json({ id: updated[0].id, fields: updated[0].fields as ContactFields });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await getOutreachTable().destroy([id]);
+  revalidateTag(OUTREACH_CACHE_TAG, { expire: 0 });
   return NextResponse.json({ deleted: id });
 }

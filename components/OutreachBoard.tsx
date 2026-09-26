@@ -130,11 +130,11 @@ export default function OutreachBoard() {
   const boardRef = useRef<HTMLDivElement>(null);
   const stageRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (refresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/contacts");
+      const res = await fetch(refresh ? "/api/contacts?refresh=1" : "/api/contacts");
       if (!res.ok) throw new Error("Failed to load from Airtable");
       const data = await res.json();
       setContacts(data.contacts);
@@ -352,7 +352,7 @@ export default function OutreachBoard() {
         <h2 className="text-lg font-bold text-foreground">Airtable did not respond</h2>
         <p className="mt-2 text-sm text-accentLight">{error}</p>
         <button
-          onClick={load}
+          onClick={() => load(true)}
           className="mt-4 min-h-11 rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-white"
         >
           Try again
@@ -393,7 +393,7 @@ export default function OutreachBoard() {
             {STAGES.every((s) => collapsed[s]) ? "Expand all" : "Collapse all"}
           </button>
           <button
-            onClick={load}
+            onClick={() => load(true)}
             disabled={loading}
             className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-5"
           >

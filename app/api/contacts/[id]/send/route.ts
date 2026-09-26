@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { austinDateStr } from "@/lib/austinDate";
 import { sendOutreachEmail } from "@/lib/outreach";
-import { getContactById, countEmailsSentOn, getOutreachTable } from "@/lib/airtable";
+import { getContactById, countEmailsSentOn, getOutreachTable, OUTREACH_CACHE_TAG } from "@/lib/airtable";
 
 // The only route in the app that sends real mail to a real stranger. Every
 // guard here exists because getting one of them wrong is not a bug you can
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ],
     { typecast: true }
   );
+  revalidateTag(OUTREACH_CACHE_TAG, { expire: 0 });
 
   return NextResponse.json({
     ok: true,
