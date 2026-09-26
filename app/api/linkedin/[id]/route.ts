@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLinkedInTable, LinkedInFields } from "@/lib/airtable";
+import { getLinkedInTable, LinkedInFields } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

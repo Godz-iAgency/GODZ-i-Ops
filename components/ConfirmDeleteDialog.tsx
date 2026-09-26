@@ -24,7 +24,7 @@ export default function ConfirmDeleteDialog({
       >
         <h3 className="text-xl font-bold text-foreground">Delete this contact?</h3>
         <p className="text-base text-textSecondary mt-2 break-words">
-          <span className="text-foreground font-semibold">{name || "Untitled"}</span> will be removed from Airtable.
+          <span className="text-foreground font-semibold">{name || "Untitled"}</span> will be removed from Google Sheets.
           This can&rsquo;t be undone from here.
         </p>
         <div className="mt-6 flex flex-col gap-2.5 min-[380px]:flex-row">

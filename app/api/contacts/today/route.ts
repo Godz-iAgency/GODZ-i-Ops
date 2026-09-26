@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTodaysContacts, getEmailPipelineCounts } from "@/lib/airtable";
+import { getTodaysContacts, getEmailPipelineCounts } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 // TODAY'S 10. Surfaces who is up next -- it never sends anything. Emails stay

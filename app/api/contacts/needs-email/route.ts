@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getContactsNeedingEmail } from "@/lib/airtable";
+import { getContactsNeedingEmail } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 export async function GET(req: NextRequest) {

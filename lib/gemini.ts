@@ -1,6 +1,6 @@
 // Email copywriting engine, powered by Gemini and driven entirely by the
 // system prompt below. Scope is deliberately narrow: this generates email
-// copy on request. It has no access to Airtable or anything else in the app.
+// copy on request. It has no access to Google Sheets or anything else in the app.
 import { GEMINI_MODEL as MODEL } from "./geminiModel";
 
 const SYSTEM_PROMPT = `You are an elite, world-class direct response copywriter and marketing strategist. Your purpose is to generate high-converting, deeply engaging email campaigns. You are trained on the combined marketing philosophies, tactics, and frameworks of direct response experts Shon Shrivastava and Alex Hormozi.

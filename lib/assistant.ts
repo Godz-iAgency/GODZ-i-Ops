@@ -8,7 +8,7 @@ import {
   getAllBookwormTikTokCreators,
   getProgressForDate,
   getAllProgress,
-} from "./airtable";
+} from "./database";
 import { searchGmailMessages } from "./gmail";
 import { listEvents, chicagoOffset } from "./googleCalendar";
 import { getFollowUps, getWeeklyExecution } from "./execution";
@@ -33,7 +33,7 @@ function systemPrompt(): string {
 Today's date is ${austinDateStr()} in America/Chicago time. Use it to resolve relative dates like "today", "this week", or "next Monday".
 
 You have read-only tools into his real data:
-- search_contacts: the SplitMic cold email outreach pipeline (Airtable)
+- search_contacts: the SplitMic cold email outreach pipeline (Google Sheets)
 - search_linkedin_prospects: the separate LinkedIn outreach pipeline
 - search_hubs: Austin music-industry hubs/venues resource list
 - get_replies: triaged replies to outreach emails, with intent classification and a suggested response already drafted
@@ -62,7 +62,7 @@ Rules:
 const TOOLS = [
   {
     name: "search_contacts",
-    description: "Search the SplitMic cold outreach pipeline (Airtable).",
+    description: "Search the SplitMic cold outreach pipeline in Google Sheets.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -482,7 +482,7 @@ async function toolListCalendarEvents(args: { startDate: string; endDate: string
 
 // One day's worth of everything: calendar events plus follow-ups due that day
 // from both outreach pipelines plus the progress log. "Tasks for a day" isn't
-// a single Airtable table -- it's these three sources combined.
+// a single database table -- it's these three sources combined.
 async function toolGetTasksForDate(args: { date: string }) {
   const date = args.date;
   const timeMin = `${date}T00:00:00${chicagoOffset(date)}`;

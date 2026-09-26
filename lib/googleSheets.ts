@@ -271,8 +271,8 @@ export class GoogleSheetsTable {
     return record;
   }
 
-  async create(items: Array<{ fields: Fields }>): Promise<SheetRecord[]> {
-    const created = items.map((item) => ({ id: `gs_${randomUUID()}`, fields: item.fields }));
+  async create(items: Array<{ id?: string; fields: Fields }>): Promise<SheetRecord[]> {
+    const created = items.map((item) => ({ id: item.id || `gs_${randomUUID()}`, fields: item.fields }));
     await sheetsFetch(`/values/${encodeURIComponent(`${quote(this.schema.title)}!A:ZZ`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
       method: "POST",
       body: JSON.stringify({
@@ -330,9 +330,67 @@ export function getGoogleSheetsTable(title: string): GoogleSheetsTable {
   return new GoogleSheetsTable(schema);
 }
 
+export async function ensureGoogleSheetsSchema(schema: SheetSchema, minimumRows = 2000): Promise<number> {
+  const metadata = await sheetsFetch<SheetMetadata>("?fields=sheets.properties");
+  const existing = metadata.sheets?.find((sheet) => sheet.properties.title === schema.title);
+  let sheetId = existing?.properties.sheetId;
+  if (sheetId == null) {
+    const created = await sheetsFetch<{ replies?: Array<{ addSheet?: { properties?: { sheetId?: number } } }> }>(":batchUpdate", {
+      method: "POST",
+      body: JSON.stringify({
+        requests: [{
+          addSheet: {
+            properties: {
+              title: schema.title,
+              gridProperties: {
+                rowCount: Math.max(2000, minimumRows),
+                columnCount: Math.max(1, schema.headers.length),
+              },
+            },
+          },
+        }],
+      }),
+    });
+    sheetId = created.replies?.[0]?.addSheet?.properties?.sheetId;
+  }
+  if (sheetId == null) throw new Error(`Google Sheets tab was not created: ${schema.title}`);
+
+  const gridRequests: object[] = [];
+  const existingRows = existing?.properties.gridProperties?.rowCount || 0;
+  const existingColumns = existing?.properties.gridProperties?.columnCount || 0;
+  if (existingRows < minimumRows) {
+    gridRequests.push({ updateSheetProperties: { properties: { sheetId, gridProperties: { rowCount: minimumRows } }, fields: "gridProperties.rowCount" } });
+  }
+  if (existingColumns < schema.headers.length) {
+    gridRequests.push({ updateSheetProperties: { properties: { sheetId, gridProperties: { columnCount: schema.headers.length } }, fields: "gridProperties.columnCount" } });
+  }
+  if (gridRequests.length) {
+    await sheetsFetch(":batchUpdate", { method: "POST", body: JSON.stringify({ requests: gridRequests }) });
+  }
+
+  await sheetsFetch(`/values:batchUpdate`, {
+    method: "POST",
+    body: JSON.stringify({
+      valueInputOption: "RAW",
+      data: [{ range: `${quote(schema.title)}!A1:${columnName(schema.headers.length)}1`, values: [schema.headers] }],
+    }),
+  });
+  await sheetsFetch(":batchUpdate", {
+    method: "POST",
+    body: JSON.stringify({
+      requests: [
+        { updateSheetProperties: { properties: { sheetId, gridProperties: { frozenRowCount: 1 } }, fields: "gridProperties.frozenRowCount" } },
+        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: schema.headers.length }, cell: { userEnteredFormat: { backgroundColor: { red: 0.93, green: 0.93, blue: 0.93 }, textFormat: { bold: true, foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 } }, verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } }, fields: "userEnteredFormat(backgroundColor,textFormat,verticalAlignment,wrapStrategy)" } },
+        { setBasicFilter: { filter: { range: { sheetId, startRowIndex: 0, endRowIndex: Math.max(2000, minimumRows), startColumnIndex: 0, endColumnIndex: schema.headers.length } } } },
+      ],
+    }),
+  });
+  return sheetId;
+}
+
 type SheetMetadata = {
   sheets?: Array<{
-    properties: { sheetId: number; title: string };
+    properties: { sheetId: number; title: string; gridProperties?: { rowCount?: number; columnCount?: number } };
     protectedRanges?: Array<{ description?: string }>;
   }>;
 };

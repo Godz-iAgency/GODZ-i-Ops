@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllContacts, getProgressForDate, RELATIONSHIP_STAGES } from "@/lib/airtable";
+import { getAllContacts, getProgressForDate, RELATIONSHIP_STAGES } from "@/lib/database";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { austinDateStr } from "@/lib/austinDate";
 

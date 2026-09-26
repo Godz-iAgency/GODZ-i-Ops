@@ -818,7 +818,7 @@ function BookwormTikTokToday({ onCountChange }: { onCountChange: (n: number) => 
     setSaving(true);
     setError(null);
     try {
-      // Airtable rejects "" for select/url fields, so blank boxes are left off.
+      // Blank optional values are omitted so the database keeps those cells empty.
       const payload: Record<string, string> = { ...form, "Date Contacted": today, Status: "DM Sent" };
       for (const k of Object.keys(payload)) if (payload[k] === "") delete payload[k];
       const res = await fetch("/api/bookworm-tiktok", {

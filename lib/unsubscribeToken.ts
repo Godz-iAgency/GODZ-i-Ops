@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-// Unsubscribe links travel inside emails to strangers, so the Airtable record
+// Unsubscribe links travel inside emails to strangers, so the database record
 // id alone must never be enough to act on -- otherwise anyone could unsubscribe
 // (or enumerate) somebody else's row by editing the URL. Every link carries an
 // HMAC of the id that only this server can produce.

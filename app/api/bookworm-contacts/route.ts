@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllBookwormContacts, getBookwormOutreachTable, BookwormContactFields } from "@/lib/airtable";
+import { getAllBookwormContacts, getBookwormOutreachTable, BookwormContactFields } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 export async function GET() {

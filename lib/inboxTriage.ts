@@ -8,7 +8,7 @@ import {
   getMessageTriageMeta,
   MessageTriageMeta,
 } from "./gmail";
-import { getAllContactsWithEmail } from "./airtable";
+import { getAllContactsWithEmail } from "./database";
 
 // Labels from a past organizing attempt that were never actually used --
 // zero messages ever carried them, so deleting them loses nothing.

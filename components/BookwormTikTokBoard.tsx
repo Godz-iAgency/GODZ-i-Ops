@@ -71,7 +71,7 @@ function formatFollowers(n?: number) {
   return String(n);
 }
 
-// Airtable rejects "" for a number field, so an empty box means "leave it off".
+// An empty number box means "leave it off" rather than storing zero.
 function cleanFields(f: TikTokFields): TikTokFields {
   const out: TikTokFields = { ...f };
   if (out.Followers == null || Number.isNaN(out.Followers)) delete out.Followers;

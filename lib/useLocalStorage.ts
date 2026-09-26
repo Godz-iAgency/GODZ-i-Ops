@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 // Local-only persistence for the personal ritual tabs (Today, 100 Days, Search,
-// Links) that don't touch Airtable. Replaces the Claude-artifact-only
+// Links) that don't touch Google Sheets. Replaces the Claude-artifact-only
 // `window.storage` API with plain browser localStorage.
 export function useLocalStorage<T>(key: string, initial: T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(initial);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyContactToken } from "@/lib/unsubscribeToken";
-import { getContactById, suppressContact } from "@/lib/airtable";
+import { getContactById, suppressContact } from "@/lib/database";
 
 // Public by necessity -- recipients are strangers with no login. The HMAC in
 // the link is what stands in for authentication, so a valid token is the only

@@ -1,68 +1,37 @@
-import Airtable from "airtable";
 import { getGoogleSheetsTable } from "@/lib/googleSheets";
 
-const PAT = process.env.AIRTABLE_PAT;
-const BASE = process.env.AIRTABLE_BASE_MUSIC;
-const USE_GOOGLE_SHEETS = process.env.DATA_PROVIDER === "google-sheets";
-
-if (!USE_GOOGLE_SHEETS && (!PAT || !BASE)) {
-  throw new Error("Missing Airtable env vars: AIRTABLE_PAT, AIRTABLE_BASE_MUSIC");
-}
-
-// Never let a rate-limited serverless request retry for minutes. Read-heavy
-// paths below pace their own pagination; single-request paths fail fast so the
-// UI can show Retry instead of leaving a Vercel function alive indefinitely.
-if (!USE_GOOGLE_SHEETS) {
-  Airtable.configure({ apiKey: PAT, noRetryIfRateLimited: true, requestTimeout: 15_000 });
-}
-
-// Everything the Command Center touches lives in one base ("GODZ-i CRM" --
-// renamed 2026-09-07 from "GODZ-i Music CRM" now that it also holds Bookworm
-// data, not just SplitMic). The old multi-business tables (Website/gBOMBS/
-// HotCake) are retired and prefixed "DELETE - " in Airtable for manual
-// review; BookWorm Leads was migrated forward into Bookworm Outreach below
-// rather than retired, since that data is still live.
-export const BASE_ID = BASE || "google-sheets";
-export const OUTREACH_TABLE_ID = "tblryUfFc1oBsKtDa";
-export const OUTREACH_CACHE_TAG = "airtable-outreach";
-export const PROGRESS_TABLE_ID = "tbls02Ih2kaa9fhQ6";
-export const REPLY_LOG_TABLE_ID = "tblegcIUuI3ow1Cgy";
-export const LINKEDIN_TABLE_ID = "tbljLKppcc89M5Iz1";
-export const HUBS_TABLE_ID = "tblolqShJlWbCHoX4";
-export const BOOKWORM_OUTREACH_TABLE_ID = "tbl7Otn4SbdJpF97E";
-export const BOOKWORM_TIKTOK_TABLE_ID = "tblKOYrjzZS8xdl60";
-export const EXECUTION_SETTINGS_TABLE = "Execution Settings";
+export const OUTREACH_CACHE_TAG = "google-sheets-outreach";
 
 export function getOutreachTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("SplitMic Email") : new Airtable().base(BASE as string)(OUTREACH_TABLE_ID);
+  return getGoogleSheetsTable("SplitMic Email");
 }
 
 export function getLinkedInTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("SplitMic LinkedIn") : new Airtable().base(BASE as string)(LINKEDIN_TABLE_ID);
+  return getGoogleSheetsTable("SplitMic LinkedIn");
 }
 
 export function getBookwormOutreachTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Bookworm Email") : new Airtable().base(BASE as string)(BOOKWORM_OUTREACH_TABLE_ID);
+  return getGoogleSheetsTable("Bookworm Email");
 }
 
 export function getBookwormTikTokTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Bookworm TikTok") : new Airtable().base(BASE as string)(BOOKWORM_TIKTOK_TABLE_ID);
+  return getGoogleSheetsTable("Bookworm TikTok");
 }
 
 export function getHubsTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Austin Hubs") : new Airtable().base(BASE as string)(HUBS_TABLE_ID);
+  return getGoogleSheetsTable("Austin Hubs");
 }
 
 export function getProgressTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Daily Progress") : new Airtable().base(BASE as string)(PROGRESS_TABLE_ID);
+  return getGoogleSheetsTable("Daily Progress");
 }
 
 export function getExecutionSettingsTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Settings") : new Airtable().base(BASE as string)(EXECUTION_SETTINGS_TABLE);
+  return getGoogleSheetsTable("Settings");
 }
 
 function getReplyLogTable(): any {
-  return USE_GOOGLE_SHEETS ? getGoogleSheetsTable("Replies") : new Airtable().base(BASE as string)(REPLY_LOG_TABLE_ID);
+  return getGoogleSheetsTable("Replies");
 }
 
 // ---------------------------------------------------------------- contacts
@@ -105,71 +74,11 @@ export type ContactFields = {
 
 export type Contact = { id: string; fields: ContactFields };
 
-type AirtableListResponse = {
-  records?: Array<{ id: string; fields: ContactFields }>;
-  offset?: string;
-  error?: { type?: string; message?: string };
-  errors?: Array<{ error?: string; message?: string }>;
-};
-
-const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-// The SplitMic table spans six Airtable pages. Airtable allows five requests
-// per second per base, so the SDK's immediate page chaining can rate-limit the
-// sixth request even when no other dashboard tab is open. Pace the pages and
-// bound 429 retries so a failed request always finishes.
 async function getAllContactsPaced(): Promise<Contact[]> {
-  if (USE_GOOGLE_SHEETS) {
-    const records = await getOutreachTable()
-      .select({ sort: [{ field: "Campaign Day", direction: "asc" }, { field: "Daily Slot", direction: "asc" }] })
-      .all();
-    return records.map((record: { id: string; fields: ContactFields }) => ({ id: record.id, fields: record.fields }));
-  }
-
-  const contacts: Contact[] = [];
-  let offset: string | undefined;
-  let page = 0;
-  do {
-    if (page > 0) await wait(275);
-    const query = new URLSearchParams({ pageSize: "100" });
-    if (offset) query.set("offset", offset);
-    const url = `https://api.airtable.com/v0/${encodeURIComponent(BASE as string)}/${OUTREACH_TABLE_ID}?${query}`;
-
-    let payload: AirtableListResponse | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${PAT}` },
-        next: { revalidate: false, tags: [OUTREACH_CACHE_TAG] },
-        signal: AbortSignal.timeout(15_000),
-      });
-      payload = (await response.json().catch(() => ({}))) as AirtableListResponse;
-      if (response.status === 429 && attempt < 2) {
-        await wait(5_000);
-        continue;
-      }
-      if (!response.ok) {
-        const failure = payload.errors?.[0];
-        throw new Error(
-          [failure?.error, failure?.message, payload.error?.type, payload.error?.message]
-            .filter(Boolean)
-            .join(": ") || `Airtable returned HTTP ${response.status}`
-        );
-      }
-      break;
-    }
-    if (!payload?.records) throw new Error("Airtable returned no contact records");
-    contacts.push(...payload.records.map((record) => ({ id: record.id, fields: record.fields })));
-    offset = payload.offset;
-    page++;
-  } while (offset);
-
-  return contacts.sort(
-    (a, b) =>
-      (a.fields["Campaign Day"] ?? Number.MAX_SAFE_INTEGER) -
-        (b.fields["Campaign Day"] ?? Number.MAX_SAFE_INTEGER) ||
-      (a.fields["Daily Slot"] ?? Number.MAX_SAFE_INTEGER) -
-        (b.fields["Daily Slot"] ?? Number.MAX_SAFE_INTEGER)
-  );
+  const records = await getOutreachTable()
+    .select({ sort: [{ field: "Campaign Day", direction: "asc" }, { field: "Daily Slot", direction: "asc" }] })
+    .all();
+  return records.map((record: { id: string; fields: ContactFields }) => ({ id: record.id, fields: record.fields }));
 }
 
 // The email pipeline is a research funnel first: a row earns its way from
@@ -308,8 +217,8 @@ export async function suppressByEmail(email: string, reason: string, markBounced
   return records.length;
 }
 
-// Enforces EMAIL_DAILY_LIMIT server-side. Date fields need DATETIME_FORMAT --
-// Airtable compares them as dates, so a bare string equality matches nothing.
+// Enforces EMAIL_DAILY_LIMIT server-side. The formula syntax is preserved by
+// the database adapter so this query remains explicit and easy to test.
 export async function countEmailsSentOn(date: string): Promise<number> {
   const records = await getOutreachTable()
     .select({
@@ -367,8 +276,6 @@ export async function getAllLinkedInProspects(): Promise<LinkedInProspect[]> {
 }
 
 // Drives the Today page's LinkedIn counter without any manual tallying.
-// DATETIME_FORMAT is required here: Airtable compares date fields as dates, so
-// a bare `{Date Contacted} = '2026-08-25'` silently matches nothing.
 export async function countLinkedInContactedOn(date: string): Promise<number> {
   const records = await getLinkedInTable()
     .select({

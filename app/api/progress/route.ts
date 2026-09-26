@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getProgressForDate, getAllProgress, saveProgress, ProgressFields } from "@/lib/airtable";
+import { getProgressForDate, getAllProgress, saveProgress, ProgressFields } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 // ?date=YYYY-MM-DD for one day, ?all=1 for the whole 100-day grid.

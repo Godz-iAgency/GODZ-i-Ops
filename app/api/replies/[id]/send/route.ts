@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getReplyById, updateReply } from "@/lib/airtable";
+import { getReplyById, updateReply } from "@/lib/database";
 import { sendReplyEmail } from "@/lib/outreach";
 
 // Sends your answer back inside the original conversation rather than starting

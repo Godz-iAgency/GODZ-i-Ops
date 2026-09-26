@@ -362,7 +362,7 @@ export default function OutreachBoard() {
       <div className="flex min-h-[420px] flex-col gap-5">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Email pipeline</h2>
-          <p className="mt-1 text-sm text-muted">Connecting to Airtable…</p>
+          <p className="mt-1 text-sm text-muted">Connecting to Google Sheets…</p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading outreach contacts">
           {[0, 1, 2, 3].map((item) => (

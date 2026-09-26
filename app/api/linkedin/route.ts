@@ -4,7 +4,7 @@ import {
   getLinkedInTable,
   countLinkedInContactedOn,
   LinkedInFields,
-} from "@/lib/airtable";
+} from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 // ?countFor=YYYY-MM-DD returns just today's tally for the Today page counter.

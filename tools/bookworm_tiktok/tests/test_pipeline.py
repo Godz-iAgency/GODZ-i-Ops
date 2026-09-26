@@ -4,6 +4,7 @@ import unittest
 from datetime import datetime, timezone
 
 from tools.bookworm_tiktok.cli import budget_plan
+from tools.bookworm_tiktok.google_sheets_sync import GoogleSheetsSync
 from tools.bookworm_tiktok.models import Creator, Video
 from tools.bookworm_tiktok.parser import merge_creator_maps, parse_items
 from tools.bookworm_tiktok.pipeline import classify, prioritize_for_enrichment, rank
@@ -118,6 +119,25 @@ class BudgetTests(unittest.TestCase):
         plan = budget_plan(config, 20)
         self.assertEqual(plan["max_creators"], 108)
         self.assertLessEqual(plan["estimated_cost_usd"], 4.9)
+
+
+class GoogleSheetsSyncTests(unittest.TestCase):
+    def test_creator_fields_match_bookworm_tiktok_sheet(self) -> None:
+        creator = Creator(
+            key="u1",
+            username="reader",
+            user_id="123",
+            display_name="Reader",
+            follower_count=20000,
+            average_views_per_video=15000,
+            average_engagement_rate_percent=6.5,
+            list_name="Primary",
+        )
+        fields = GoogleSheetsSync.fields(creator)
+        self.assertEqual(fields["TikTok Handle"], "@reader")
+        self.assertEqual(fields["TikTok User ID"], "123")
+        self.assertEqual(fields["List"], "Primary")
+        self.assertEqual(fields["Average Engagement Rate %"], 6.5)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import {
   getExecutionSettings,
   saveExecutionSettings,
   type ExecutionSettings,
-} from "@/lib/airtable";
+} from "@/lib/database";
 
 export async function GET() {
   const { settings } = await getExecutionSettings();
@@ -28,4 +28,3 @@ export async function PUT(req: NextRequest) {
   }
   return NextResponse.json({ settings: await saveExecutionSettings(settings) });
 }
-

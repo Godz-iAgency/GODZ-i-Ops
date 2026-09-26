@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getHubsTable, HubFields } from "@/lib/airtable";
+import { getHubsTable, HubFields } from "@/lib/database";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

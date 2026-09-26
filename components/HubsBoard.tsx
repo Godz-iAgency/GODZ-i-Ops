@@ -31,7 +31,7 @@ const FILTERS = [
 ];
 
 // The CSV's raw categories are more granular than the filter list, so they get
-// folded into buckets here rather than rewritten in Airtable. The source
+// folded into buckets here rather than rewritten in the database. The source
 // category stays intact on every record.
 function filterGroup(category?: string): string {
   const c = (category || "").toLowerCase();

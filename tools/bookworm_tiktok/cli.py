@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .airtable_sync import AirtableSync
 from .apify_client import ApifyClient, ApifyError
+from .google_sheets_sync import GoogleSheetsSync
 from .pipeline import JsonCache, Pipeline, print_table, write_outputs
 
 
@@ -99,7 +99,7 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--cache-dir", type=Path, default=ROOT / ".cache" / "bookworm-tiktok")
     command.add_argument("--env-file", type=Path, default=ROOT / ".env.local")
     command.add_argument("--refresh", action="store_true", help="Ignore compatible cached Actor results.")
-    command.add_argument("--sync-airtable", action="store_true", help="Upsert primary and reserve creators into Airtable.")
+    command.add_argument("--no-sync-google-sheets", action="store_true", help="Generate files without upserting qualified creators into Google Sheets.")
     command.add_argument("--results-per-source", type=int, help="Override discovery results per query/hashtag.")
     command.add_argument("--max-creators", type=int, help="Limit enrichment for a smoke test or partial run.")
     command.add_argument("--budget-usd", type=float, help="Hard maximum Apify spend estimate (default: config budget).")
@@ -130,6 +130,11 @@ def main(argv: list[str] | None = None) -> int:
     if not token:
         print("Missing APIFY_API_TOKEN (APIFY_API_KEY is accepted as a legacy alias).", file=sys.stderr)
         return 2
+    if not args.no_sync_google_sheets:
+        missing_sync = [name for name in ("APP_URL", "CRON_SECRET") if not os.getenv(name)]
+        if missing_sync:
+            print(f"Missing Google Sheets sync variables: {', '.join(missing_sync)}", file=sys.stderr)
+            return 2
     if args.dry_run:
         print(f"Configuration valid: {len(config['hashtags'])} hashtags, {len(config['search_queries'])} queries")
         print(
@@ -137,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
             f"{plan['max_returned_results']} results, estimated maximum ${plan['estimated_cost_usd']:.3f} "
             f"of ${plan['budget_usd']:.2f}."
         )
-        print("Required credential variables are present. No Actor run started.")
+        print("Required Apify and Google Sheets sync variables are present. No Actor run started.")
         return 0
 
     print(
@@ -177,14 +182,17 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Reserve creators: {stats.reserve_creators}")
     print(f"Creators discarded: {stats.creators_discarded}")
 
-    if args.sync_airtable:
-        airtable_token = os.getenv("AIRTABLE_PAT")
-        base_id = os.getenv("AIRTABLE_BASE_MUSIC")
-        if not airtable_token or not base_id:
-            print("AIRTABLE_PAT and AIRTABLE_BASE_MUSIC are required for --sync-airtable.", file=sys.stderr)
+    if not args.no_sync_google_sheets:
+        app_url = os.getenv("APP_URL")
+        import_secret = os.getenv("CRON_SECRET")
+        if not app_url or not import_secret:
+            print("APP_URL and CRON_SECRET are required for the Google Sheets sync.", file=sys.stderr)
             return 2
-        summary = AirtableSync(airtable_token, base_id, "tblKOYrjzZS8xdl60").sync([*primary, *reserve])
-        print(f"Airtable sync: {summary['created']} created, {summary['updated']} updated")
+        summary = GoogleSheetsSync(app_url, import_secret).sync([*primary, *reserve])
+        print(
+            "Google Sheets sync: "
+            f"{summary['created']} created, {summary['updated']} updated, {summary['skipped']} skipped"
+        )
     return 0
 
 

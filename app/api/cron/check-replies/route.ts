@@ -7,7 +7,7 @@ import {
   suppressByEmail,
   suppressContact,
   Contact,
-} from "@/lib/airtable";
+} from "@/lib/database";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendReplyEmail } from "@/lib/outreach";
 import { triageReply, shouldAutoAcknowledge, acknowledgementText } from "@/lib/replyTriage";

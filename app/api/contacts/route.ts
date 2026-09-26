@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { getAllContacts, getOutreachTable, ContactFields, OUTREACH_CACHE_TAG } from "@/lib/airtable";
+import { getAllContacts, getOutreachTable, ContactFields, OUTREACH_CACHE_TAG } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 export async function GET(req: NextRequest) {

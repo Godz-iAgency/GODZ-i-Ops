@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { getOutreachTable, ContactFields, OUTREACH_CACHE_TAG } from "@/lib/airtable";
+import { getOutreachTable, ContactFields, OUTREACH_CACHE_TAG } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,9 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       fields["Relationship Status"] = "Ready for Outreach";
     }
 
-  // typecast lets Airtable mint a select choice that does not exist yet. Its
-  // Meta API refuses to add choices to an existing select field, so this is the
-  // only way the pipeline stages stay in sync with the code.
+  // The adapter keeps validated pipeline stage values in sync with the sheet.
     const updated = await getOutreachTable().update([{ id, fields: fields as never }], { typecast: true });
     revalidateTag(OUTREACH_CACHE_TAG, { expire: 0 });
     return NextResponse.json({ id: updated[0].id, fields: updated[0].fields as ContactFields });

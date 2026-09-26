@@ -12,7 +12,7 @@ import {
   type LinkedInProspect,
   type BookwormContact,
   type BookwormTikTokCreator,
-} from "./airtable";
+} from "./database";
 
 export type OutreachChannel = "LinkedIn" | "TikTok" | "Email" | "Other";
 export type Project = "Splitmic" | "Bookworm";

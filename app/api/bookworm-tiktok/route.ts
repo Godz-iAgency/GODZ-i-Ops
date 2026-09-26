@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllBookwormTikTokCreators, getBookwormTikTokTable, BookwormTikTokFields } from "@/lib/airtable";
+import { getAllBookwormTikTokCreators, getBookwormTikTokTable, BookwormTikTokFields } from "@/lib/database";
 import { providerErrorResponse } from "@/lib/apiErrors";
 
 export async function GET() {
