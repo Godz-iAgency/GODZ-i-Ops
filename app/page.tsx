@@ -14,7 +14,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import ExecutionTodayTab from "@/components/ExecutionTodayTab";
+import TodayTab from "@/components/TodayTab";
 import OutreachTab from "@/components/OutreachTab";
 import RepliesTab from "@/components/RepliesTab";
 import SearchTab from "@/components/SearchTab";
@@ -111,7 +111,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {tab === "today" && <ExecutionTodayTab />}
+            {tab === "today" && <TodayTab />}
             {tab === "outreach" && <OutreachTab />}
             {tab === "replies" && <RepliesTab />}
             {tab === "calendar" && <CalendarTab />}

@@ -110,7 +110,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function OutreachBoard() {
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
@@ -329,6 +329,37 @@ export default function OutreachBoard() {
       setResearchSavingId(null);
     }
   };
+
+  if (loading && contacts.length === 0) {
+    return (
+      <div className="flex min-h-[420px] flex-col gap-5">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Email pipeline</h2>
+          <p className="mt-1 text-sm text-muted">Connecting to Airtable…</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading outreach contacts">
+          {[0, 1, 2, 3].map((item) => (
+            <div key={item} className="h-44 animate-pulse rounded-2xl border border-border bg-surface2" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error && contacts.length === 0) {
+    return (
+      <div className="rounded-2xl border border-[rgba(232,67,10,0.4)] bg-[rgba(232,67,10,0.1)] p-5">
+        <h2 className="text-lg font-bold text-foreground">Airtable did not respond</h2>
+        <p className="mt-2 text-sm text-accentLight">{error}</p>
+        <button
+          onClick={load}
+          className="mt-4 min-h-11 rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-white"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
