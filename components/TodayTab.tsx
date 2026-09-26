@@ -1207,7 +1207,34 @@ export default function TodayTab() {
           )}
           {loading && <p className="text-base italic text-muted">Loading today…</p>}
 
-          {!loading && (
+          {!loading && isSunday && (
+            <div className="px-6 py-10 rounded-2xl bg-surface2 border border-border text-center">
+              <p className="text-2xl font-bold text-foreground mb-2">Rest.</p>
+              <p className="text-base text-muted">No outreach, community work, or content today.</p>
+            </div>
+          )}
+
+          {!loading && isSaturday && (
+            <>
+              <Block tag="DEEP WORK" time="8:00 AM - 4:00 PM" title="Saturday Deep Work">
+                <CheckRow
+                  label="Deep work session completed"
+                  checked={!!progress["Deep Work Completed"]}
+                  onToggle={() => set({ "Deep Work Completed": !progress["Deep Work Completed"] })}
+                />
+                <textarea
+                  value={progress["Deep Work Notes"] || ""}
+                  onChange={(e) => set({ "Deep Work Notes": e.target.value })}
+                  placeholder="What did you work on? Bookworm product, creator research, community planning, testing, or next week's prep…"
+                  rows={5}
+                  className={area}
+                />
+              </Block>
+              <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
+            </>
+          )}
+
+          {!loading && !isSunday && !isSaturday && (
             <>
               <Block tag="OUTREACH" time="Anytime today" title="Email and TikTok Outreach">
                 <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">

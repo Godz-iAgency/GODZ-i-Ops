@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2 } from "lucide-react";
+import { Plus, X, RefreshCw, Save, Mail, Phone, Search, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Trash2, List, Columns3, ArrowRight, CheckCircle2 } from "lucide-react";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 import { readApiJson } from "@/lib/apiClient";
 
@@ -75,6 +75,9 @@ export default function BookwormOutreachBoard() {
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [activeStage, setActiveStage] = useState(STAGES[0]);
+  const [viewMode, setViewMode] = useState<"queue" | "pipeline">("queue");
+  const [queueQuery, setQueueQuery] = useState("");
+  const [queueVisible, setQueueVisible] = useState(PAGE_SIZE);
   const boardRef = useRef<HTMLDivElement>(null);
   const stageRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -87,6 +90,7 @@ export default function BookwormOutreachBoard() {
       setContacts(data.contacts);
       setSearchByStage({});
       setVisibleByStage({});
+      setQueueVisible(PAGE_SIZE);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -174,11 +178,12 @@ export default function BookwormOutreachBoard() {
     setDetail((d) => (d ? { ...d, fields: { ...d.fields, ...patchFields } } : d));
 
   const goToStage = useCallback((stage: string) => {
+    setActiveStage(stage);
+    setQueueVisible(PAGE_SIZE);
     const board = boardRef.current;
     const target = stageRefs.current[stage];
     if (!board || !target) return;
     board.scrollTo({ left: Math.max(0, target.offsetLeft - board.offsetLeft - 12), behavior: "smooth" });
-    setActiveStage(stage);
   }, []);
 
   const stepStage = (direction: -1 | 1) => {
@@ -223,38 +228,62 @@ export default function BookwormOutreachBoard() {
   }, [contacts]);
 
   const totals = useMemo(() => {
-    const contacted = contacts.filter((c) => (c.fields["Relationship Status"] || "New") !== "New").length;
-    const joined = contacts.filter((c) => c.fields["Relationship Status"] === "Joined Whop").length;
-    return { total: contacts.length, contacted, joined };
-  }, [contacts]);
+    const missingEmail = contacts.filter((contact) => !(contact.fields.Email || "").trim()).length;
+    return {
+      total: contacts.length,
+      new: (byStage.New || []).length,
+      missingEmail,
+      contacted: (byStage.Contacted || []).length,
+      replied: (byStage.Replied || []).length,
+      joined: (byStage["Joined Whop"] || []).length,
+    };
+  }, [contacts, byStage]);
+
+  const filteredQueue = useMemo(() => {
+    const query = queueQuery.trim().toLowerCase();
+    const stageContacts = byStage[activeStage] || [];
+    if (!query) return stageContacts;
+    return stageContacts.filter((contact) =>
+      [contact.fields.Name, contact.fields.Category, contact.fields.Opportunity, contact.fields.Email]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [activeStage, byStage, queueQuery]);
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Bookworm email</h2>
-          <p className="text-sm text-muted font-mono mt-1">
-            {totals.total} prospects · {totals.contacted} contacted · primary ICP: business consultants
-          </p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-foreground sm:text-2xl">Email outreach</h2>
+          <p className="mt-1 text-sm text-muted">Work the next best Bookworm partner, then use the pipeline for the bigger picture.</p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 min-[420px]:flex min-[420px]:w-auto min-[420px]:items-center">
-          <button
-            onClick={() =>
-              setCollapsed((prev) => {
-                const allCollapsed = STAGES.every((s) => prev[s]);
-                const next: Record<string, boolean> = {};
-                for (const s of STAGES) next[s] = !allCollapsed;
-                return next;
-              })
-            }
-            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:px-5"
-          >
-            {STAGES.every((s) => collapsed[s]) ? "Expand all" : "Collapse all"}
-          </button>
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+          <div className="col-span-2 grid grid-cols-2 rounded-xl border border-border bg-surface2 p-1 sm:col-span-1">
+            <button
+              onClick={() => setViewMode("queue")}
+              aria-pressed={viewMode === "queue"}
+              className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all ${
+                viewMode === "queue" ? "bg-surfaceElevated text-foreground" : "text-muted hover:text-white"
+              }`}
+            >
+              <List size={15} /> Queue
+            </button>
+            <button
+              onClick={() => setViewMode("pipeline")}
+              aria-pressed={viewMode === "pipeline"}
+              className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all ${
+                viewMode === "pipeline" ? "bg-surfaceElevated text-foreground" : "text-muted hover:text-white"
+              }`}
+            >
+              <Columns3 size={15} /> Pipeline
+            </button>
+          </div>
           <button
             onClick={load}
             disabled={loading}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:px-5"
+            className="col-span-2 flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface2 px-4 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-50 sm:col-span-1"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -270,48 +299,189 @@ export default function BookwormOutreachBoard() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-surface2/70 p-2.5">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => stepStage(-1)}
-            disabled={activeStage === STAGES[0]}
-            aria-label="Previous pipeline stage"
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"
-          >
-            <ChevronLeft size={19} />
-          </button>
-          <div className="scrollbar-none flex min-w-0 flex-1 gap-2 overflow-x-auto px-0.5 py-0.5">
-            {STAGES.map((stage) => (
-              <button
-                key={stage}
-                onClick={() => goToStage(stage)}
-                aria-current={activeStage === stage ? "step" : undefined}
-                className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all sm:px-3.5 ${
-                  activeStage === stage
-                    ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
-                    : "border-border bg-black/20 text-textSecondary hover:border-borderHover hover:text-white"
-                }`}
-              >
-                {stage}
-                <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">
-                  {(byStage[stage] || []).length}
-                </span>
-              </button>
-            ))}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+        {[
+          { label: "Total prospects", value: totals.total },
+          { label: "New", value: totals.new },
+          { label: "Contacted", value: totals.contacted },
+          { label: "Replies", value: totals.replied },
+          { label: "Joined Whop", value: totals.joined },
+        ].map((metric, index) => (
+          <div key={metric.label} className={`rounded-xl border border-border bg-surface2 px-3.5 py-3.5 sm:px-4 ${index === 4 ? "col-span-2 sm:col-span-1" : ""}`}>
+            <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted">{metric.label}</p>
+            <p className="mt-1 text-2xl font-bold text-foreground">{metric.value}</p>
           </div>
-          <button
-            onClick={() => stepStage(1)}
-            disabled={activeStage === STAGES[STAGES.length - 1]}
-            aria-label="Next pipeline stage"
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"
-          >
-            <ChevronRight size={19} />
-          </button>
-        </div>
-        <p className="px-1 pt-2 text-xs leading-relaxed text-muted">
-          Jump to a stage, use the arrows, swipe on touchscreens, or drag the scrollbar below the columns.
-        </p>
+        ))}
       </div>
+
+      <section className="grid gap-3 rounded-2xl border border-accent/35 bg-[linear-gradient(115deg,rgba(232,67,10,0.14),rgba(18,18,25,0.9)_65%)] p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white"><ArrowRight size={19} /></div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accentLight">Best next action</p>
+          <p className="mt-1 font-semibold text-foreground">
+            {totals.new > 0 ? "Open the next new Bookworm prospect." : totals.contacted > 0 ? "Review contacted prospects and follow up." : "Review replies and community joins."}
+          </p>
+          <p className="mt-1 text-sm text-textSecondary">
+            {totals.missingEmail > 0 ? `${totals.missingEmail} prospects still need an email address.` : "Every prospect currently has an email address."}
+          </p>
+        </div>
+        <button
+          onClick={() => goToStage(totals.new > 0 ? "New" : totals.contacted > 0 ? "Contacted" : "Replied")}
+          className="min-h-11 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white transition-all hover:brightness-110 sm:justify-self-end"
+        >
+          Open queue
+        </button>
+      </section>
+
+      <div className="scrollbar-none -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+        {STAGES.map((stage) => {
+          const isDropTarget = overStage === stage && dragId;
+          return (
+            <button
+              key={stage}
+              onClick={() => goToStage(stage)}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setOverStage(stage);
+              }}
+              onDragLeave={() => setOverStage((current) => current === stage ? null : current)}
+              onDrop={(event) => {
+                event.preventDefault();
+                const contactId = dragId || event.dataTransfer.getData("text/plain");
+                if (contactId) moveStage(contactId, stage);
+                setDragId(null);
+                setOverStage(null);
+                goToStage(stage);
+              }}
+              aria-current={activeStage === stage ? "step" : undefined}
+              className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
+                isDropTarget
+                  ? "border-accent bg-accent text-white"
+                  : activeStage === stage
+                    ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
+                    : "border-border bg-surface2 text-textSecondary hover:border-borderHover hover:text-white"
+              }`}
+            >
+              {stage}
+              <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">{(byStage[stage] || []).length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {viewMode === "queue" ? (
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface2">
+            <div className="flex flex-col gap-3 border-b border-border p-3.5 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted">Current queue</p>
+                <h3 className="mt-1 text-lg font-bold text-foreground">{activeStage}</h3>
+              </div>
+              <div className="flex min-w-0 gap-2">
+                <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-black/25 px-3 sm:w-64">
+                  <Search size={15} className="flex-shrink-0 text-muted" />
+                  <input value={queueQuery} onChange={(event) => { setQueueQuery(event.target.value); setQueueVisible(PAGE_SIZE); }} placeholder="Search this queue…" className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted sm:text-sm" />
+                </label>
+                <button onClick={() => setAddingStage(activeStage)} className="flex min-h-11 flex-shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-surface3 px-3 text-sm font-semibold text-textSecondary transition-all hover:border-accent hover:text-white sm:px-4">
+                  <Plus size={16} /> <span className="hidden sm:inline">Add prospect</span>
+                </button>
+              </div>
+            </div>
+
+            {addingStage === activeStage && (
+              <div className="grid gap-2 border-b border-border bg-black/15 p-3.5 sm:grid-cols-2 lg:grid-cols-4 lg:p-4">
+                <input autoFocus value={form.Name} onChange={(event) => setForm({ ...form, Name: event.target.value })} placeholder="Name" className={inputCls} />
+                <input value={form.Category} onChange={(event) => setForm({ ...form, Category: event.target.value })} placeholder="Category" className={inputCls} />
+                <input value={form.Email} onChange={(event) => setForm({ ...form, Email: event.target.value })} placeholder="Email" className={inputCls} />
+                <input value={form["Channel Handle"]} onChange={(event) => setForm({ ...form, "Channel Handle": event.target.value })} placeholder="Channel handle" className={inputCls} />
+                <div className="flex gap-2 sm:col-span-2 lg:col-span-4 lg:justify-end">
+                  <button onClick={() => { setAddingStage(null); setForm(emptyForm); }} className="min-h-11 flex-1 rounded-xl border border-border px-4 text-sm text-textSecondary hover:text-white lg:flex-none">Cancel</button>
+                  <button onClick={() => createContact(activeStage)} disabled={saving || !form.Name?.trim()} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-bold text-white disabled:opacity-40 lg:flex-none"><Save size={15} /> Save prospect</button>
+                </div>
+              </div>
+            )}
+
+            <div className="divide-y divide-border">
+              {filteredQueue.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface3 text-muted"><CheckCircle2 size={20} /></div>
+                  <p className="mt-3 font-semibold text-foreground">{queueQuery ? "No matching prospects" : `The ${activeStage.toLowerCase()} queue is clear.`}</p>
+                  <p className="mt-1 text-sm text-muted">{queueQuery ? "Try a different name, category, opportunity, or email." : "Choose another stage above to keep working."}</p>
+                </div>
+              ) : filteredQueue.slice(0, queueVisible).map((contact) => {
+                const fields = contact.fields;
+                return (
+                  <article
+                    key={contact.id}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", contact.id);
+                      setDragId(contact.id);
+                    }}
+                    onDragEnd={() => { setDragId(null); setOverStage(null); }}
+                    className="grid cursor-grab gap-3 p-3.5 transition-colors hover:bg-white/[0.025] active:cursor-grabbing sm:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)_auto] lg:items-center"
+                    style={{ opacity: dragId === contact.id ? 0.45 : 1 }}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <button onClick={() => setDetail(contact)} className="min-w-0 truncate text-left text-base font-semibold text-foreground hover:text-accentLight">{fields.Name || "Unnamed prospect"}</button>
+                        {fields.Priority && <span className="rounded-full bg-surfaceElevated px-2 py-0.5 font-mono text-xs text-accentLight">{fields.Priority}</span>}
+                      </div>
+                      <p className="mt-0.5 truncate text-sm text-muted">{fields.Opportunity || fields.Category || "Opportunity not set"}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
+                        {fields.Category && <span className="rounded-full bg-surfaceElevated px-2.5 py-1">{fields.Category}</span>}
+                        {fields.Email ? <a href={`mailto:${fields.Email}`} className="flex items-center gap-1 rounded-full bg-surfaceElevated px-2.5 py-1 hover:text-white"><Mail size={11} /> {fields.Email}</a> : <span className="flex items-center gap-1 rounded-full bg-surfaceElevated px-2.5 py-1 text-muted"><Mail size={11} /> No email yet</span>}
+                        {fields.Phone && <a href={`tel:${fields.Phone}`} className="flex items-center gap-1 rounded-full bg-surfaceElevated px-2.5 py-1 hover:text-white"><Phone size={11} /> {fields.Phone}</a>}
+                      </div>
+                    </div>
+                    <div className="min-w-0 rounded-xl bg-black/20 px-3 py-2.5">
+                      <p className="text-xs uppercase tracking-[0.1em] text-muted">Next action</p>
+                      <p className="mt-1 truncate text-sm text-foreground">{fields["Next Action"] || (fields.Email ? "Review and continue outreach" : "Find and verify an email")}</p>
+                      {fields["Last Contact"] && <p className="mt-1 font-mono text-xs text-muted">Last contact: {fields["Last Contact"]}</p>}
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 lg:flex lg:items-center">
+                      <select value={activeStage} onClick={(event) => event.stopPropagation()} onChange={(event) => moveStage(contact.id, event.target.value)} aria-label={`Move ${fields.Name || "prospect"} to another stage`} className="min-h-11 min-w-0 rounded-xl border border-border bg-black/30 px-3 text-sm text-textSecondary outline-none">
+                        {STAGES.map((stage) => <option key={stage} value={stage}>Move to: {stage}</option>)}
+                      </select>
+                      <button onClick={() => setDetail(contact)} className="min-h-11 rounded-xl border border-border bg-surface3 px-3 text-sm font-semibold text-foreground transition-all hover:border-accent sm:px-4">Open</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            {filteredQueue.length > queueVisible && (
+              <div className="border-t border-border p-3"><button onClick={() => setQueueVisible(filteredQueue.length)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-black/20 text-sm font-semibold text-textSecondary hover:border-accent hover:text-white"><ChevronDown size={15} /> Show {filteredQueue.length - queueVisible} more</button></div>
+            )}
+          </section>
+
+          <aside className="rounded-2xl border border-border bg-surface2 p-4 xl:self-start xl:sticky xl:top-24">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accentLight">How today moves forward</p>
+            <ol className="mt-4 space-y-4">
+              {[["1", "Review", "Open the prospect and confirm the best partnership angle."], ["2", "Reach out", "Send a relevant message and move them to Contacted."], ["3", "Follow through", "Move replies and new Whop members forward."]].map(([number, title, description]) => (
+                <li key={number} className="flex gap-3"><span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-surface3 font-mono text-xs font-bold text-accentLight">{number}</span><div><p className="text-sm font-semibold text-foreground">{title}</p><p className="mt-0.5 text-xs leading-relaxed text-muted">{description}</p></div></li>
+              ))}
+            </ol>
+            <div className="mt-5 rounded-xl border border-border bg-black/20 p-3"><p className="text-xs leading-relaxed text-textSecondary">Drag a prospect onto a stage above, or use the Move to field. Either action updates Google Sheets immediately.</p></div>
+          </aside>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface2/70 p-2.5 sm:flex-row sm:items-center">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex">
+              <button onClick={() => stepStage(-1)} disabled={activeStage === STAGES[0]} aria-label="Previous pipeline stage" className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"><ChevronLeft size={19} /></button>
+              <div className="min-w-0 px-2 text-center sm:text-left"><p className="truncate text-sm font-semibold text-foreground">{activeStage}</p><p className="text-xs text-muted">{(byStage[activeStage] || []).length} prospects in this stage</p></div>
+              <button onClick={() => stepStage(1)} disabled={activeStage === STAGES[STAGES.length - 1]} aria-label="Next pipeline stage" className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-black/20 text-textSecondary transition-all hover:border-accent hover:text-white disabled:opacity-30"><ChevronRight size={19} /></button>
+            </div>
+            <p className="px-1 text-xs leading-relaxed text-muted sm:ml-2">Swipe, use the arrows, drag the scrollbar, or drop a card onto a stage above.</p>
+            <button
+              onClick={() => setCollapsed((prev) => { const allCollapsed = STAGES.every((stage) => prev[stage]); const next: Record<string, boolean> = {}; for (const stage of STAGES) next[stage] = !allCollapsed; return next; })}
+              className="min-h-10 flex-shrink-0 rounded-xl border border-border bg-black/20 px-3 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:ml-auto"
+            >
+              {STAGES.every((stage) => collapsed[stage]) ? "Expand all" : "Collapse all"}
+            </button>
+          </div>
 
       <div
         ref={boardRef}
@@ -366,12 +536,14 @@ export default function BookwormOutreachBoard() {
               }}
               onDragOver={(e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
                 setOverStage(stage);
               }}
               onDragLeave={() => setOverStage((s) => (s === stage ? null : s))}
               onDrop={(e) => {
                 e.preventDefault();
-                if (dragId) moveStage(dragId, stage);
+                const contactId = dragId || e.dataTransfer.getData("text/plain");
+                if (contactId) moveStage(contactId, stage);
                 setOverStage(null);
                 setDragId(null);
               }}
@@ -484,7 +656,11 @@ export default function BookwormOutreachBoard() {
                     <div
                       key={c.id}
                       draggable
-                      onDragStart={() => setDragId(c.id)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", c.id);
+                        setDragId(c.id);
+                      }}
                       onDragEnd={() => setDragId(null)}
                       className="card-hover rounded-xl p-3.5 flex flex-col gap-2.5 cursor-pointer bg-surface3 border border-border"
                       style={{ opacity: dragId === c.id ? 0.4 : 1 }}
@@ -571,6 +747,8 @@ export default function BookwormOutreachBoard() {
           );
         })}
       </div>
+        </>
+      )}
 
       {detail && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" onClick={() => setDetail(null)}>

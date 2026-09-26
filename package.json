@@ -9,6 +9,7 @@
     "lint": "next lint",
     "sheets:init": "node --env-file=.env.local --experimental-strip-types scripts/init-google-sheets.ts",
     "sheets:verify": "node --env-file=.env.local --experimental-strip-types scripts/verify-google-sheets.ts",
+    "sheets:import-csv": "node --env-file=.env.local --experimental-strip-types scripts/import-airtable-csv-to-google-sheets.ts",
     "airtable:audit": "node --env-file=.env.local --experimental-strip-types scripts/migrate-airtable-to-google-sheets.ts --audit-only",
     "airtable:migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate-airtable-to-google-sheets.ts"
   },

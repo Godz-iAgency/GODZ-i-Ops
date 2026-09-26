@@ -483,23 +483,42 @@ export default function OutreachBoard() {
       </section>
 
       <div className="scrollbar-none -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-        {STAGES.map((stage) => (
-          <button
-            key={stage}
-            onClick={() => goToStage(stage)}
-            aria-current={activeStage === stage ? "step" : undefined}
-            className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
-              activeStage === stage
-                ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
-                : "border-border bg-surface2 text-textSecondary hover:border-borderHover hover:text-white"
-            }`}
-          >
-            {stage}
-            <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">
-              {(byStage[stage] || []).length}
-            </span>
-          </button>
-        ))}
+        {STAGES.map((stage) => {
+          const isDropTarget = overStage === stage && dragId;
+          return (
+            <button
+              key={stage}
+              onClick={() => goToStage(stage)}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setOverStage(stage);
+              }}
+              onDragLeave={() => setOverStage((current) => current === stage ? null : current)}
+              onDrop={(event) => {
+                event.preventDefault();
+                const contactId = dragId || event.dataTransfer.getData("text/plain");
+                if (contactId) moveStage(contactId, stage);
+                setDragId(null);
+                setOverStage(null);
+                goToStage(stage);
+              }}
+              aria-current={activeStage === stage ? "step" : undefined}
+              className={`flex min-h-10 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
+                isDropTarget
+                  ? "border-accent bg-accent text-white"
+                  : activeStage === stage
+                    ? "border-accent bg-[rgba(232,67,10,0.14)] text-foreground"
+                    : "border-border bg-surface2 text-textSecondary hover:border-borderHover hover:text-white"
+              }`}
+            >
+              {stage}
+              <span className="rounded-full bg-surface3 px-2 py-0.5 font-mono text-xs text-muted">
+                {(byStage[stage] || []).length}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {viewMode === "queue" ? (
@@ -598,7 +617,21 @@ export default function OutreachBoard() {
                   const fields = contact.fields;
                   const lastTouch = fields["Email Last Contacted"] || fields["LinkedIn Last Contacted"];
                   return (
-                    <article key={contact.id} className="grid gap-3 p-3.5 transition-colors hover:bg-white/[0.025] sm:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)_auto] lg:items-center">
+                    <article
+                      key={contact.id}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", contact.id);
+                        setDragId(contact.id);
+                      }}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setOverStage(null);
+                      }}
+                      className="grid cursor-grab gap-3 p-3.5 transition-colors hover:bg-white/[0.025] active:cursor-grabbing sm:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)_auto] lg:items-center"
+                      style={{ opacity: dragId === contact.id ? 0.45 : 1 }}
+                    >
                       <div className="min-w-0">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
                           <button
@@ -798,12 +831,14 @@ export default function OutreachBoard() {
               }}
               onDragOver={(e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
                 setOverStage(stage);
               }}
               onDragLeave={() => setOverStage((s) => (s === stage ? null : s))}
               onDrop={(e) => {
                 e.preventDefault();
-                if (dragId) moveStage(dragId, stage);
+                const contactId = dragId || e.dataTransfer.getData("text/plain");
+                if (contactId) moveStage(contactId, stage);
                 setOverStage(null);
                 setDragId(null);
               }}
@@ -919,7 +954,11 @@ export default function OutreachBoard() {
                     <div
                       key={c.id}
                       draggable
-                      onDragStart={() => setDragId(c.id)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", c.id);
+                        setDragId(c.id);
+                      }}
                       onDragEnd={() => setDragId(null)}
                       className="card-hover rounded-xl p-3.5 flex flex-col gap-2.5 cursor-pointer bg-surface3 border border-border"
                       style={{ opacity: dragId === c.id ? 0.4 : 1 }}
