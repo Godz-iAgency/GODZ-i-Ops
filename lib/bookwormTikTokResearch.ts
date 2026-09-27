@@ -237,7 +237,8 @@ function rankScore(creator: Creator) {
 
 function existingReady(fields: BookwormTikTokFields) {
   const contacted = !!fields["Date Contacted"] || !["", "New"].includes(fields.Status || "New");
-  return !fields.Excluded
+  return fields.List === "Primary"
+    && !fields.Excluded
     && !contacted
     && (fields.Followers || 0) >= MIN_FOLLOWERS
     && (fields["Average Engagement Rate %"] || 0) >= MIN_ENGAGEMENT
@@ -268,7 +269,7 @@ async function apifyJson(path: string, token: string, init?: RequestInit): Promi
 }
 
 async function runActor(token: string, input: RawItem): Promise<RawItem[]> {
-  const started = object(await apifyJson(`/acts/${ACTOR_ID}/runs`, token, { method: "POST", body: JSON.stringify(input) }));
+  const started = object(await apifyJson(`/acts/${ACTOR_ID}/runs?maxTotalChargeUsd=${ESTIMATED_MAXIMUM_SPEND_USD.toFixed(2)}`, token, { method: "POST", body: JSON.stringify(input) }));
   const run = object(started.data);
   const runId = text(run.id);
   if (!runId) throw new Error("Apify did not return a run ID.");
@@ -296,6 +297,116 @@ function keyForExisting(fields: BookwormTikTokFields) {
   return String(fields["TikTok User ID"] || fields["TikTok Handle"] || "").trim().replace(/^@/, "").toLowerCase();
 }
 
+function creatorFromFields(fields: BookwormTikTokFields): Creator | null {
+  const username = String(fields["TikTok Handle"] || "").trim().replace(/^@/, "");
+  const userId = String(fields["TikTok User ID"] || "").trim() || undefined;
+  if (!username && !userId) return null;
+  const resolvedUsername = username || userId!;
+  return {
+    key: (userId || resolvedUsername).toLowerCase(),
+    username: resolvedUsername,
+    userId,
+    displayName: fields["Display Name"] || fields.Name,
+    followers: fields.Followers,
+    following: fields.Following,
+    totalLikes: fields["Total Likes"],
+    bio: fields.Bio,
+    profileUrl: fields["TikTok URL"],
+    sources: fields["Discovery Source"] ? fields["Discovery Source"].split(";").map((value) => value.trim()).filter(Boolean) : [],
+    videos: [],
+    validVideoCount: 0,
+  };
+}
+
+async function qualifyCandidateBank(
+  token: string,
+  existing: Array<{ id: string; fields: BookwormTikTokFields }>,
+  readyBefore: number,
+): Promise<TikTokResearchResult | null> {
+  const candidates = existing
+    .filter((creator) => creator.fields.List === "Candidate" && !creator.fields.Excluded && !isContacted(creator.fields))
+    .sort((a, b) => (b.fields.Followers || 0) - (a.fields.Followers || 0))
+    .slice(0, PROFILE_LIMIT);
+  if (!candidates.length) return null;
+
+  const creators = new Map<string, Creator>();
+  for (const candidate of candidates) {
+    const creator = creatorFromFields(candidate.fields);
+    if (creator) creators.set(creator.key, creator);
+  }
+  const profileItems = await runActor(token, {
+    profiles: candidates.map((candidate) => String(candidate.fields["TikTok Handle"] || "").replace(/^@/, "")).filter(Boolean),
+    resultsPerPage: RECENT_VIDEOS,
+    profileScrapeSections: ["videos"],
+    profileSorting: "latest",
+    excludePinnedPosts: true,
+    shouldDownloadVideos: false,
+    shouldDownloadCovers: false,
+    shouldDownloadAvatars: false,
+  });
+  mergeItems(creators, profileItems, "profile-batch:candidate-bank");
+
+  const ranked = Array.from(creators.values())
+    .map((creator) => { calculateMetrics(creator); return creator; })
+    .sort((a, b) => rankScore(b) - rankScore(a));
+  const qualifiedKeys = new Set(ranked.filter(qualifies).map((creator) => creator.key));
+  const needed = Math.max(0, TARGET_READY - readyBefore);
+  const primaryKeys = new Set(ranked.filter((creator) => qualifiedKeys.has(creator.key)).slice(0, needed).map((creator) => creator.key));
+  const byUsername = new Map(ranked.map((creator) => [creator.username.toLowerCase(), creator]));
+  const enrichedAt = new Date().toISOString();
+
+  await getBookwormTikTokTable().update(candidates.map((candidate) => {
+    const key = keyForExisting(candidate.fields);
+    const creator = creators.get(key) || byUsername.get(String(candidate.fields["TikTok Handle"] || "").replace(/^@/, "").toLowerCase());
+    if (!creator) {
+      return { id: candidate.id, fields: { List: "Reserve", "Enriched At": enrichedAt, "Next Action": "Profile could not be enriched; review manually" } };
+    }
+    const isPrimary = primaryKeys.has(creator.key);
+    const passed = qualifiedKeys.has(creator.key);
+    return {
+      id: candidate.id,
+      fields: {
+        Followers: creator.followers == null ? candidate.fields.Followers : Math.round(creator.followers),
+        Following: creator.following == null ? candidate.fields.Following : Math.round(creator.following),
+        "Total Likes": creator.totalLikes == null ? candidate.fields["Total Likes"] : Math.round(creator.totalLikes),
+        "Average Views": creator.averageViews == null ? undefined : Math.round(creator.averageViews),
+        "Average Engagement Rate %": creator.engagementRate == null ? undefined : Number(creator.engagementRate.toFixed(3)),
+        "Follower To Avg Views Ratio": creator.reachRatio == null ? undefined : Number(creator.reachRatio.toFixed(4)),
+        "Days Since Last Post": creator.daysSinceLastPost,
+        "Last Post Date": creator.lastPostDate,
+        Bio: creator.bio || candidate.fields.Bio,
+        List: isPrimary ? "Primary" : "Reserve",
+        "Enriched At": enrichedAt,
+        "Next Action": isPrimary
+          ? "Review profile and send a personalized partnership DM"
+          : passed
+            ? "Qualified backup; move to Primary when the daily queue needs it"
+            : "Does not currently meet every outreach threshold",
+      } satisfies BookwormTikTokFields,
+    };
+  }), { typecast: true });
+
+  const promoted = primaryKeys.size;
+  const readyAfter = readyBefore + promoted;
+  return {
+    added: promoted,
+    readyBefore,
+    readyAfter,
+    discovered: 0,
+    uniqueCreators: candidates.length,
+    enriched: candidates.length,
+    qualified: qualifiedKeys.size,
+    estimatedMaximumSpendUsd: ESTIMATED_MAXIMUM_SPEND_USD,
+    message: promoted
+      ? `Qualified ${candidates.length} saved candidates and promoted ${promoted}. Your queue now has ${readyAfter} ready to contact.`
+      : `Reviewed ${candidates.length} saved candidates, but none met every outreach threshold. They were moved to Reserve.`,
+  };
+}
+
+function isContacted(fields: BookwormTikTokFields) {
+  return !!fields["Date Contacted"] || !["", "New"].includes(fields.Status || "New");
+}
+
 async function executeResearch(): Promise<TikTokResearchResult> {
   const token = process.env.APIFY_API_TOKEN?.trim();
   if (!token) throw new Error("APIFY_API_TOKEN is not configured in Vercel.");
@@ -309,6 +420,9 @@ async function executeResearch(): Promise<TikTokResearchResult> {
       message: `You already have ${readyBefore} qualified creators ready to contact, so no Apify credit was used.`,
     };
   }
+
+  const bankResult = await qualifyCandidateBank(token, existing, readyBefore);
+  if (bankResult) return bankResult;
 
   const common = {
     resultsPerPage: RESULTS_PER_SOURCE,

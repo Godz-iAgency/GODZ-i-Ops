@@ -138,7 +138,7 @@ export default function QualifiedTikTokBoard() {
 
   const researchWithApify = async () => {
     const confirmed = window.confirm(
-      "Find enough qualified creators to bring the queue up to 10? This may use up to about $1 of Apify credit and can take 1–4 minutes."
+      "Deep-check saved candidates and bring the qualified queue up to 10? This may use up to about $1 of Apify credit and can take 1–4 minutes."
     );
     if (!confirmed) return;
     setResearching(true);
@@ -160,24 +160,31 @@ export default function QualifiedTikTokBoard() {
   };
 
   const categories = useMemo(() => [...new Set(creators.map((item) => item.fields["Discovery Category"] || item.fields.Niche).filter(Boolean) as string[])].sort(), [creators]);
+  const candidateCount = creators.filter((creator) => !creator.fields.Excluded && creator.fields.List === "Candidate").length;
+  const qualifiedCount = creators.filter((creator) => !creator.fields.Excluded && creator.fields.List === "Primary" && !isContacted(creator)).length;
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return creators
       .filter((creator) => {
         const fields = creator.fields;
         if (fields.Excluded) return false;
-        if (listFilter !== "All" && (fields.List || "Primary") !== listFilter) return false;
+        const creatorList = fields.List || "Primary";
+        const isCandidate = creatorList === "Candidate";
+        if (listFilter !== "All" && creatorList !== listFilter) return false;
         if (contactFilter === "Not Contacted" && isContacted(creator)) return false;
         if (contactFilter === "Contacted" && !isContacted(creator)) return false;
         if (fields.Followers != null && fields.Followers < minFollowers) return false;
-        if ((fields["Average Engagement Rate %"] ?? 0) < minEngagement) return false;
-        if ((fields["Days Since Last Post"] ?? Number.POSITIVE_INFINITY) > maxDays) return false;
+        if (!isCandidate && (fields["Average Engagement Rate %"] ?? 0) < minEngagement) return false;
+        if (!isCandidate && (fields["Days Since Last Post"] ?? Number.POSITIVE_INFINITY) > maxDays) return false;
         if (category !== "All" && (fields["Discovery Category"] || fields.Niche) !== category) return false;
         if (!normalizedQuery) return true;
         return [fields.Name, fields["Display Name"], fields["TikTok Handle"], fields.Bio, fields["Discovery Source"]]
           .filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
       })
-      .sort((a, b) => (b.fields["Average Engagement Rate %"] || 0) - (a.fields["Average Engagement Rate %"] || 0));
+      .sort((a, b) => {
+        if (listFilter === "Candidate") return (b.fields.Followers || 0) - (a.fields.Followers || 0);
+        return (b.fields["Average Engagement Rate %"] || 0) - (a.fields["Average Engagement Rate %"] || 0);
+      });
   }, [category, contactFilter, creators, listFilter, maxDays, minEngagement, minFollowers, query]);
 
   const todayCount = creators.filter((creator) => creator.fields["Date Contacted"] === austinDateStr()).length;
@@ -187,7 +194,7 @@ export default function QualifiedTikTokBoard() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-foreground sm:text-2xl">TikTok Creator Queue</h2>
-          <p className="mt-1 font-mono text-sm text-muted">{filtered.length} ready now · {todayCount} contacted today · {creators.length} saved</p>
+          <p className="mt-1 font-mono text-sm text-muted">{qualifiedCount} ready now · {candidateCount} candidates · {todayCount} contacted today · {creators.length} saved</p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
           <button onClick={() => setAdding((value) => !value)} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-accent px-3 py-2.5 text-sm font-bold text-white sm:px-4"><Plus size={15} /> Save prospect</button>
@@ -211,7 +218,7 @@ export default function QualifiedTikTokBoard() {
             <h3 className="font-bold text-foreground">Creator research</h3>
           </div>
           <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-textSecondary">
-            Apify discovers and reviews recent TikTok activity, removes duplicates, and fills this queue with up to 10 qualified creators. You only review the profile and send the message.
+            Your candidate bank stores profile-level prospects. Apify deep-checks recent activity in small batches and promotes up to 10 fully qualified creators into today&apos;s outreach queue.
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px] text-muted">
             <span className="rounded-full bg-black/25 px-2.5 py-1">10K+ followers</span>
@@ -228,7 +235,7 @@ export default function QualifiedTikTokBoard() {
           className="flex min-h-12 w-full flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white shadow-[0_8px_25px_rgba(232,67,10,0.22)] transition-all hover:brightness-110 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
         >
           {researching ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {researching ? "Researching…" : "Find 10 with Apify"}
+          {researching ? "Qualifying…" : "Fill daily queue"}
         </button>
       </section>
 
@@ -252,6 +259,7 @@ export default function QualifiedTikTokBoard() {
             Creator list
             <select value={listFilter} onChange={(event) => setListFilter(event.target.value)} className={`${input} mt-1`}>
               <option value="Primary">Primary — qualified</option>
+              <option value="Candidate">Candidates — unverified</option>
               <option value="Reserve">Reserve — backup</option>
               <option value="All">All lists</option>
             </select>
@@ -276,14 +284,14 @@ export default function QualifiedTikTokBoard() {
           <label className="text-xs text-muted">Min engagement %<input type="number" step="0.1" value={minEngagement} onChange={(event) => setMinEngagement(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-muted">
-          Primary creators meet every qualification target. There is no maximum follower cutoff; larger relevant creators remain eligible.
+          Candidates passed the profile-level screen but still need recent-video analysis. Primary creators meet every qualification target. There is no maximum follower cutoff.
         </p>
       </div>
 
       {!loading && filtered.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
           <p className="font-semibold text-foreground">No creators match this execution view.</p>
-          <p className="mt-2 text-sm text-muted">Use Find 10 with Apify above, or loosen a filter. The default view is Qualified + Not Contacted.</p>
+          <p className="mt-2 text-sm text-muted">Choose Candidates to review the saved bank, fill the daily queue, or loosen a filter.</p>
         </div>
       )}
 
@@ -318,7 +326,7 @@ export default function QualifiedTikTokBoard() {
             <div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-bold text-foreground">{selected.fields["Display Name"] || selected.fields.Name}</h3><p className="text-sm text-muted">{selected.fields["TikTok Handle"]}</p></div><button onClick={() => setSelected(null)}><X size={20} className="text-muted" /></button></div>
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <select value={selected.fields.Status || "New"} onChange={(event) => setSelected({ ...selected, fields: { ...selected.fields, Status: event.target.value } })} className={input}>{statuses.map((status) => <option key={status}>{status}</option>)}</select>
-              <select value={selected.fields.List || "Primary"} onChange={(event) => setSelected({ ...selected, fields: { ...selected.fields, List: event.target.value } })} className={input}><option>Primary</option><option>Reserve</option></select>
+              <select value={selected.fields.List || "Primary"} onChange={(event) => setSelected({ ...selected, fields: { ...selected.fields, List: event.target.value } })} className={input}><option>Candidate</option><option>Primary</option><option>Reserve</option></select>
               <input type="date" value={selected.fields["Next Action Date"] || ""} onChange={(event) => setSelected({ ...selected, fields: { ...selected.fields, "Next Action Date": event.target.value } })} className={input} />
               <input value={selected.fields["Next Action"] || ""} onChange={(event) => setSelected({ ...selected, fields: { ...selected.fields, "Next Action": event.target.value } })} placeholder="Next action" className={input} />
             </div>

@@ -10,6 +10,7 @@
     "sheets:init": "node --env-file=.env.local --experimental-strip-types scripts/init-google-sheets.ts",
     "sheets:verify": "node --env-file=.env.local --experimental-strip-types scripts/verify-google-sheets.ts",
     "sheets:import-csv": "node --env-file=.env.local --experimental-strip-types scripts/import-airtable-csv-to-google-sheets.ts",
+    "bookworm:tiktok:candidates": "node --env-file=.env.local --experimental-strip-types scripts/build-bookworm-tiktok-candidate-bank.ts",
     "airtable:audit": "node --env-file=.env.local --experimental-strip-types scripts/migrate-airtable-to-google-sheets.ts --audit-only",
     "airtable:migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate-airtable-to-google-sheets.ts"
   },

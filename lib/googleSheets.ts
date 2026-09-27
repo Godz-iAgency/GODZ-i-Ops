@@ -76,7 +76,7 @@ export const GOOGLE_SHEET_SCHEMAS: SheetSchema[] = [
     numericColumns: ["Followers", "Following", "Total Likes", "Average Views", "Average Engagement Rate %", "Follower To Avg Views Ratio", "Days Since Last Post"],
     booleanColumns: ["Excluded"],
     dropdowns: {
-      List: ["Primary", "Reserve"],
+      List: ["Candidate", "Primary", "Reserve"],
       Status: ["New", "DM Sent", "Replied", "In Talks", "Partnered", "Not Interested"],
     },
   },
