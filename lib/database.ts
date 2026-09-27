@@ -368,6 +368,15 @@ export type ProgressFields = {
   "Bookworm Welcomed Members"?: boolean;
   "Bookworm Started Discussion"?: boolean;
   "Bookworm Community Notes"?: string;
+  "Weekend Bookworm Outlines Ready"?: boolean;
+  "Weekend SplitMic Outlines Ready"?: boolean;
+  "Weekend Content Research Notes"?: string;
+  "Weekend Content Recorded"?: boolean;
+  "Weekend Content Edited"?: boolean;
+  "Weekend Content Scheduled"?: boolean;
+  "Weekend Content Production Notes"?: string;
+  "Content Engagement Completed"?: boolean;
+  "Content Engagement Notes"?: string;
 };
 
 export async function getProgressForDate(date: string): Promise<ProgressFields | null> {

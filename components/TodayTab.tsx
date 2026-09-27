@@ -44,6 +44,15 @@ type Progress = {
   "Bookworm Welcomed Members"?: boolean;
   "Bookworm Started Discussion"?: boolean;
   "Bookworm Community Notes"?: string;
+  "Weekend Bookworm Outlines Ready"?: boolean;
+  "Weekend SplitMic Outlines Ready"?: boolean;
+  "Weekend Content Research Notes"?: string;
+  "Weekend Content Recorded"?: boolean;
+  "Weekend Content Edited"?: boolean;
+  "Weekend Content Scheduled"?: boolean;
+  "Weekend Content Production Notes"?: string;
+  "Content Engagement Completed"?: boolean;
+  "Content Engagement Notes"?: string;
 };
 
 type BookwormContact = {
@@ -80,8 +89,6 @@ type Contact = {
   };
 };
 
-const PLATFORMS = ["LinkedIn", "Instagram", "TikTok", "YouTube", "X", "Facebook", "Other"];
-
 const emptyProgress: Progress = {
   "Emails Sent": 0,
   "LinkedIn Sent": 0,
@@ -117,6 +124,15 @@ const emptyProgress: Progress = {
   "Bookworm Welcomed Members": false,
   "Bookworm Started Discussion": false,
   "Bookworm Community Notes": "",
+  "Weekend Bookworm Outlines Ready": false,
+  "Weekend SplitMic Outlines Ready": false,
+  "Weekend Content Research Notes": "",
+  "Weekend Content Recorded": false,
+  "Weekend Content Edited": false,
+  "Weekend Content Scheduled": false,
+  "Weekend Content Production Notes": "",
+  "Content Engagement Completed": false,
+  "Content Engagement Notes": "",
 };
 
 const BOOKWORM_PRIORITY_ORDER = ["A (Top 10)", "A", "B", "C"];
@@ -1108,6 +1124,147 @@ function formatHeaderDate(iso: string): string {
   return `${HEADER_MONTHS[m - 1]} ${d}, ${y}`;
 }
 
+function WeekendContentPlan({
+  isSaturday,
+  progress,
+  onChange,
+}: {
+  isSaturday: boolean;
+  progress: Progress;
+  onChange: (patch: Partial<Progress>) => void;
+}) {
+  if (isSaturday) {
+    return (
+      <Block tag="CONTENT PREP" time="During deep work" title="Research and Outline 10 Posts">
+        <p className="px-1 text-sm leading-relaxed text-muted">
+          Prepare the complete Monday-to-Friday content plan so weekday publishing stays light and consistent.
+        </p>
+        <CheckRow
+          label="5 Bookworm TikTok posts researched and outlined"
+          checked={!!progress["Weekend Bookworm Outlines Ready"]}
+          onToggle={() => onChange({ "Weekend Bookworm Outlines Ready": !progress["Weekend Bookworm Outlines Ready"] })}
+        />
+        <CheckRow
+          label="5 SplitMic LinkedIn posts researched and outlined"
+          checked={!!progress["Weekend SplitMic Outlines Ready"]}
+          onToggle={() => onChange({ "Weekend SplitMic Outlines Ready": !progress["Weekend SplitMic Outlines Ready"] })}
+        />
+        <textarea
+          value={progress["Weekend Content Research Notes"] || ""}
+          onChange={(event) => onChange({ "Weekend Content Research Notes": event.target.value })}
+          placeholder="Hooks, topics, source links, and notes for the 10 posts…"
+          rows={5}
+          className={area}
+        />
+      </Block>
+    );
+  }
+
+  return (
+    <Block tag="CONTENT PRODUCTION" time="During deep work" title="Record, Edit and Schedule in Buffer">
+      <p className="px-1 text-sm leading-relaxed text-muted">
+        Turn Saturday&apos;s 10 outlines into five Bookworm TikTok posts and five SplitMic LinkedIn posts for the coming week.
+      </p>
+      <CheckRow
+        label="All 10 posts recorded"
+        checked={!!progress["Weekend Content Recorded"]}
+        onToggle={() => onChange({ "Weekend Content Recorded": !progress["Weekend Content Recorded"] })}
+      />
+      <CheckRow
+        label="All 10 posts edited and captioned"
+        checked={!!progress["Weekend Content Edited"]}
+        onToggle={() => onChange({ "Weekend Content Edited": !progress["Weekend Content Edited"] })}
+      />
+      <CheckRow
+        label="All 10 posts scheduled in Buffer"
+        checked={!!progress["Weekend Content Scheduled"]}
+        onToggle={() => onChange({ "Weekend Content Scheduled": !progress["Weekend Content Scheduled"] })}
+      />
+      <textarea
+        value={progress["Weekend Content Production Notes"] || ""}
+        onChange={(event) => onChange({ "Weekend Content Production Notes": event.target.value })}
+        placeholder="Recording, editing, caption, or Buffer scheduling notes…"
+        rows={4}
+        className={area}
+      />
+      <a
+        href="https://publish.buffer.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-black/30 px-4 py-3 text-sm font-semibold text-foreground transition-all hover:border-accent"
+      >
+        Open Buffer <ExternalLink size={15} />
+      </a>
+    </Block>
+  );
+}
+
+function DailyContentFollowUp({
+  progress,
+  onChange,
+}: {
+  progress: Progress;
+  onChange: (patch: Partial<Progress>) => void;
+}) {
+  return (
+    <Block tag="PUBLISH & ENGAGE" time="4:00 PM - 4:30 PM" title="Confirm Today&apos;s Content and Respond">
+      <p className="px-1 text-sm leading-relaxed text-muted">
+        Buffer handles the publishing. Confirm both posts are live, save their links, and respond to early comments.
+      </p>
+      <CheckRow
+        label="Bookworm TikTok published"
+        checked={!!progress["Bookworm Content Posted"]}
+        onToggle={() => onChange({ "Bookworm Content Posted": !progress["Bookworm Content Posted"], "Bookworm Content Platform": "TikTok" })}
+      />
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <input
+          value={progress["Bookworm Content Title"] || ""}
+          onChange={(event) => onChange({ "Bookworm Content Title": event.target.value, "Bookworm Content Platform": "TikTok" })}
+          placeholder="Bookworm topic"
+          className={input}
+        />
+        <input
+          value={progress["Bookworm Content URL"] || ""}
+          onChange={(event) => onChange({ "Bookworm Content URL": event.target.value, "Bookworm Content Platform": "TikTok" })}
+          placeholder="TikTok post link"
+          className={input}
+        />
+      </div>
+      <CheckRow
+        label="SplitMic LinkedIn published"
+        checked={!!progress["Content Posted"]}
+        onToggle={() => onChange({ "Content Posted": !progress["Content Posted"], "Content Platform": "LinkedIn" })}
+      />
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <input
+          value={progress["Content Title"] || ""}
+          onChange={(event) => onChange({ "Content Title": event.target.value, "Content Platform": "LinkedIn" })}
+          placeholder="SplitMic topic"
+          className={input}
+        />
+        <input
+          value={progress["Content URL"] || ""}
+          onChange={(event) => onChange({ "Content URL": event.target.value, "Content Platform": "LinkedIn" })}
+          placeholder="LinkedIn post link"
+          className={input}
+        />
+      </div>
+      <CheckRow
+        label="Comments and replies reviewed on both posts"
+        checked={!!progress["Content Engagement Completed"]}
+        onToggle={() => onChange({ "Content Engagement Completed": !progress["Content Engagement Completed"] })}
+      />
+      <textarea
+        value={progress["Content Engagement Notes"] || ""}
+        onChange={(event) => onChange({ "Content Engagement Notes": event.target.value })}
+        placeholder="Notable comments, questions, or ideas for next weekend…"
+        rows={3}
+        className={area}
+      />
+    </Block>
+  );
+}
+
 export default function TodayTab() {
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [loading, setLoading] = useState(true);
@@ -1163,8 +1320,8 @@ export default function TodayTab() {
 
   const header = formatHeaderDate(today);
   const schedule = isWeekend
-    ? "8:00 AM - 4:00 PM · Deep work"
-    : "12:00 PM - 4:00 PM · Monday to Friday";
+    ? "8:00 AM - 4:00 PM · Deep work + content preparation"
+    : "12:00 PM - 4:30 PM · Monday to Friday";
 
   return (
     <div className="flex flex-col gap-9 max-w-[900px] mx-auto">
@@ -1222,6 +1379,7 @@ export default function TodayTab() {
                   className={area}
                 />
               </Block>
+              <WeekendContentPlan isSaturday={isSaturday} progress={progress} onChange={set} />
               <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
             </>
           )}
@@ -1253,44 +1411,6 @@ export default function TodayTab() {
                 </p>
               </Block>
 
-              <Block tag="CONTENT" time="Anytime today" title="Today's Book Piece for Whop">
-                <CheckRow
-                  label="Content posted"
-                  checked={!!progress["Bookworm Content Posted"]}
-                  onToggle={() => set({ "Bookworm Content Posted": !progress["Bookworm Content Posted"] })}
-                />
-                <input
-                  value={progress["Bookworm Featured Person"] || ""}
-                  onChange={(e) => set({ "Bookworm Featured Person": e.target.value })}
-                  placeholder="Successful person featured (their favorite/top books)"
-                  className={input}
-                />
-                <input
-                  value={progress["Bookworm Content Title"] || ""}
-                  onChange={(e) => set({ "Bookworm Content Title": e.target.value })}
-                  placeholder="Post title or topic"
-                  className={input}
-                />
-                <select
-                  value={progress["Bookworm Content Platform"] || ""}
-                  onChange={(e) => set({ "Bookworm Content Platform": e.target.value })}
-                  className={input}
-                >
-                  <option value="">Platform…</option>
-                  {["Whop", "Instagram", "TikTok", "YouTube", "Other"].map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={progress["Bookworm Content URL"] || ""}
-                  onChange={(e) => set({ "Bookworm Content URL": e.target.value })}
-                  placeholder="Link (optional)"
-                  className={input}
-                />
-              </Block>
-
               <Block tag="COMMUNITY" time="Anytime today" title="Whop Community">
                 <CheckRow
                   label="Welcomed new members"
@@ -1311,6 +1431,7 @@ export default function TodayTab() {
                 />
               </Block>
 
+              <DailyContentFollowUp progress={progress} onChange={set} />
               <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
             </>
           )}
@@ -1342,6 +1463,7 @@ export default function TodayTab() {
               className={area}
             />
           </Block>
+          <WeekendContentPlan isSaturday={isSaturday} progress={progress} onChange={set} />
           <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
         </>
       )}
@@ -1366,41 +1488,10 @@ export default function TodayTab() {
               Goal: 10 LinkedIn connections or outreach attempts. Search using the terms on the Search tab,
               then log each person here. The count updates itself.
             </p>
-
-            <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">Content</p>
             <CheckRow
               label="Camera practice completed"
               checked={!!progress["Camera Practice"]}
               onToggle={() => set({ "Camera Practice": !progress["Camera Practice"] })}
-            />
-            <CheckRow
-              label="Content posted"
-              checked={!!progress["Content Posted"]}
-              onToggle={() => set({ "Content Posted": !progress["Content Posted"] })}
-            />
-            <select
-              value={progress["Content Platform"] || ""}
-              onChange={(e) => set({ "Content Platform": e.target.value })}
-              className={input}
-            >
-              <option value="">Platform…</option>
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <input
-              value={progress["Content Title"] || ""}
-              onChange={(e) => set({ "Content Title": e.target.value })}
-              placeholder="Post title or topic"
-              className={input}
-            />
-            <input
-              value={progress["Content URL"] || ""}
-              onChange={(e) => set({ "Content URL": e.target.value })}
-              placeholder="Link (optional)"
-              className={input}
             />
           </Block>
 
@@ -1453,6 +1544,7 @@ export default function TodayTab() {
             />
           </Block>
 
+          <DailyContentFollowUp progress={progress} onChange={set} />
           <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
         </>
       )}
