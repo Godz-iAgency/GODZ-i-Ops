@@ -64,18 +64,18 @@ class MetricTests(unittest.TestCase):
         self.assertAlmostEqual(creator.average_engagement_rate_percent or 0, 6.5)
         self.assertEqual(creator.follower_to_average_views_ratio, 0.75)
         self.assertEqual(creator.days_since_last_post, 0)
-        config = {"filters": {"minimum_followers": 10_000, "maximum_followers": 300_000, "minimum_engagement_rate_percent": 3, "maximum_days_since_last_post": 14}}
+        config = {"filters": {"minimum_followers": 10_000, "minimum_engagement_rate_percent": 3, "maximum_days_since_last_post": 14}}
         primary, reserve, discarded = classify([creator], config)
         self.assertEqual(len(primary), 1)
         self.assertFalse(reserve)
         self.assertFalse(discarded)
 
-    def test_only_follower_failure_goes_to_reserve(self) -> None:
+    def test_large_creator_has_no_maximum_follower_exclusion(self) -> None:
         creator = Creator(key="u2", username="large", follower_count=500_000, average_engagement_rate_percent=5, days_since_last_post=2)
-        config = {"filters": {"minimum_followers": 10_000, "maximum_followers": 300_000, "minimum_engagement_rate_percent": 3, "maximum_days_since_last_post": 14}}
+        config = {"filters": {"minimum_followers": 10_000, "minimum_engagement_rate_percent": 3, "maximum_days_since_last_post": 14}}
         primary, reserve, discarded = classify([creator], config)
-        self.assertFalse(primary)
-        self.assertEqual(len(reserve), 1)
+        self.assertEqual(len(primary), 1)
+        self.assertFalse(reserve)
         self.assertFalse(discarded)
 
     def test_ranking_is_engagement_descending(self) -> None:
@@ -97,7 +97,7 @@ class MetricTests(unittest.TestCase):
             follower_count=20_000,
             videos=[Video("p", 1000, 50, 0, 0, "2026-09-23T12:00:00Z")],
         )
-        config = {"filters": {"minimum_followers": 10_000, "maximum_followers": 300_000, "minimum_engagement_rate_percent": 3, "maximum_days_since_last_post": 14}}
+        config = {"filters": {"minimum_followers": 10_000, "minimum_engagement_rate_percent": 3, "maximum_days_since_last_post": 14}}
         ordered = prioritize_for_enrichment([stale, likely_primary], config, now, 10)
         self.assertEqual(ordered[0].username, "primary")
 

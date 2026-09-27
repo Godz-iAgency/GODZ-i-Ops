@@ -27,9 +27,11 @@
   },
   "filters": {
     "minimum_followers": 10000,
-    "maximum_followers": 300000,
     "minimum_engagement_rate_percent": 3.0,
-    "maximum_days_since_last_post": 14
+    "maximum_days_since_last_post": 14,
+    "minimum_average_views": 5000,
+    "minimum_follower_to_average_views_ratio": 0.2,
+    "minimum_valid_recent_videos": 6
   },
   "ranking": {
     "strategy": "engagement_rate_desc"

@@ -82,8 +82,30 @@ def classify(creators: Iterable[Creator], config: dict[str, Any]) -> tuple[list[
             creator.discard_reason = "recent activity below threshold or unavailable"
             discarded.append(creator)
             continue
+        minimum_average_views = filters.get("minimum_average_views")
+        if minimum_average_views is not None and (
+            creator.average_views_per_video is None
+            or creator.average_views_per_video < float(minimum_average_views)
+        ):
+            creator.discard_reason = "average views below threshold or unavailable"
+            discarded.append(creator)
+            continue
+        minimum_reach_ratio = filters.get("minimum_follower_to_average_views_ratio")
+        if minimum_reach_ratio is not None and (
+            creator.follower_to_average_views_ratio is None
+            or creator.follower_to_average_views_ratio < float(minimum_reach_ratio)
+        ):
+            creator.discard_reason = "average reach ratio below threshold or unavailable"
+            discarded.append(creator)
+            continue
+        valid_recent_videos = sum(1 for video in creator.videos if video.views is not None and video.views > 0)
+        minimum_valid_videos = filters.get("minimum_valid_recent_videos")
+        if minimum_valid_videos is not None and valid_recent_videos < int(minimum_valid_videos):
+            creator.discard_reason = "not enough valid recent videos"
+            discarded.append(creator)
+            continue
         followers = creator.follower_count
-        if followers is not None and int(filters["minimum_followers"]) <= followers <= int(filters["maximum_followers"]):
+        if followers is not None and followers >= int(filters["minimum_followers"]):
             creator.list_name = "Primary"
             primary.append(creator)
         else:
@@ -107,7 +129,6 @@ def prioritize_for_enrichment(
     """Put likely Primary creators first before the paid profile-enrichment step."""
     filters = config["filters"]
     minimum_followers = int(filters["minimum_followers"])
-    maximum_followers = int(filters["maximum_followers"])
     minimum_engagement = float(filters["minimum_engagement_rate_percent"])
     maximum_days = int(filters["maximum_days_since_last_post"])
     candidates = list(creators)
@@ -118,7 +139,7 @@ def prioritize_for_enrichment(
         followers = creator.follower_count
         engagement = creator.average_engagement_rate_percent
         days = creator.days_since_last_post
-        in_primary_range = followers is not None and minimum_followers <= followers <= maximum_followers
+        in_primary_range = followers is not None and followers >= minimum_followers
         engaged = engagement is not None and engagement >= minimum_engagement
         active = days is not None and days <= maximum_days
         return (

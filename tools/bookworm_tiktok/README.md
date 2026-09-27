@@ -50,6 +50,12 @@ qualification thresholds, batching, or ranking. The ranking strategy is kept
 separate so a future Bookworm Creator Score can be added without changing the
 scraper or normalized record shape.
 
+Creators qualify with at least 10,000 followers; there is no maximum follower
+cutoff. Qualification also requires at least 3% average view-based engagement,
+a post within 14 days, 5,000 average views, a 0.20 average-views-to-followers
+ratio, and six valid recent videos. Larger creators remain eligible instead of
+being discarded solely because of audience size.
+
 ## Metric definition
 
 `Follower To Avg Views Ratio = Average Views Per Video / Follower Count`

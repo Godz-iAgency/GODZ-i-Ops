@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Ban, Check, ExternalLink, Plus, RefreshCw, Save, Search, X } from "lucide-react";
+import { Ban, Check, ExternalLink, Plus, RefreshCw, Save, Search, Sparkles, X } from "lucide-react";
 import { austinDateStr } from "@/lib/austinDate";
 import { readApiJson } from "@/lib/apiClient";
 
@@ -34,6 +34,14 @@ type Fields = {
 
 type Creator = { id: string; fields: Fields };
 type ContactFilter = "Not Contacted" | "Contacted" | "All";
+type ResearchResult = {
+  added: number;
+  readyAfter: number;
+  discovered: number;
+  qualified: number;
+  estimatedMaximumSpendUsd: number;
+  message: string;
+};
 
 const input = "w-full rounded-xl border border-border bg-black/25 px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent";
 const statuses = ["New", "DM Sent", "Replied", "In Talks", "Partnered", "Not Interested"];
@@ -62,13 +70,14 @@ export default function QualifiedTikTokBoard() {
   const [listFilter, setListFilter] = useState("Primary");
   const [contactFilter, setContactFilter] = useState<ContactFilter>("Not Contacted");
   const [minFollowers, setMinFollowers] = useState(10_000);
-  const [maxFollowers, setMaxFollowers] = useState(300_000);
   const [minEngagement, setMinEngagement] = useState(3);
   const [maxDays, setMaxDays] = useState(14);
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState<Creator | null>(null);
   const [adding, setAdding] = useState(false);
   const [newCreator, setNewCreator] = useState<Fields>({ Status: "New", List: "Primary" });
+  const [researching, setResearching] = useState(false);
+  const [researchResult, setResearchResult] = useState<ResearchResult | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -127,6 +136,29 @@ export default function QualifiedTikTokBoard() {
     }
   };
 
+  const researchWithApify = async () => {
+    const confirmed = window.confirm(
+      "Find enough qualified creators to bring the queue up to 10? This may use up to about $1 of Apify credit and can take 1–4 minutes."
+    );
+    if (!confirmed) return;
+    setResearching(true);
+    setResearchResult(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/bookworm-tiktok/research", {
+        method: "POST",
+        headers: { "x-godzi-research": "confirmed" },
+      });
+      const data = await readApiJson<ResearchResult>(response, "TikTok research could not finish.");
+      setResearchResult(data);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "TikTok research could not finish");
+    } finally {
+      setResearching(false);
+    }
+  };
+
   const categories = useMemo(() => [...new Set(creators.map((item) => item.fields["Discovery Category"] || item.fields.Niche).filter(Boolean) as string[])].sort(), [creators]);
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -137,7 +169,7 @@ export default function QualifiedTikTokBoard() {
         if (listFilter !== "All" && (fields.List || "Primary") !== listFilter) return false;
         if (contactFilter === "Not Contacted" && isContacted(creator)) return false;
         if (contactFilter === "Contacted" && !isContacted(creator)) return false;
-        if (fields.Followers != null && (fields.Followers < minFollowers || fields.Followers > maxFollowers)) return false;
+        if (fields.Followers != null && fields.Followers < minFollowers) return false;
         if ((fields["Average Engagement Rate %"] ?? 0) < minEngagement) return false;
         if ((fields["Days Since Last Post"] ?? Number.POSITIVE_INFINITY) > maxDays) return false;
         if (category !== "All" && (fields["Discovery Category"] || fields.Niche) !== category) return false;
@@ -146,7 +178,7 @@ export default function QualifiedTikTokBoard() {
           .filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
       })
       .sort((a, b) => (b.fields["Average Engagement Rate %"] || 0) - (a.fields["Average Engagement Rate %"] || 0));
-  }, [category, contactFilter, creators, listFilter, maxDays, maxFollowers, minEngagement, minFollowers, query]);
+  }, [category, contactFilter, creators, listFilter, maxDays, minEngagement, minFollowers, query]);
 
   const todayCount = creators.filter((creator) => creator.fields["Date Contacted"] === austinDateStr()).length;
 
@@ -171,6 +203,34 @@ export default function QualifiedTikTokBoard() {
           </button>
         </div>
       )}
+
+      <section className="flex flex-col gap-4 rounded-2xl border border-accent/35 bg-[linear-gradient(135deg,rgba(232,67,10,0.13),rgba(15,15,23,0.96)_55%)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Sparkles size={17} className="text-accentLight" />
+            <h3 className="font-bold text-foreground">Creator research</h3>
+          </div>
+          <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-textSecondary">
+            Apify discovers and reviews recent TikTok activity, removes duplicates, and fills this queue with up to 10 qualified creators. You only review the profile and send the message.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px] text-muted">
+            <span className="rounded-full bg-black/25 px-2.5 py-1">10K+ followers</span>
+            <span className="rounded-full bg-black/25 px-2.5 py-1">3%+ engagement</span>
+            <span className="rounded-full bg-black/25 px-2.5 py-1">Active within 14 days</span>
+            <span className="rounded-full bg-black/25 px-2.5 py-1">5K+ average views</span>
+            <span className="rounded-full bg-black/25 px-2.5 py-1">No follower maximum</span>
+          </div>
+          {researchResult && <p className="mt-3 text-sm font-semibold text-accentLight">{researchResult.message}</p>}
+        </div>
+        <button
+          onClick={researchWithApify}
+          disabled={researching || loading}
+          className="flex min-h-12 w-full flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white shadow-[0_8px_25px_rgba(232,67,10,0.22)] transition-all hover:brightness-110 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+        >
+          {researching ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
+          {researching ? "Researching…" : "Find 10 with Apify"}
+        </button>
+      </section>
 
       {adding && (
         <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border bg-surface2 p-5 sm:grid-cols-2">
@@ -213,18 +273,17 @@ export default function QualifiedTikTokBoard() {
           </label>
           <label className="text-xs text-muted">Active within (days)<input type="number" value={maxDays} onChange={(event) => setMaxDays(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
           <label className="text-xs text-muted">Min followers<input type="number" value={minFollowers} onChange={(event) => setMinFollowers(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
-          <label className="text-xs text-muted">Max followers<input type="number" value={maxFollowers} onChange={(event) => setMaxFollowers(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
           <label className="text-xs text-muted">Min engagement %<input type="number" step="0.1" value={minEngagement} onChange={(event) => setMinEngagement(Number(event.target.value) || 0)} className={`${input} mt-1`} /></label>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-muted">
-          Primary creators meet the qualification targets. Reserve creators are still active and engaged but fall outside the primary follower range.
+          Primary creators meet every qualification target. There is no maximum follower cutoff; larger relevant creators remain eligible.
         </p>
       </div>
 
       {!loading && filtered.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
           <p className="font-semibold text-foreground">No creators match this execution view.</p>
-          <p className="mt-2 text-sm text-muted">Run the Bookworm TikTok research CLI or loosen a filter. The default is Qualified + Not Contacted.</p>
+          <p className="mt-2 text-sm text-muted">Use Find 10 with Apify above, or loosen a filter. The default view is Qualified + Not Contacted.</p>
         </div>
       )}
 
