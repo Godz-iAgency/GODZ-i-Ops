@@ -8,14 +8,40 @@ type Mode = "splitmic-linkedin" | "bookworm-tiktok" | "email";
 type Idea = { id: number; text: string; addedAt: string };
 
 const LINKEDIN_GROUPS = [
-  { label: "Priority 1 · contact first", terms: ["Austin talent buyer", "Austin venue booking manager", "Austin concert promoter"] },
   {
-    label: "Priority 2 · decision makers",
-    terms: ["Austin artist manager", "Austin band manager", "Austin festival director", "Austin festival talent buyer", "Austin A&R", "Austin record label owner", "Austin live event producer"],
+    label: "Priority 1 · Austin music booking contacts",
+    terms: [
+      `"talent buyer" AND (music OR concert OR venue OR festival) AND Austin`,
+      `"booking manager" AND (music OR concert OR venue) AND Austin`,
+      "Austin concert promoter",
+    ],
   },
   {
-    label: "Priority 3 · ecosystem",
-    terms: ["Austin music organization", "Austin music nonprofit", "Austin recording studio", "Austin rehearsal studio", "Austin backline company", "Austin instrument rental company", "Austin music entrepreneur", "Austin music journalist", "Austin music podcast", "Austin radio host"],
+    label: "Priority 2 · Austin music decision makers",
+    terms: [
+      `"artist manager" AND (music OR musician OR band) AND Austin NOT (visual OR gallery)`,
+      "Austin band manager",
+      `"festival director" AND (music OR concert) AND Austin`,
+      `"festival talent buyer" AND (music OR concert) AND Austin`,
+      "Austin A&R",
+      "Austin record label owner",
+      `"live event producer" AND (music OR concert OR festival) AND Austin`,
+    ],
+  },
+  {
+    label: "Priority 3 · Austin music ecosystem",
+    terms: [
+      "Austin music organization",
+      "Austin music nonprofit",
+      "Austin recording studio",
+      `"rehearsal studio" AND (band OR music) AND Austin`,
+      "Austin backline company",
+      `"instrument rental" AND (music OR band) AND Austin`,
+      "Austin music entrepreneur",
+      "Austin music journalist",
+      "Austin music podcast",
+      `("radio host" OR "radio personality") AND music AND Austin`,
+    ],
   },
 ];
 
@@ -86,7 +112,7 @@ export default function SearchTab() {
   };
 
   const copy = {
-    "splitmic-linkedin": { eyebrow: "Splitmic → LinkedIn", title: "Who should I contact next?", description: "Start with Priority 1. Tap a search to copy it, find one qualified person, then log the outreach.", groups: LINKEDIN_GROUPS },
+    "splitmic-linkedin": { eyebrow: "Splitmic → LinkedIn", title: "Who should I contact next?", description: "Every search is narrowed to Austin and the music industry. Start with Priority 1, copy one search, then log one qualified contact.", groups: LINKEDIN_GROUPS },
     "bookworm-tiktok": { eyebrow: "Bookworm → TikTok", title: "Find the next qualified creator", description: "The research CLI uses these same configurable terms. Manual searches remain available as a fallback.", groups: TIKTOK_GROUPS },
     email: { eyebrow: "Email", title: "Find the next email prospect", description: "Routine cold outreach stays separate from strategic partnerships.", groups: emailBusiness === "Bookworm" ? BOOKWORM_EMAIL_GROUPS : SPLITMIC_EMAIL_GROUPS },
   }[mode];
