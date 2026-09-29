@@ -451,6 +451,7 @@ function TodaysTen({ onSentChange, limit }: { onSentChange: (delta: number) => v
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -497,38 +498,53 @@ function TodaysTen({ onSentChange, limit }: { onSentChange: (delta: number) => v
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h4 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">
           Next {limit} · SplitMic email queue
         </h4>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setCollapsed((value) => !value);
+              if (!collapsed) setOpenId(null);
+            }}
+            aria-expanded={!collapsed}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all"
+          >
+            {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+            {collapsed ? "Show queue" : "Collapse queue"}
+          </button>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs bg-surface2 border border-border text-textSecondary hover:text-white hover:border-accent transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
+          </button>
+        </div>
       </div>
 
-      {error && (
-        <div className="px-4 py-3 rounded-xl text-sm bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
-          {error}
-        </div>
-      )}
-      {loading && <p className="text-sm italic text-muted px-1">Loading…</p>}
-      {!loading && contacts.length === 0 && !error && (
-        <div className="px-4 py-4 rounded-xl bg-surface2 border border-border">
-          <p className="text-base font-semibold text-foreground mb-1">Nobody is ready to email yet.</p>
-          <p className="text-sm text-muted leading-relaxed">
-            {researchNeeded > 0
-              ? "Add an email address below and they'll queue up here."
-              : "Everyone with an address has already been contacted."}
-          </p>
-        </div>
-      )}
-      <NeedsEmailPanel count={researchNeeded} onFilled={() => setResearchNeeded((n) => Math.max(0, n - 1))} />
+      {!collapsed && (
+        <>
+          {error && (
+            <div className="px-4 py-3 rounded-xl text-sm bg-[rgba(232,67,10,0.1)] border border-[rgba(232,67,10,0.4)] text-accentLight">
+              {error}
+            </div>
+          )}
+          {loading && <p className="text-sm italic text-muted px-1">Loading…</p>}
+          {!loading && contacts.length === 0 && !error && (
+            <div className="px-4 py-4 rounded-xl bg-surface2 border border-border">
+              <p className="text-base font-semibold text-foreground mb-1">Nobody is ready to email yet.</p>
+              <p className="text-sm text-muted leading-relaxed">
+                {researchNeeded > 0
+                  ? "Add an email address below and they'll queue up here."
+                  : "Everyone with an address has already been contacted."}
+              </p>
+            </div>
+          )}
+          <NeedsEmailPanel count={researchNeeded} onFilled={() => setResearchNeeded((n) => Math.max(0, n - 1))} />
 
-      {contacts.map((c) => {
+          {contacts.map((c) => {
         const f = c.fields;
         const open = openId === c.id;
         return (
@@ -631,7 +647,9 @@ function TodaysTen({ onSentChange, limit }: { onSentChange: (delta: number) => v
             )}
           </div>
         );
-      })}
+          })}
+        </>
+      )}
     </div>
   );
 }
