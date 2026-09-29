@@ -7,9 +7,9 @@ import { readApiJson } from "@/lib/apiClient";
 
 const PAGE_SIZE = 10;
 
-// Existing community records stay in this table, while new routine email
-// outreach prioritizes business consultants and keeps partnerships separate.
-const STAGES = ["New", "Contacted", "Replied", "Joined Whop", "Not Interested"];
+// Keep the email pipeline short: a reply stays active until the relationship
+// becomes a real product or distribution partnership.
+const STAGES = ["New", "Contacted", "Replied", "Active Partner", "Not Interested"];
 
 const PRIORITIES = ["A (Top 10)", "A", "B", "C"];
 
@@ -235,7 +235,7 @@ export default function BookwormOutreachBoard() {
       missingEmail,
       contacted: (byStage.Contacted || []).length,
       replied: (byStage.Replied || []).length,
-      joined: (byStage["Joined Whop"] || []).length,
+      partners: (byStage["Active Partner"] || []).length,
     };
   }, [contacts, byStage]);
 
@@ -305,7 +305,7 @@ export default function BookwormOutreachBoard() {
           { label: "New", value: totals.new },
           { label: "Contacted", value: totals.contacted },
           { label: "Replies", value: totals.replied },
-          { label: "Joined Whop", value: totals.joined },
+          { label: "Active partners", value: totals.partners },
         ].map((metric, index) => (
           <div key={metric.label} className={`rounded-xl border border-border bg-surface2 px-3.5 py-3.5 sm:px-4 ${index === 4 ? "col-span-2 sm:col-span-1" : ""}`}>
             <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted">{metric.label}</p>
@@ -319,7 +319,7 @@ export default function BookwormOutreachBoard() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accentLight">Best next action</p>
           <p className="mt-1 font-semibold text-foreground">
-            {totals.new > 0 ? "Open the next new Bookworm prospect." : totals.contacted > 0 ? "Review contacted prospects and follow up." : "Review replies and community joins."}
+            {totals.new > 0 ? "Open the next new Bookworm prospect." : totals.contacted > 0 ? "Review contacted prospects and follow up." : "Review replies and active partnerships."}
           </p>
           <p className="mt-1 text-sm text-textSecondary">
             {totals.missingEmail > 0 ? `${totals.missingEmail} prospects still need an email address.` : "Every prospect currently has an email address."}
@@ -459,7 +459,7 @@ export default function BookwormOutreachBoard() {
           <aside className="rounded-2xl border border-border bg-surface2 p-4 xl:self-start xl:sticky xl:top-24">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accentLight">How today moves forward</p>
             <ol className="mt-4 space-y-4">
-              {[["1", "Review", "Open the prospect and confirm the best partnership angle."], ["2", "Reach out", "Send a relevant message and move them to Contacted."], ["3", "Follow through", "Move replies and new Whop members forward."]].map(([number, title, description]) => (
+              {[["1", "Review", "Open the prospect and confirm the best partnership angle."], ["2", "Reach out", "Send a relevant message and move them to Contacted."], ["3", "Follow through", "Move replies forward and mark established relationships as Active Partner."]].map(([number, title, description]) => (
                 <li key={number} className="flex gap-3"><span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-surface3 font-mono text-xs font-bold text-accentLight">{number}</span><div><p className="text-sm font-semibold text-foreground">{title}</p><p className="mt-0.5 text-xs leading-relaxed text-muted">{description}</p></div></li>
               ))}
             </ol>

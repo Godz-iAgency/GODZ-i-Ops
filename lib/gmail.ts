@@ -184,9 +184,10 @@ export type SendArgs = {
   subject: string;
   rawMime: string;
   threadId?: string;
+  labelName?: "SplitMic" | "Bookworm";
 };
 
-export async function sendGmailMessage({ rawMime, threadId }: SendArgs): Promise<{ id: string; threadId: string }> {
+export async function sendGmailMessage({ rawMime, threadId, labelName }: SendArgs): Promise<{ id: string; threadId: string }> {
   const accessToken = await getAccessToken();
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
@@ -195,6 +196,9 @@ export async function sendGmailMessage({ rawMime, threadId }: SendArgs): Promise
   });
   if (!res.ok) throw new Error(`Gmail send failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
+  if (labelName) {
+    await labelGmailMessages(accessToken, [data.id], labelName);
+  }
   return { id: data.id, threadId: data.threadId };
 }
 
@@ -241,6 +245,22 @@ export async function createGmailLabel(accessToken: string, name: string): Promi
   });
   if (!res.ok) throw new Error(`Gmail create label failed: ${res.status} ${await res.text()}`);
   return (await res.json()).id as string;
+}
+
+async function labelGmailMessages(accessToken: string, messageIds: string[], labelName: string): Promise<void> {
+  const labels = await listGmailLabels(accessToken);
+  let label = labels.find((item) => item.name === labelName);
+  if (!label) {
+    const id = await createGmailLabel(accessToken, labelName);
+    label = { id, name: labelName };
+  }
+  await batchModifyMessages(accessToken, messageIds, [label.id], []);
+}
+
+export async function applyGmailLabel(messageIds: string[], labelName: "SplitMic" | "Bookworm"): Promise<void> {
+  if (!messageIds.length) return;
+  const accessToken = await getAccessToken();
+  await labelGmailMessages(accessToken, messageIds, labelName);
 }
 
 export async function deleteGmailLabel(accessToken: string, labelId: string): Promise<void> {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllContacts, getProgressForDate, RELATIONSHIP_STAGES } from "@/lib/database";
+import { getAllContacts, getExecutionSettings, getProgressForDate, RELATIONSHIP_STAGES } from "@/lib/database";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { austinDateStr } from "@/lib/austinDate";
 
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const contacts = await getAllContacts();
+  const [contacts, settingsResult] = await Promise.all([getAllContacts(), getExecutionSettings()]);
 
   const byStage: Record<string, number> = {};
   for (const c of contacts) {
@@ -30,8 +30,10 @@ export async function GET(req: NextRequest) {
 
   const yesterday = austinDateStr(new Date(Date.now() - 86400000));
   const prior = await getProgressForDate(yesterday);
+  const emailTarget = settingsResult.settings["SplitMic Email Target"];
+  const linkedInTarget = settingsResult.settings["SplitMic LinkedIn Target"];
   const yesterdayLine = prior
-    ? `Yesterday: ${prior["Emails Sent"] ?? 0}/10 emails, ${prior["LinkedIn Sent"] ?? 0}/10 LinkedIn`
+    ? `Yesterday: ${prior["Emails Sent"] ?? 0}/${emailTarget} emails, ${prior["LinkedIn Sent"] ?? 0}/${linkedInTarget} LinkedIn`
     : "Yesterday: nothing logged";
 
   const today = new Date().toLocaleDateString("en-US", {

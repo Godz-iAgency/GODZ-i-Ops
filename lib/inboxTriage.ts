@@ -8,7 +8,7 @@ import {
   getMessageTriageMeta,
   MessageTriageMeta,
 } from "./gmail";
-import { getAllContactsWithEmail } from "./database";
+import { getAllBookwormContacts, getAllContactsWithEmail } from "./database";
 
 // Labels from a past organizing attempt that were never actually used --
 // zero messages ever carried them, so deleting them loses nothing.
@@ -153,13 +153,17 @@ export type InboxTriageResult = {
 };
 
 async function fetchContactEmailSets(): Promise<{ splitMic: Set<string>; bookworm: Set<string> }> {
-  // Bookworm has no outreach table yet -- this stays empty until it does,
-  // rather than guessing.
-  const contacts = await getAllContactsWithEmail();
+  const [contacts, bookwormContacts] = await Promise.all([
+    getAllContactsWithEmail(),
+    getAllBookwormContacts(),
+  ]);
   const splitMic = new Set(
     contacts.map((c) => c.fields.Email?.toLowerCase().trim()).filter((e): e is string => !!e)
   );
-  return { splitMic, bookworm: new Set<string>() };
+  const bookworm = new Set(
+    bookwormContacts.map((c) => c.fields.Email?.toLowerCase().trim()).filter((e): e is string => !!e)
+  );
+  return { splitMic, bookworm };
 }
 
 // "backlog" does the one-time label cleanup, re-sorts everything currently

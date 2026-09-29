@@ -67,7 +67,7 @@ export const GOOGLE_SHEET_SCHEMAS: SheetSchema[] = [
     headers: ["Record ID", "Name", "Category", "Priority", "Opportunity", "Angle", "Address", "Phone", "Email", "Channel Handle", "Relationship Status", "Next Action", "Next Action Date", "Profile URL", "Last Contact", "Notes"],
     dropdowns: {
       Priority: ["A (Top 10)", "A", "B", "C"],
-      "Relationship Status": ["New", "Contacted", "Replied", "Joined Whop", "Not Interested"],
+      "Relationship Status": ["New", "Contacted", "Replied", "Active Partner", "Not Interested"],
     },
   },
   {
@@ -82,9 +82,9 @@ export const GOOGLE_SHEET_SCHEMAS: SheetSchema[] = [
   },
   {
     title: "Daily Progress",
-    headers: ["Record ID", "Date", "Day Number", "Weekday", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent", "Build Project", "Build Objective", "Build Status", "Build Completed", "Build Notes", "Delivery Objective", "Delivery Status", "Delivery Recipient", "Delivery Link", "Delivery Notes", "Deliver Completed", "Feedback Received", "Needs Follow-up", "Deliver Next Action", "Camera Practice", "Content Posted", "Content Platform", "Content Title", "Content URL", "Book", "Pages or Chapter", "Learned", "Apply", "Deep Work Completed", "Deep Work Notes", "Day Note", "Bookworm Contacted", "Bookworm Content Posted", "Bookworm Content Platform", "Bookworm Featured Person", "Bookworm Content Title", "Bookworm Content URL", "Bookworm Welcomed Members", "Bookworm Started Discussion", "Bookworm Community Notes", "Weekend Bookworm Outlines Ready", "Weekend SplitMic Outlines Ready", "Weekend Content Research Notes", "Weekend Content Recorded", "Weekend Content Edited", "Weekend Content Scheduled", "Weekend Content Production Notes", "Content Engagement Completed", "Content Engagement Notes"],
-    numericColumns: ["Day Number", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent", "Bookworm Contacted"],
-    booleanColumns: ["Build Completed", "Deliver Completed", "Camera Practice", "Content Posted", "Deep Work Completed", "Bookworm Content Posted", "Bookworm Welcomed Members", "Bookworm Started Discussion", "Weekend Bookworm Outlines Ready", "Weekend SplitMic Outlines Ready", "Weekend Content Recorded", "Weekend Content Edited", "Weekend Content Scheduled", "Content Engagement Completed"],
+    headers: ["Record ID", "Date", "Day Number", "Weekday", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent", "Build Project", "Build Objective", "Build Status", "Build Completed", "Build Notes", "Delivery Objective", "Delivery Status", "Delivery Recipient", "Delivery Link", "Delivery Notes", "Deliver Completed", "Feedback Received", "Needs Follow-up", "Deliver Next Action", "Camera Practice", "Content Posted", "Content Platform", "Content Title", "Content URL", "Book", "Pages or Chapter", "Learned", "Apply", "Deep Work Completed", "Deep Work Notes", "Day Note", "Bookworm Content Posted", "Bookworm Content Platform", "Bookworm Content Title", "Bookworm Content URL", "Weekend Bookworm Outlines Ready", "Weekend SplitMic Outlines Ready", "Weekend Content Research Notes", "Weekend Content Recorded", "Weekend Content Edited", "Weekend Content Scheduled", "Weekend Content Production Notes", "Content Engagement Completed", "Content Engagement Notes"],
+    numericColumns: ["Day Number", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent"],
+    booleanColumns: ["Build Completed", "Deliver Completed", "Camera Practice", "Content Posted", "Deep Work Completed", "Bookworm Content Posted", "Weekend Bookworm Outlines Ready", "Weekend SplitMic Outlines Ready", "Weekend Content Recorded", "Weekend Content Edited", "Weekend Content Scheduled", "Content Engagement Completed"],
     dropdowns: {
       "Build Status": ["Not Started", "In Progress", "Completed", "Blocked"],
       "Delivery Status": ["Not Started", "In Progress", "Delivered", "Blocked"],

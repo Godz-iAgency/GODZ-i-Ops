@@ -30,6 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       bodyText: text,
       threadId: reply.fields["Thread ID"] || "",
       inReplyTo: reply.fields["RFC Message ID"] || "",
+      brand: reply.fields.Source === "Bookworm" ? "Bookworm" : "SplitMic",
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Send failed" }, { status: 502 });

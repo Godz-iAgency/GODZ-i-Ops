@@ -333,7 +333,6 @@ export type ProgressFields = {
   "LinkedIn Sent"?: number;
   "Bookworm Emails Sent"?: number;
   "Bookworm TikTok Sent"?: number;
-  "Bookworm Contacted"?: number;
   "Build Project"?: string;
   "Build Objective"?: string;
   "Build Status"?: string;
@@ -362,12 +361,8 @@ export type ProgressFields = {
   "Day Note"?: string;
   "Bookworm Content Posted"?: boolean;
   "Bookworm Content Platform"?: string;
-  "Bookworm Featured Person"?: string;
   "Bookworm Content Title"?: string;
   "Bookworm Content URL"?: string;
-  "Bookworm Welcomed Members"?: boolean;
-  "Bookworm Started Discussion"?: boolean;
-  "Bookworm Community Notes"?: string;
   "Weekend Bookworm Outlines Ready"?: boolean;
   "Weekend SplitMic Outlines Ready"?: boolean;
   "Weekend Content Research Notes"?: string;
@@ -469,10 +464,10 @@ export async function getAllReplies(): Promise<Reply[]> {
 
 // --------------------------------------------------------- bookworm outreach
 // A separate, deliberately lighter pipeline from the SplitMic 500: Bookworm
-// has no cold-sales funnel, just a short list of Austin book clubs, stores,
-// libraries, authors, and influencers to point at the free Whop community.
+// has a short list of book clubs, stores, libraries, authors, and creators to
+// contact directly and develop into active product or distribution partners.
 
-export const BOOKWORM_RELATIONSHIP_STAGES = ["New", "Contacted", "Replied", "Joined Whop", "Not Interested"] as const;
+export const BOOKWORM_RELATIONSHIP_STAGES = ["New", "Contacted", "Replied", "Active Partner", "Not Interested"] as const;
 
 export type BookwormContactFields = {
   Name?: string;

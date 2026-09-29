@@ -2,7 +2,7 @@
 
 import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
 import { dayNumber } from "@/lib/sprint";
-import { TIKTOK_NICHES, TIKTOK_DAILY_GOAL } from "@/lib/bookwormTikTok";
+import { TIKTOK_NICHES } from "@/lib/bookwormTikTok";
 import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send, Settings2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -34,16 +34,11 @@ type Progress = {
   "Content URL"?: string;
   "Deep Work Completed"?: boolean;
   "Deep Work Notes"?: string;
-  "Bookworm Contacted"?: number;
   "Bookworm TikTok Sent"?: number;
   "Bookworm Content Posted"?: boolean;
   "Bookworm Content Platform"?: string;
-  "Bookworm Featured Person"?: string;
   "Bookworm Content Title"?: string;
   "Bookworm Content URL"?: string;
-  "Bookworm Welcomed Members"?: boolean;
-  "Bookworm Started Discussion"?: boolean;
-  "Bookworm Community Notes"?: string;
   "Weekend Bookworm Outlines Ready"?: boolean;
   "Weekend SplitMic Outlines Ready"?: boolean;
   "Weekend Content Research Notes"?: string;
@@ -53,6 +48,20 @@ type Progress = {
   "Weekend Content Production Notes"?: string;
   "Content Engagement Completed"?: boolean;
   "Content Engagement Notes"?: string;
+};
+
+type ExecutionSettings = {
+  "SplitMic LinkedIn Target": number;
+  "SplitMic Email Target": number;
+  "Bookworm TikTok Target": number;
+  "Bookworm Email Target": number;
+};
+
+const defaultExecutionSettings: ExecutionSettings = {
+  "SplitMic LinkedIn Target": 10,
+  "SplitMic Email Target": 5,
+  "Bookworm TikTok Target": 10,
+  "Bookworm Email Target": 5,
 };
 
 type BookwormContact = {
@@ -114,16 +123,11 @@ const emptyProgress: Progress = {
   "Content URL": "",
   "Deep Work Completed": false,
   "Deep Work Notes": "",
-  "Bookworm Contacted": 0,
   "Bookworm TikTok Sent": 0,
   "Bookworm Content Posted": false,
   "Bookworm Content Platform": "",
-  "Bookworm Featured Person": "",
   "Bookworm Content Title": "",
   "Bookworm Content URL": "",
-  "Bookworm Welcomed Members": false,
-  "Bookworm Started Discussion": false,
-  "Bookworm Community Notes": "",
   "Weekend Bookworm Outlines Ready": false,
   "Weekend SplitMic Outlines Ready": false,
   "Weekend Content Research Notes": "",
@@ -634,7 +638,7 @@ function TodaysTen({ onSentChange, limit }: { onSentChange: (delta: number) => v
 
 // LinkedIn is manual prospecting, so the count comes from what actually got
 // logged today rather than a tally the user has to remember to click.
-function LinkedInToday({ onCountChange }: { onCountChange: (n: number) => void }) {
+function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => void; goal: number }) {
   const today = austinDateStr();
   const [entries, setEntries] = useState<Array<{ id: string; fields: Record<string, string> }>>([]);
   const [loading, setLoading] = useState(true);
@@ -692,7 +696,7 @@ function LinkedInToday({ onCountChange }: { onCountChange: (n: number) => void }
   };
 
   const count = entries.length;
-  const done = count >= 10;
+  const done = count >= goal;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -704,7 +708,7 @@ function LinkedInToday({ onCountChange }: { onCountChange: (n: number) => void }
         }}
       >
         <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
-          {loading ? "…" : count} / 10
+          {loading ? "…" : count} / {goal}
         </span>
         <button
           onClick={() => setOpen((o) => !o)}
@@ -795,7 +799,7 @@ function LinkedInToday({ onCountChange }: { onCountChange: (n: number) => void }
 // Bookworm's TikTok outreach mirrors SplitMic's LinkedIn logger: creators are
 // found by hand with the Search tab's terms, so the count comes from what
 // actually got logged today instead of a tally to remember.
-function BookwormTikTokToday({ onCountChange }: { onCountChange: (n: number) => void }) {
+function BookwormTikTokToday({ onCountChange, goal }: { onCountChange: (n: number) => void; goal: number }) {
   const today = austinDateStr();
   const emptyForm = { Name: "", "TikTok Handle": "", Niche: "", "TikTok URL": "" };
   const [entries, setEntries] = useState<Array<{ id: string; fields: Record<string, string> }>>([]);
@@ -857,7 +861,7 @@ function BookwormTikTokToday({ onCountChange }: { onCountChange: (n: number) => 
   };
 
   const count = entries.length;
-  const done = count >= TIKTOK_DAILY_GOAL;
+  const done = count >= goal;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -869,7 +873,7 @@ function BookwormTikTokToday({ onCountChange }: { onCountChange: (n: number) => 
         }}
       >
         <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
-          {loading ? "…" : count} / {TIKTOK_DAILY_GOAL}
+          {loading ? "…" : count} / {goal}
         </span>
         <button
           onClick={() => setOpen((o) => !o)}
@@ -960,7 +964,7 @@ function BookwormTikTokToday({ onCountChange }: { onCountChange: (n: number) => 
 // the daily job here is usually "find how to reach them" first, then log the
 // touch, rather than sending from a ready address. Goal is 5/day: a much
 // smaller list than the SplitMic 500 doesn't need a 10-a-day pace.
-function BookwormTodayQueue({ onContactedChange }: { onContactedChange: (delta: number) => void }) {
+function BookwormTodayQueue({ onContactedChange, limit }: { onContactedChange: (delta: number) => void; limit: number }) {
   const [contacts, setContacts] = useState<BookwormContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -982,14 +986,14 @@ function BookwormTodayQueue({ onContactedChange }: { onContactedChange: (delta: 
             BOOKWORM_PRIORITY_ORDER.indexOf(a.fields.Priority || "") -
             BOOKWORM_PRIORITY_ORDER.indexOf(b.fields.Priority || "")
         )
-        .slice(0, 5);
+        .slice(0, limit);
       setContacts(queue);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [limit]);
 
   useEffect(() => {
     load();
@@ -1023,7 +1027,7 @@ function BookwormTodayQueue({ onContactedChange }: { onContactedChange: (delta: 
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">
-          Today&apos;s 5 · next up in Bookworm outreach
+          Today&apos;s {limit} · next up in Bookworm outreach
         </h4>
         <button
           onClick={load}
@@ -1272,6 +1276,7 @@ export default function TodayTab() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [business, setBusiness] = useState<"SplitMic" | "Bookworm">("SplitMic");
+  const [settings, setSettings] = useState<ExecutionSettings>(defaultExecutionSettings);
 
   const today = austinDateStr();
   const day = dayNumber();
@@ -1284,10 +1289,17 @@ export default function TodayTab() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/progress?date=${today}`);
-        if (!res.ok) throw new Error("Could not load today");
-        const data = await res.json();
+        const [progressRes, settingsRes] = await Promise.all([
+          fetch(`/api/progress?date=${today}`),
+          fetch("/api/settings"),
+        ]);
+        if (!progressRes.ok) throw new Error("Could not load today");
+        const data = await progressRes.json();
         if (data.progress) setProgress({ ...emptyProgress, ...data.progress });
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          if (settingsData.settings) setSettings({ ...defaultExecutionSettings, ...settingsData.settings });
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load today");
       } finally {
@@ -1374,7 +1386,7 @@ export default function TodayTab() {
                 <textarea
                   value={progress["Deep Work Notes"] || ""}
                   onChange={(e) => set({ "Deep Work Notes": e.target.value })}
-                  placeholder="What did you work on? Bookworm product, creator research, community planning, testing, or next week's prep…"
+                  placeholder="What did you work on? Bookworm product, creator research, testing, content planning, or next week's prep…"
                   rows={5}
                   className={area}
                 />
@@ -1391,44 +1403,30 @@ export default function TodayTab() {
                   Email · Austin book clubs, stores and influencers
                 </p>
                 <Counter
-                  count={progress["Bookworm Contacted"] ?? 0}
-                  goal={5}
-                  onChange={(n) => set({ "Bookworm Contacted": n })}
+                  count={progress["Bookworm Emails Sent"] ?? 0}
+                  goal={settings["Bookworm Email Target"]}
+                  onChange={(n) => set({ "Bookworm Emails Sent": n })}
                 />
-                <p className="text-sm text-muted px-1">Goal: 5 Bookworm targets pointed at the free Whop community</p>
+                <p className="text-sm text-muted px-1">
+                  Goal: {settings["Bookworm Email Target"]} relevant Bookworm prospects contacted by email
+                </p>
                 <div className="mt-1">
                   <BookwormTodayQueue
-                    onContactedChange={(d) => set({ "Bookworm Contacted": (progress["Bookworm Contacted"] ?? 0) + d })}
+                    limit={settings["Bookworm Email Target"]}
+                    onContactedChange={(d) => set({ "Bookworm Emails Sent": (progress["Bookworm Emails Sent"] ?? 0) + d })}
                   />
                 </div>
 
                 <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">TikTok · creators</p>
-                <BookwormTikTokToday onCountChange={(n) => set({ "Bookworm TikTok Sent": n })} />
+                <BookwormTikTokToday
+                  goal={settings["Bookworm TikTok Target"]}
+                  onCountChange={(n) => set({ "Bookworm TikTok Sent": n })}
+                />
                 <p className="text-sm text-muted px-1">
-                  Goal: {TIKTOK_DAILY_GOAL} creators in personal development and book summaries, invited to partner
+                  Goal: {settings["Bookworm TikTok Target"]} creators in personal development and book summaries, invited to partner
                   on Bookworm. Search using the TikTok terms on the Search tab, then log each creator here. The count
                   updates itself.
                 </p>
-              </Block>
-
-              <Block tag="COMMUNITY" time="Anytime today" title="Whop Community">
-                <CheckRow
-                  label="Welcomed new members"
-                  checked={!!progress["Bookworm Welcomed Members"]}
-                  onToggle={() => set({ "Bookworm Welcomed Members": !progress["Bookworm Welcomed Members"] })}
-                />
-                <CheckRow
-                  label="Started or joined a discussion"
-                  checked={!!progress["Bookworm Started Discussion"]}
-                  onToggle={() => set({ "Bookworm Started Discussion": !progress["Bookworm Started Discussion"] })}
-                />
-                <textarea
-                  value={progress["Bookworm Community Notes"] || ""}
-                  onChange={(e) => set({ "Bookworm Community Notes": e.target.value })}
-                  placeholder="What happened in the community today?"
-                  rows={3}
-                  className={area}
-                />
               </Block>
 
               <DailyContentFollowUp progress={progress} onChange={set} />
@@ -1474,18 +1472,26 @@ export default function TodayTab() {
             <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">Email</p>
             <Counter
               count={progress["Emails Sent"] ?? 0}
-              goal={10}
+              goal={settings["SplitMic Email Target"]}
               onChange={(n) => set({ "Emails Sent": n })}
             />
-            <p className="text-sm text-muted px-1">Goal: 10 SplitMic 500 contacts</p>
+            <p className="text-sm text-muted px-1">
+              Goal: {settings["SplitMic Email Target"]} SplitMic prospects contacted by email
+            </p>
             <div className="mt-1">
-              <TodaysTen limit={10} onSentChange={(d) => set({ "Emails Sent": (progress["Emails Sent"] ?? 0) + d })} />
+              <TodaysTen
+                limit={settings["SplitMic Email Target"]}
+                onSentChange={(d) => set({ "Emails Sent": (progress["Emails Sent"] ?? 0) + d })}
+              />
             </div>
 
             <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">LinkedIn</p>
-            <LinkedInToday onCountChange={(n) => set({ "LinkedIn Sent": n })} />
+            <LinkedInToday
+              goal={settings["SplitMic LinkedIn Target"]}
+              onCountChange={(n) => set({ "LinkedIn Sent": n })}
+            />
             <p className="text-sm text-muted px-1">
-              Goal: 10 LinkedIn connections or outreach attempts. Search using the terms on the Search tab,
+              Goal: {settings["SplitMic LinkedIn Target"]} LinkedIn connections or outreach attempts. Search using the terms on the Search tab,
               then log each person here. The count updates itself.
             </p>
             <CheckRow

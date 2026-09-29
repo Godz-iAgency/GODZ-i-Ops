@@ -39,13 +39,14 @@ export type OutreachEmail = {
   to: string;
   subject: string;
   bodyText: string;
+  brand?: "SplitMic" | "Bookworm";
 };
 
 // Cold outreach carries obligations that have to be satisfied on every single
 // send: a working unsubscribe mechanism and a real postal address (CAN-SPAM),
 // plus the one-click headers Gmail and Outlook expect from bulk senders
 // (RFC 8058). The MIME is built by hand because those headers are the point.
-export async function sendOutreachEmail({ contactId, to, subject, bodyText }: OutreachEmail): Promise<string> {
+export async function sendOutreachEmail({ contactId, to, subject, bodyText, brand = "SplitMic" }: OutreachEmail): Promise<string> {
   const fromEmail = required("MAIL_FROM_EMAIL");
   const fromName = process.env.MAIL_FROM_NAME || "";
   const appUrl = required("APP_URL").replace(/\/+$/, "");
@@ -76,7 +77,7 @@ export async function sendOutreachEmail({ contactId, to, subject, bodyText }: Ou
     body
   );
 
-  const sent = await sendGmailMessage({ to, subject, rawMime: raw });
+  const sent = await sendGmailMessage({ to, subject, rawMime: raw, labelName: brand });
   return sent.id;
 }
 
@@ -86,12 +87,13 @@ export type ReplyEmail = {
   bodyText: string;
   threadId: string;
   inReplyTo: string;
+  brand?: "SplitMic" | "Bookworm";
 };
 
 // A reply to someone who wrote to you first is ordinary correspondence, so it
 // carries no unsubscribe furniture -- just the threading headers that keep it
 // in the same conversation rather than starting a new one.
-export async function sendReplyEmail({ to, subject, bodyText, threadId, inReplyTo }: ReplyEmail): Promise<string> {
+export async function sendReplyEmail({ to, subject, bodyText, threadId, inReplyTo, brand = "SplitMic" }: ReplyEmail): Promise<string> {
   const headers = [
     `From: ${fromHeader()}`,
     `To: ${headerSafe(to)}`,
@@ -109,6 +111,7 @@ export async function sendReplyEmail({ to, subject, bodyText, threadId, inReplyT
     subject,
     rawMime: buildMime(headers, `${bodyText.trimEnd()}\n`),
     threadId,
+    labelName: brand,
   });
   return sent.id;
 }

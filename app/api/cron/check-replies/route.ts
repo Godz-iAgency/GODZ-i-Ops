@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRecentInboxMessages, isBounceMessage, extractBouncedAddress, GmailMessage } from "@/lib/gmail";
+import { applyGmailLabel, getRecentInboxMessages, isBounceMessage, extractBouncedAddress, GmailMessage } from "@/lib/gmail";
 import {
+  getAllBookwormContacts,
   getAllContactsWithEmail,
+  getBookwormOutreachTable,
+  getOutreachTable,
   wasAlreadyNotified,
   createReply,
   suppressByEmail,
   suppressContact,
-  Contact,
 } from "@/lib/database";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendReplyEmail } from "@/lib/outreach";
@@ -19,14 +21,21 @@ export const maxDuration = 60;
 // bounces, catch replies from people in the outreach list, and triage each one
 // so the Replies tab has something useful in it rather than raw mail.
 
-function alertText(msg: GmailMessage, contact: Contact, intent: string, summary: string, suggested: string, acked: boolean) {
-  const f = contact.fields;
+type MatchedContact = {
+  id: string;
+  brand: "SplitMic" | "Bookworm";
+  name: string;
+  organization?: string;
+  email: string;
+};
+
+function alertText(msg: GmailMessage, contact: MatchedContact, intent: string, summary: string, suggested: string, acked: boolean) {
   const icon =
     intent === "Interested" ? "🟢" : intent === "Question" ? "🔵" : intent === "Unsubscribe" ? "🔴" : "⚪";
   return (
-    `${icon} *Reply · ${intent}*\n\n` +
-    `*${f["Name / Target"] || msg.fromName}*\n` +
-    (f.Organization ? `${f.Organization}\n` : "") +
+    `${icon} *${contact.brand} reply · ${intent}*\n\n` +
+    `*${contact.name || msg.fromName}*\n` +
+    (contact.organization ? `${contact.organization}\n` : "") +
     `${msg.fromEmail}\n\n` +
     `_${summary}_\n\n` +
     `Subject: ${msg.subject}\n` +
@@ -42,8 +51,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [messages, contacts] = await Promise.all([getRecentInboxMessages(15), getAllContactsWithEmail()]);
-  const contactByEmail = new Map(contacts.map((c) => [c.fields.Email?.toLowerCase(), c]));
+  const [messages, contacts, bookwormContacts] = await Promise.all([
+    getRecentInboxMessages(15),
+    getAllContactsWithEmail(),
+    getAllBookwormContacts(),
+  ]);
+  const contactByEmail = new Map<string, MatchedContact>();
+  for (const contact of contacts) {
+    const email = contact.fields.Email?.toLowerCase().trim();
+    if (!email) continue;
+    contactByEmail.set(email, {
+      id: contact.id,
+      brand: "SplitMic",
+      name: contact.fields["Name / Target"] || "Unnamed contact",
+      organization: contact.fields.Organization,
+      email,
+    });
+  }
+  for (const contact of bookwormContacts) {
+    const email = contact.fields.Email?.toLowerCase().trim();
+    if (!email) continue;
+    contactByEmail.set(email, {
+      id: contact.id,
+      brand: "Bookworm",
+      name: contact.fields.Name || "Unnamed contact",
+      organization: contact.fields.Category,
+      email,
+    });
+  }
 
   let replies = 0;
   let bounces = 0;
@@ -56,8 +91,13 @@ export async function GET(req: NextRequest) {
     if (isBounceMessage(msg)) {
       const bounced = extractBouncedAddress(msg);
       if (bounced) {
-        const count = await suppressByEmail(bounced, "Bounce: delivery failed", true);
-        if (count) {
+        const matched = contactByEmail.get(bounced.toLowerCase());
+        const count = matched?.brand === "Bookworm" ? 1 : await suppressByEmail(bounced, "Bounce: delivery failed", true);
+        if (matched?.brand === "Bookworm") {
+          await getBookwormOutreachTable().update([{ id: matched.id, fields: { "Next Action": "Find a working email address" } as never }], { typecast: true });
+        }
+        if (count || matched) {
+          if (matched) await applyGmailLabel([msg.id], matched.brand);
           bounces++;
           await createReply({
             "Message ID": msg.id,
@@ -67,9 +107,10 @@ export async function GET(req: NextRequest) {
             "Received At": new Date(Number(msg.internalDate)).toISOString(),
             "Notified At": new Date().toISOString(),
             Status: "Closed",
+            Source: matched?.brand || "SplitMic",
             Intent: "Other",
           });
-          await sendTelegramMessage(`⚠️ *Bounce*\n\n${bounced} could not be delivered and is now suppressed.`);
+          await sendTelegramMessage(`⚠️ *${matched?.brand || "SplitMic"} bounce*\n\n${bounced} could not be delivered and needs attention.`);
         }
       }
       continue;
@@ -77,14 +118,15 @@ export async function GET(req: NextRequest) {
 
     const contact = contactByEmail.get(msg.fromEmail);
     if (!contact) continue;
+    await applyGmailLabel([msg.id], contact.brand);
 
     let intent = "Other";
     let summary = msg.snippet.slice(0, 120);
     let suggested = "";
     try {
       const t = await triageReply({
-        fromName: contact.fields["Name / Target"] || msg.fromName,
-        organization: contact.fields.Organization,
+        fromName: contact.name || msg.fromName,
+        organization: contact.organization,
         subject: msg.subject,
         body: msg.body || msg.snippet,
       });
@@ -98,7 +140,14 @@ export async function GET(req: NextRequest) {
     // Someone asking to be left alone is honoured immediately, without waiting
     // for anyone to read the Replies tab.
     if (intent === "Unsubscribe") {
-      await suppressContact(contact.id, "Replied asking to unsubscribe");
+      if (contact.brand === "SplitMic") {
+        await suppressContact(contact.id, "Replied asking to unsubscribe");
+      } else {
+        await getBookwormOutreachTable().update(
+          [{ id: contact.id, fields: { "Relationship Status": "Not Interested", "Next Action": "Do not contact" } as never }],
+          { typecast: true }
+        );
+      }
     }
 
     let acked = false;
@@ -107,9 +156,10 @@ export async function GET(req: NextRequest) {
         await sendReplyEmail({
           to: msg.fromEmail,
           subject: msg.subject,
-          bodyText: acknowledgementText(contact.fields["Name / Target"] || msg.fromName),
+          bodyText: acknowledgementText(contact.name || msg.fromName),
           threadId: msg.threadId,
           inReplyTo: msg.rfcMessageId,
+          brand: contact.brand,
         });
         acked = true;
       } catch {
@@ -119,13 +169,11 @@ export async function GET(req: NextRequest) {
 
     await createReply({
       "Message ID": msg.id,
-      // Only the SplitMic list is matched today. When Bookworm gets its own
-      // table this is where the matched list decides the label.
-      Source: "SplitMic",
+      Source: contact.brand,
       "From Email": msg.fromEmail,
       "From Name": msg.fromName,
-      "Contact Name": contact.fields["Name / Target"],
-      Organization: contact.fields.Organization,
+      "Contact Name": contact.name,
+      Organization: contact.organization,
       "Contact Record ID": contact.id,
       Subject: msg.subject,
       Body: msg.body.slice(0, 5000),
@@ -138,6 +186,17 @@ export async function GET(req: NextRequest) {
       "Suggested Reply": suggested,
     });
 
+    if (contact.brand === "SplitMic") {
+      await getOutreachTable().update(
+        [{ id: contact.id, fields: { "Email Status": "Replied", "Relationship Status": "Replied" } as never }],
+        { typecast: true }
+      );
+    } else {
+      await getBookwormOutreachTable().update(
+        [{ id: contact.id, fields: { "Relationship Status": "Replied" } as never }],
+        { typecast: true }
+      );
+    }
     await sendTelegramMessage(alertText(msg, contact, intent, summary, suggested, acked));
     replies++;
   }
