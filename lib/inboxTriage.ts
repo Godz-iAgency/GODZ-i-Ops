@@ -25,7 +25,15 @@ const EMPTY_LABELS_TO_DELETE = [
 // These already carry real mail but were never wired to also drop the INBOX
 // label -- tagging happened without ever decluttering anything. GODZ-i is
 // deliberately excluded: personal mail belongs there AND in the inbox now.
-const ARCHIVE_ON_SIGHT_LABELS = ["LinkedIn", "Finance & Receipts", "Promotion", "Talent Buyers", "Grants for Split Mic"];
+const ARCHIVE_ON_SIGHT_LABELS = [
+  "LinkedIn",
+  "Google",
+  "Finance & Receipts",
+  "Tools & Services",
+  "Promotion",
+  "Talent Buyers",
+  "Grants for Split Mic",
+];
 
 // The categories Christopher actually wants, plus one catch-all for
 // everything that doesn't fit them.
@@ -75,7 +83,12 @@ const AUTOMATED_LOCALPART_PATTERN =
   /^(no-?reply|do-?not-?reply|notifications?|alerts?|support|hello|team|info|news|updates?|mailer|automated|welcome|billing)@/i;
 
 const KNOWN_SERVICE_PATTERN =
-  /zoom\.us|squarespace|cloudflare|zenbusiness|score\.org|reddit\.com|microsoft|amazonaws|amazon\.com|higgsfield|fireflies\.ai|mailchimp|buffer(app)?\.com|kroger|intuit|secretary of state|maps-platform/i;
+  /zoom\.us|squarespace|cloudflare|zenbusiness|score\.org|reddit\.com|microsoft|amazonaws|amazon\.com|higgsfield|fireflies\.ai|mailchimp|buffer(app)?\.com|kroger|intuit|secretary of state|maps-platform|oracle|flightaware|supabase|formsubmit|bubbleapps|salesforce|atlassian|anymailfinder|clearme|miro\.com|alignable|zapier|notion|21st\.dev|bubble\.io|netlify|rentalcover|groq\.co|resend|vercel|n8n/i;
+
+const SPLITMIC_SUBJECT_PATTERN = /\bsplit\s*mic\b/i;
+const BOOKWORM_SUBJECT_PATTERN = /\bbookworm\b/i;
+const AUTOMATED_OWN_SUBJECT_PATTERN =
+  /thanks for inquiring|action required: new lead|new lead notification|new message:|new service request:|calendar log entry|daily weather|customer support performance|thank you for reach|approval required|^error$/i;
 
 export type Category = "SplitMic" | "Bookworm" | "LinkedIn" | "Google" | "FinanceReceipts" | "ToolsServices" | "GODZi";
 
@@ -88,17 +101,27 @@ function classify(
   bookwormEmails: Set<string>
 ): Category {
   const email = meta.fromEmail.toLowerCase();
+  const subject = meta.subject.trim();
+  const domain = email.split("@")[1] || "";
+
+  // App-generated notices sometimes arrive from Christopher's own domain.
+  // Route brand-specific notices before the personal-address safeguard so
+  // they remain visible in the correct business inbox.
+  if (SPLITMIC_SUBJECT_PATTERN.test(subject)) return "SplitMic";
+  if (BOOKWORM_SUBJECT_PATTERN.test(subject) || domain.endsWith("reedsy.com")) return "Bookworm";
+  if ((email === OWN_EMAIL || PERSONAL_EMAILS.includes(email)) && AUTOMATED_OWN_SUBJECT_PATTERN.test(subject)) {
+    return "ToolsServices";
+  }
   if (email === OWN_EMAIL || PERSONAL_EMAILS.includes(email)) return "GODZi";
   if (splitMicEmails.has(email)) return "SplitMic";
   if (bookwormEmails.has(email)) return "Bookworm";
 
-  const domain = email.split("@")[1] || "";
   if (domain.endsWith("linkedin.com")) return "LinkedIn";
   if (domain.endsWith("google.com") || domain.endsWith("googlemail.com")) return "Google";
 
-  if (RECEIPT_PATTERN.test(meta.subject)) return "FinanceReceipts";
+  if (RECEIPT_PATTERN.test(subject)) return "FinanceReceipts";
 
-  const text = `${email} ${meta.subject}`;
+  const text = `${email} ${subject}`;
   if (GOOGLE_PATTERN.test(text)) return "Google";
 
   const looksAutomated =
@@ -235,7 +258,8 @@ export async function runInboxTriage(scope: "backlog" | "recent"): Promise<Inbox
     }
     for (const [category, ids] of moves) {
       if (!ids.length) continue;
-      await batchModifyMessages(accessToken, ids, [labelIdFor(byName, category)], [godziLabel.id]);
+      const removeLabelIds = staysInInbox(category) ? [godziLabel.id] : [godziLabel.id, "INBOX"];
+      await batchModifyMessages(accessToken, ids, [labelIdFor(byName, category)], removeLabelIds);
       reclassifiedFromGodzi[category] = ids.length;
     }
   }
