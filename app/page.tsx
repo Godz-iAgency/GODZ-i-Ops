@@ -8,6 +8,7 @@ import {
   Ellipsis,
   Home as HomeIcon,
   Library,
+  Mail,
   Megaphone,
   MessageSquareText,
   Search,
@@ -21,6 +22,7 @@ import SearchTab from "@/components/SearchTab";
 import ResourcesTab from "@/components/ResourcesTab";
 import CalendarTab from "@/components/CalendarTab";
 import AssistantTab from "@/components/AssistantTab";
+import EmailTab from "@/components/EmailTab";
 
 const PRIMARY_TABS = [
   { id: "today", label: "Today", icon: HomeIcon },
@@ -33,6 +35,7 @@ const SECONDARY_TABS = [
   { id: "replies", label: "Replies", icon: MessageSquareText },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "resources", label: "Resources", icon: Library },
+  { id: "email", label: "Email", icon: Mail },
 ];
 
 const TABS = [...PRIMARY_TABS, ...SECONDARY_TABS];
@@ -118,6 +121,7 @@ export default function Home() {
             {tab === "assistant" && <AssistantTab />}
             {tab === "search" && <SearchTab />}
             {tab === "resources" && <ResourcesTab />}
+            {tab === "email" && <EmailTab />}
           </>
         )}
       </main>

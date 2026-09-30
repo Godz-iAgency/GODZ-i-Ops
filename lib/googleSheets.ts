@@ -105,6 +105,34 @@ export const GOOGLE_SHEET_SCHEMAS: SheetSchema[] = [
     headers: ["Record ID", "Name", "SplitMic LinkedIn Target", "SplitMic Email Target", "Bookworm TikTok Target", "Bookworm Email Target"],
     numericColumns: ["SplitMic LinkedIn Target", "SplitMic Email Target", "Bookworm TikTok Target", "Bookworm Email Target"],
   },
+  {
+    title: "Email Cleanup Log",
+    headers: [
+      "Record ID",
+      "Run At",
+      "Trigger",
+      "Retention Days",
+      "Review Buffer Days",
+      "New Candidates",
+      "Moved to Trash",
+      "Remaining Review",
+      "Recoverable in Trash",
+      "Status",
+      "Error",
+    ],
+    numericColumns: [
+      "Retention Days",
+      "Review Buffer Days",
+      "New Candidates",
+      "Moved to Trash",
+      "Remaining Review",
+      "Recoverable in Trash",
+    ],
+    dropdowns: {
+      Trigger: ["Manual", "Scheduled"],
+      Status: ["Completed", "Failed"],
+    },
+  },
 ];
 
 function env(name: string): string {

@@ -257,7 +257,7 @@ async function labelGmailMessages(accessToken: string, messageIds: string[], lab
   await batchModifyMessages(accessToken, messageIds, [label.id], []);
 }
 
-export async function applyGmailLabel(messageIds: string[], labelName: "SplitMic" | "Bookworm"): Promise<void> {
+export async function applyGmailLabel(messageIds: string[], labelName: string): Promise<void> {
   if (!messageIds.length) return;
   const accessToken = await getAccessToken();
   await labelGmailMessages(accessToken, messageIds, labelName);
@@ -311,6 +311,31 @@ export async function batchModifyMessages(
     });
     if (!res.ok) throw new Error(`Gmail batchModify failed: ${res.status} ${await res.text()}`);
   }
+}
+
+// Gmail has no batch "move to Trash" endpoint. Use the dedicated trash
+// operation with a modest worker pool so cleanup stays inside API quotas and
+// never permanently deletes a message.
+export async function trashGmailMessages(accessToken: string, ids: string[]): Promise<number> {
+  let next = 0;
+  let trashed = 0;
+
+  async function worker() {
+    while (next < ids.length) {
+      const id = ids[next++];
+      const res = await gmailFetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}/trash`,
+        { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (!res.ok && res.status !== 404) {
+        throw new Error(`Gmail trash failed: ${res.status} ${await res.text()}`);
+      }
+      if (res.ok) trashed++;
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(10, ids.length) || 1 }, worker));
+  return trashed;
 }
 
 export type MessageTriageMeta = { id: string; fromEmail: string; subject: string; hasUnsubscribe: boolean };
