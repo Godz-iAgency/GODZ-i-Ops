@@ -5,6 +5,7 @@ import { dayNumber } from "@/lib/sprint";
 import { TIKTOK_NICHES } from "@/lib/bookwormTikTok";
 import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send, Settings2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import OrganizationInput from "./OrganizationInput";
 
 type Progress = {
   Date?: string;
@@ -663,6 +664,7 @@ function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [entriesCollapsed, setEntriesCollapsed] = useState(false);
   const [form, setForm] = useState({ Name: "", Organization: "", Role: "", "LinkedIn URL": "" });
 
   const load = useCallback(async () => {
@@ -753,10 +755,9 @@ function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => 
             className={input}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <input
+            <OrganizationInput
               value={form.Organization}
-              onChange={(e) => setForm({ ...form, Organization: e.target.value })}
-              placeholder="Organization"
+              onChange={(value) => setForm({ ...form, Organization: value })}
               className={input}
             />
             <input
@@ -789,6 +790,16 @@ function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => 
       )}
 
       {entries.length > 0 && (
+        <div className="flex items-center justify-between gap-3 px-1 pt-1">
+          <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted">Today&apos;s LinkedIn activity</p>
+          <button onClick={() => setEntriesCollapsed((value) => !value)} aria-expanded={!entriesCollapsed} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-semibold text-textSecondary hover:border-accent hover:text-foreground">
+            {entriesCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+            {entriesCollapsed ? `Show ${entries.length}` : "Collapse list"}
+          </button>
+        </div>
+      )}
+
+      {entries.length > 0 && !entriesCollapsed && (
         <div className="flex flex-col gap-2">
           {entries.map((e) => (
             <div
@@ -825,6 +836,7 @@ function BookwormTikTokToday({ onCountChange, goal }: { onCountChange: (n: numbe
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [entriesCollapsed, setEntriesCollapsed] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
   const load = useCallback(async () => {
@@ -956,6 +968,16 @@ function BookwormTikTokToday({ onCountChange, goal }: { onCountChange: (n: numbe
       )}
 
       {entries.length > 0 && (
+        <div className="flex items-center justify-between gap-3 px-1 pt-1">
+          <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted">Today&apos;s TikTok activity</p>
+          <button onClick={() => setEntriesCollapsed((value) => !value)} aria-expanded={!entriesCollapsed} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-semibold text-textSecondary hover:border-accent hover:text-foreground">
+            {entriesCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+            {entriesCollapsed ? `Show ${entries.length}` : "Collapse list"}
+          </button>
+        </div>
+      )}
+
+      {entries.length > 0 && !entriesCollapsed && (
         <div className="flex flex-col gap-2">
           {entries.map((e) => (
             <div key={e.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface3 border border-border">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Ban, Check, ExternalLink, Plus, RefreshCw, Save, Search, Sparkles, X } from "lucide-react";
+import { Ban, Check, ChevronDown, ChevronUp, ExternalLink, Plus, RefreshCw, Save, Search, Sparkles, X } from "lucide-react";
 import { austinDateStr } from "@/lib/austinDate";
 import { readApiJson } from "@/lib/apiClient";
 
@@ -78,6 +78,7 @@ export default function QualifiedTikTokBoard() {
   const [newCreator, setNewCreator] = useState<Fields>({ Status: "New", List: "Primary" });
   const [researching, setResearching] = useState(false);
   const [researchResult, setResearchResult] = useState<ResearchResult | null>(null);
+  const [queueCollapsed, setQueueCollapsed] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -196,8 +197,11 @@ export default function QualifiedTikTokBoard() {
           <h2 className="text-xl font-bold text-foreground sm:text-2xl">TikTok Creator Queue</h2>
           <p className="mt-1 font-mono text-sm text-muted">{qualifiedCount} ready now · {candidateCount} candidates · {todayCount} contacted today · {creators.length} saved</p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto">
           <button onClick={() => setAdding((value) => !value)} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-accent px-3 py-2.5 text-sm font-bold text-white sm:px-4"><Plus size={15} /> Save prospect</button>
+          <button onClick={() => setQueueCollapsed((value) => !value)} aria-expanded={!queueCollapsed} className="flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary hover:border-accent hover:text-white sm:px-4">
+            {queueCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}<span className="hidden sm:inline">{queueCollapsed ? "Show queue" : "Collapse queue"}</span><span className="sm:hidden">{queueCollapsed ? "Show" : "Collapse"}</span>
+          </button>
           <button onClick={load} disabled={loading} className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary sm:px-4"><RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh</button>
         </div>
       </div>
@@ -288,14 +292,21 @@ export default function QualifiedTikTokBoard() {
         </p>
       </div>
 
-      {!loading && filtered.length === 0 && (
+      {queueCollapsed && (
+        <button onClick={() => setQueueCollapsed(false)} className="flex min-h-14 items-center justify-between rounded-xl border border-border bg-surface2 px-4 text-left text-sm text-textSecondary hover:border-accent hover:text-foreground">
+          <span>{filtered.length} TikTok creator{filtered.length === 1 ? "" : "s"} hidden</span>
+          <span className="flex items-center gap-1.5 font-semibold text-accentLight"><ChevronDown size={15} /> Show queue</span>
+        </button>
+      )}
+
+      {!queueCollapsed && !loading && filtered.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
           <p className="font-semibold text-foreground">No creators match this execution view.</p>
           <p className="mt-2 text-sm text-muted">Choose Candidates to review the saved bank, fill the daily queue, or loosen a filter.</p>
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      {!queueCollapsed && <div className="flex flex-col gap-2.5">
         {filtered.map((creator) => {
           const fields = creator.fields;
           const url = profileUrl(fields);
@@ -318,7 +329,7 @@ export default function QualifiedTikTokBoard() {
             </article>
           );
         })}
-      </div>
+      </div>}
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 sm:items-center sm:p-4" onClick={() => setSelected(null)}>

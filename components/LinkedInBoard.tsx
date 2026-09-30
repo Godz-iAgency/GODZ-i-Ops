@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { austinDateStr } from "@/lib/austinDate";
-import { Plus, X, RefreshCw, Save, ExternalLink, Search, ChevronDown, Trash2 } from "lucide-react";
+import { Plus, X, RefreshCw, Save, ExternalLink, Search, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import OrganizationInput from "./OrganizationInput";
 import { readApiJson } from "@/lib/apiClient";
 
 const PAGE_SIZE = 10;
@@ -66,6 +67,7 @@ export default function LinkedInBoard() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const [queueCollapsed, setQueueCollapsed] = useState(false);
 
   const today = austinDateStr();
 
@@ -174,13 +176,22 @@ export default function LinkedInBoard() {
             {prospects.length} tracked · {todayCount}/10 added today
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 min-[420px]:flex min-[420px]:w-auto min-[420px]:items-center">
+        <div className="grid w-full grid-cols-3 gap-2 min-[540px]:flex min-[540px]:w-auto min-[540px]:items-center">
           <button
             onClick={() => setAdding((a) => !a)}
             className="flex min-h-11 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-bold text-white transition-all sm:px-5"
             style={{ background: "linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))" }}
           >
             <Plus size={15} /> Add prospect
+          </button>
+          <button
+            onClick={() => setQueueCollapsed((value) => !value)}
+            aria-expanded={!queueCollapsed}
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-2.5 text-sm text-textSecondary transition-all hover:border-accent hover:text-white sm:px-4"
+          >
+            {queueCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+            <span className="hidden sm:inline">{queueCollapsed ? "Show queue" : "Collapse queue"}</span>
+            <span className="sm:hidden">{queueCollapsed ? "Show" : "Collapse"}</span>
           </button>
           <button
             onClick={load}
@@ -211,10 +222,9 @@ export default function LinkedInBoard() {
               placeholder="Name"
               className={inputCls}
             />
-            <input
-              value={form.Organization}
-              onChange={(e) => setForm({ ...form, Organization: e.target.value })}
-              placeholder="Organization"
+            <OrganizationInput
+              value={form.Organization || ""}
+              onChange={(value) => setForm({ ...form, Organization: value })}
               className={inputCls}
             />
             <input
@@ -270,7 +280,7 @@ export default function LinkedInBoard() {
         </div>
       )}
 
-      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+      {!queueCollapsed && <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-border bg-surface2 px-3.5 py-2.5">
           <Search size={15} color="var(--color-muted)" />
           <input
@@ -298,9 +308,9 @@ export default function LinkedInBoard() {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
-      <div className="flex flex-col gap-2.5">
+      {!queueCollapsed ? <div className="flex flex-col gap-2.5">
         {!loading && filtered.length === 0 && (
           <p className="text-base italic text-muted px-1 py-6 text-center">
             {prospects.length === 0
@@ -344,7 +354,15 @@ export default function LinkedInBoard() {
             <ChevronDown size={15} /> Show {remaining} more
           </button>
         )}
-      </div>
+      </div> : (
+        <button
+          onClick={() => setQueueCollapsed(false)}
+          className="flex min-h-14 items-center justify-between rounded-xl border border-border bg-surface2 px-4 text-left text-sm text-textSecondary hover:border-accent hover:text-foreground"
+        >
+          <span>{filtered.length} LinkedIn prospect{filtered.length === 1 ? "" : "s"} hidden</span>
+          <span className="flex items-center gap-1.5 font-semibold text-accentLight"><ChevronDown size={15} /> Show queue</span>
+        </button>
+      )}
 
       {detail && (
         <div
@@ -383,9 +401,9 @@ export default function LinkedInBoard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Organization">
-                  <input
+                  <OrganizationInput
                     value={detail.fields.Organization || ""}
-                    onChange={(e) => setDetailField({ Organization: e.target.value })}
+                    onChange={(value) => setDetailField({ Organization: value })}
                     className={inputCls}
                   />
                 </Field>
