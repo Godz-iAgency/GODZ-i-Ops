@@ -61,7 +61,7 @@ export default function Home() {
 
   return (
     <div className="relative z-[1] min-h-screen w-full">
-      <header className="sticky top-0 z-20 border-b border-border bg-[rgba(5,5,7,0.9)] backdrop-blur-xl">
+      <header className="app-shell-header adaptive-material sticky top-0 z-20 border-b border-border bg-[rgba(5,5,7,0.86)]">
         <div className="mx-auto flex min-h-[64px] max-w-[1440px] items-center justify-between gap-4 px-3 py-3 sm:px-6 md:px-8 lg:min-h-[76px] lg:px-10">
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <Image src="/godzi-ops-logo.png" alt="GODZ-i" width={2000} height={600} priority className="h-8 w-auto max-w-[150px] rounded-md sm:h-10 lg:h-11 lg:max-w-none lg:rounded-lg" />
@@ -79,6 +79,7 @@ export default function Home() {
                 <button
                   key={t.id}
                   onClick={() => selectTab(t.id)}
+                  aria-current={active ? "page" : undefined}
                   className="flex flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2.5 text-sm font-semibold transition-all xl:px-5 xl:text-base"
                   style={{
                     background: active ? "var(--color-accent)" : "transparent",
@@ -113,7 +114,7 @@ export default function Home() {
             <div className="h-64 rounded-2xl bg-white/[0.035]" />
           </div>
         ) : (
-          <>
+          <div key={tab} className="view-enter">
             {tab === "today" && <TodayTab />}
             {tab === "outreach" && <OutreachTab />}
             {tab === "replies" && <RepliesTab />}
@@ -122,7 +123,7 @@ export default function Home() {
             {tab === "search" && <SearchTab />}
             {tab === "resources" && <ResourcesTab />}
             {tab === "email" && <EmailTab />}
-          </>
+          </div>
         )}
       </main>
 
@@ -133,7 +134,7 @@ export default function Home() {
             className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-x-3 bottom-[calc(5.6rem+env(safe-area-inset-bottom))] z-40 rounded-2xl border border-border bg-surfaceElevated p-2 shadow-[0_24px_80px_rgba(0,0,0,0.75)] lg:hidden">
+          <div id="mobile-more-sections" className="adaptive-material fixed inset-x-3 bottom-[calc(5.6rem+env(safe-area-inset-bottom))] z-40 rounded-2xl border border-border bg-[rgba(22,22,31,0.92)] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.75)] lg:hidden">
             <div className="flex items-center justify-between px-3 pb-2 pt-1">
               <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted">More sections</p>
               <button onClick={() => setMobileMenuOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-muted" aria-label="Close">
@@ -166,7 +167,7 @@ export default function Home() {
       )}
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-[rgba(8,8,13,0.96)] px-1 pt-1.5 pb-[max(0.45rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl lg:hidden"
+        className="adaptive-material fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-[rgba(8,8,13,0.92)] px-1 pt-1.5 pb-[max(0.45rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(0,0,0,0.45)] lg:hidden"
         aria-label="Mobile navigation"
       >
         {PRIMARY_TABS.map((item) => {
@@ -176,6 +177,7 @@ export default function Home() {
             <button
               key={item.id}
               onClick={() => selectTab(item.id)}
+              aria-current={active ? "page" : undefined}
               className="flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold transition-colors"
               style={{ color: active ? "var(--color-accent-light)" : "var(--color-muted)" }}
             >
@@ -188,6 +190,8 @@ export default function Home() {
         })}
         <button
           onClick={() => setMobileMenuOpen((open) => !open)}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-more-sections"
           className="flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold transition-colors"
           style={{ color: mobileMenuOpen || SECONDARY_TABS.some((item) => item.id === tab) ? "var(--color-accent-light)" : "var(--color-muted)" }}
         >

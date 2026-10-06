@@ -1,10 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400..600&family=Montserrat:wght@400..900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  color-scheme: dark;
   --color-background: #050507;
   --color-foreground: #f4f4f5;
   --color-surface: #08080d;
@@ -35,6 +36,10 @@
   --shadow-cta-hover: 0 10px 30px rgba(232, 67, 10, 0.4);
   --glow-ring-min: 0 0 24px rgba(232, 67, 10, 0.12), 0 0 80px rgba(232, 67, 10, 0.04);
   --glow-ring-max: 0 0 36px rgba(232, 67, 10, 0.28), 0 0 100px rgba(232, 67, 10, 0.1);
+  --motion-quick: 140ms;
+  --motion-standard: 220ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --focus-ring: 0 0 0 3px rgba(255, 107, 53, 0.28);
 }
 
 html,
@@ -42,8 +47,12 @@ body {
   min-height: 100%;
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: 'Montserrat', system-ui, sans-serif;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-optical-sizing: auto;
+  font-synthesis: none;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
 
@@ -78,7 +87,7 @@ body {
 textarea,
 input,
 select {
-  font-family: 'Montserrat', system-ui, sans-serif;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 button,
@@ -96,6 +105,41 @@ a {
   user-select: none;
 }
 
+button,
+select,
+summary,
+a[href] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+:where(button, a[href], input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--color-accent-light);
+  outline-offset: 3px;
+  box-shadow: var(--focus-ring);
+}
+
+button:not(:disabled):active,
+a[href]:active,
+summary:active {
+  transform: scale(0.98);
+  transition-duration: 60ms;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
 input,
 textarea,
 select {
@@ -107,6 +151,19 @@ select {
   textarea,
   select {
     font-size: 16px !important;
+  }
+}
+
+/* Apple's 44pt guidance keeps every action dependable on touch devices. */
+@media (pointer: coarse) {
+  button,
+  select,
+  summary {
+    min-height: 44px;
+  }
+
+  button[aria-label] {
+    min-width: 44px;
   }
 }
 
@@ -171,6 +228,31 @@ select {
     radial-gradient(circle at 90% 10%, rgba(232, 67, 10, 0.02), transparent 40%);
 }
 
+.adaptive-material {
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+.app-shell-header {
+  padding-top: env(safe-area-inset-top);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025), 0 12px 40px rgba(0, 0, 0, 0.14);
+}
+
+.view-enter {
+  animation: view-enter var(--motion-standard) var(--motion-ease) both;
+}
+
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .card-hover {
   transition: border-color 0.15s, transform 0.15s, background 0.15s;
 }
@@ -211,4 +293,49 @@ select {
 .assistant-progress-fill {
   background-size: 200% 100%;
   animation: progress-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .adaptive-material {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--color-surface-elevated) !important;
+  }
+
+  .grain-overlay,
+  .bg-glow {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: rgba(255, 255, 255, 0.2);
+    --color-border-hover: rgba(255, 255, 255, 0.34);
+    --color-muted: #a1a1aa;
+    --color-text-secondary: #d4d4d8;
+  }
+
+  :where(button, a[href], input, textarea, select, summary):focus-visible {
+    outline-width: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  button:not(:disabled):active,
+  a[href]:active,
+  summary:active,
+  .card-hover:hover,
+  .row-hover:hover {
+    transform: none !important;
+  }
 }
