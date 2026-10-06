@@ -149,6 +149,7 @@ export default function Home() {
                   <button
                     key={item.id}
                     onClick={() => selectTab(item.id)}
+                    aria-current={active ? "page" : undefined}
                     className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border px-2 py-3 text-xs font-semibold"
                     style={{
                       background: active ? "rgba(232,67,10,0.16)" : "rgba(255,255,255,0.025)",
@@ -192,6 +193,7 @@ export default function Home() {
           onClick={() => setMobileMenuOpen((open) => !open)}
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-more-sections"
+          aria-current={SECONDARY_TABS.some((item) => item.id === tab) ? "page" : undefined}
           className="flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold transition-colors"
           style={{ color: mobileMenuOpen || SECONDARY_TABS.some((item) => item.id === tab) ? "var(--color-accent-light)" : "var(--color-muted)" }}
         >
