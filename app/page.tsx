@@ -59,6 +59,15 @@ export default function Home() {
     window.history.replaceState(null, "", url);
   };
 
+  const openProspectSearch = (mode: "splitmic-linkedin" | "bookworm-tiktok") => {
+    setTab("search");
+    setMobileMenuOpen(false);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "search");
+    url.searchParams.set("mode", mode);
+    window.history.replaceState(null, "", url);
+  };
+
   return (
     <div className="relative z-[1] min-h-screen w-full">
       <header className="app-shell-header adaptive-material sticky top-0 z-20 border-b border-border bg-[rgba(5,5,7,0.86)]">
@@ -115,7 +124,7 @@ export default function Home() {
           </div>
         ) : (
           <div key={tab} className="view-enter">
-            {tab === "today" && <TodayTab />}
+            {tab === "today" && <TodayTab onOpenProspectSearch={openProspectSearch} />}
             {tab === "outreach" && <OutreachTab />}
             {tab === "replies" && <RepliesTab />}
             {tab === "calendar" && <CalendarTab />}

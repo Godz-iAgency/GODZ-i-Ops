@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, ChevronDown, ExternalLink, Plus, Search as SearchIcon, Trash2 } from "lucide-react";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 
 type Mode = "splitmic-linkedin" | "bookworm-tiktok" | "email";
@@ -105,6 +105,20 @@ export default function SearchTab() {
   const [idea, setIdea] = useState("");
   const today = new Date().toISOString().slice(0, 10);
 
+  useEffect(() => {
+    const requestedMode = new URLSearchParams(window.location.search).get("mode");
+    if (requestedMode === "splitmic-linkedin" || requestedMode === "bookworm-tiktok" || requestedMode === "email") {
+      setMode(requestedMode);
+    }
+  }, []);
+
+  const selectMode = (nextMode: Mode) => {
+    setMode(nextMode);
+    const url = new URL(window.location.href);
+    url.searchParams.set("mode", nextMode);
+    window.history.replaceState(null, "", url);
+  };
+
   const addIdea = () => {
     if (!idea.trim()) return;
     setIdeas([{ id: Date.now(), text: idea.trim(), addedAt: today }, ...ideas]);
@@ -112,25 +126,40 @@ export default function SearchTab() {
   };
 
   const copy = {
-    "splitmic-linkedin": { eyebrow: "Splitmic → LinkedIn", title: "Who should I contact next?", description: "Every search is narrowed to Austin and the music industry. Start with Priority 1, copy one search, then log one qualified contact.", groups: LINKEDIN_GROUPS },
-    "bookworm-tiktok": { eyebrow: "Bookworm → TikTok", title: "Find the next qualified creator", description: "The research CLI uses these same configurable terms. Manual searches remain available as a fallback.", groups: TIKTOK_GROUPS },
+    "splitmic-linkedin": { eyebrow: "Splitmic → LinkedIn", title: "Who should I contact next?", description: "Start with the recommended LinkedIn search, or tap any focused term below to copy it. Log one qualified person from Today.", groups: LINKEDIN_GROUPS },
+    "bookworm-tiktok": { eyebrow: "Bookworm → TikTok", title: "Find the next qualified creator", description: "Start with the recommended TikTok search, or use the focused discovery terms below. Log each qualified creator from Today.", groups: TIKTOK_GROUPS },
     email: { eyebrow: "Email", title: "Find the next email prospect", description: "Routine cold outreach stays separate from strategic partnerships.", groups: emailBusiness === "Bookworm" ? BOOKWORM_EMAIL_GROUPS : SPLITMIC_EMAIL_GROUPS },
   }[mode];
+
+  const openRecommendedSearch = () => {
+    const term = copy.groups[0].terms[0];
+    const url = mode === "splitmic-linkedin"
+      ? `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(term)}`
+      : `https://www.tiktok.com/search/user?q=${encodeURIComponent(term)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-5 sm:gap-6">
       <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-border bg-surface2 p-1 sm:w-auto sm:self-start sm:rounded-full sm:p-1.5">
         {([["splitmic-linkedin", "Splitmic · LinkedIn"], ["bookworm-tiktok", "Bookworm · TikTok"], ["email", "Email"]] as Array<[Mode, string]>).map(([id, label]) => (
-          <button key={id} onClick={() => setMode(id)} className="min-h-11 rounded-xl px-2 py-2 text-xs font-semibold sm:whitespace-nowrap sm:rounded-full sm:px-5 sm:py-2.5 sm:text-sm" style={{ background: mode === id ? "var(--color-accent)" : "transparent", color: mode === id ? "#0a0705" : "var(--color-muted)" }}>
+          <button key={id} onClick={() => selectMode(id)} aria-pressed={mode === id} className="min-h-11 rounded-xl px-2 py-2 text-xs font-semibold sm:whitespace-nowrap sm:rounded-full sm:px-5 sm:py-2.5 sm:text-sm" style={{ background: mode === id ? "var(--color-accent)" : "transparent", color: mode === id ? "#0a0705" : "var(--color-muted)" }}>
             {id === "splitmic-linkedin" ? <><span>Splitmic</span><span className="hidden sm:inline"> · LinkedIn</span></> : id === "bookworm-tiktok" ? <><span>Bookworm</span><span className="hidden sm:inline"> · TikTok</span></> : label}
           </button>
         ))}
       </div>
 
-      <header>
-        <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-accentLight">{copy.eyebrow}</p>
-        <h1 className="mt-2 text-[clamp(1.75rem,7vw,2.25rem)] font-extrabold leading-tight text-foreground">{copy.title}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{copy.description}</p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-accentLight">{copy.eyebrow}</p>
+          <h1 className="mt-2 text-[clamp(1.75rem,7vw,2.25rem)] font-extrabold leading-tight text-foreground">{copy.title}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{copy.description}</p>
+        </div>
+        {mode !== "email" && (
+          <button onClick={openRecommendedSearch} className="flex min-h-12 w-full flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white shadow-[0_8px_24px_rgba(232,67,10,0.2)] transition-all hover:brightness-110 sm:w-auto">
+            <SearchIcon size={16} /> Search {mode === "splitmic-linkedin" ? "LinkedIn" : "TikTok"} <ExternalLink size={14} />
+          </button>
+        )}
       </header>
 
       {mode === "email" && (

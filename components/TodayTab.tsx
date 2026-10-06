@@ -3,7 +3,7 @@
 import { austinDateStr, austinDayOfWeek } from "@/lib/austinDate";
 import { dayNumber } from "@/lib/sprint";
 import { TIKTOK_NICHES } from "@/lib/bookwormTikTok";
-import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send, Settings2 } from "lucide-react";
+import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send, Settings2, Search as SearchIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import OrganizationInput from "./OrganizationInput";
 
@@ -657,7 +657,7 @@ function TodaysTen({ onSentChange, limit }: { onSentChange: (delta: number) => v
 
 // LinkedIn is manual prospecting, so the count comes from what actually got
 // logged today rather than a tally the user has to remember to click.
-function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => void; goal: number }) {
+function LinkedInToday({ onCountChange, goal, onFindNext }: { onCountChange: (n: number) => void; goal: number; onFindNext: () => void }) {
   const today = austinDateStr();
   const [entries, setEntries] = useState<Array<{ id: string; fields: Record<string, string> }>>([]);
   const [loading, setLoading] = useState(true);
@@ -721,7 +721,7 @@ function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => 
   return (
     <div className="flex flex-col gap-2.5">
       <div
-        className="flex items-center gap-3 px-4 py-3 rounded-xl"
+        className="flex flex-wrap items-center gap-3 rounded-xl px-4 py-3"
         style={{
           border: `1px solid ${done ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
           background: done ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
@@ -730,13 +730,22 @@ function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => 
         <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
           {loading ? "…" : count} / {goal}
         </span>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold text-white transition-all"
-          style={{ background: "var(--color-accent)" }}
-        >
-          <Plus size={14} /> Log prospect
-        </button>
+        <div className="flex w-full gap-2 min-[480px]:w-auto">
+          <button
+            onClick={onFindNext}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-surface2 px-4 py-2 text-sm font-semibold text-textSecondary transition-all hover:border-accent hover:text-foreground min-[480px]:flex-none"
+          >
+            <SearchIcon size={14} /> Find next
+          </button>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-white transition-all min-[480px]:flex-none"
+            style={{ background: "var(--color-accent)" }}
+          >
+            <Plus size={14} /> Log prospect
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -828,7 +837,7 @@ function LinkedInToday({ onCountChange, goal }: { onCountChange: (n: number) => 
 // Bookworm's TikTok outreach mirrors SplitMic's LinkedIn logger: creators are
 // found by hand with the Search tab's terms, so the count comes from what
 // actually got logged today instead of a tally to remember.
-function BookwormTikTokToday({ onCountChange, goal }: { onCountChange: (n: number) => void; goal: number }) {
+function BookwormTikTokToday({ onCountChange, goal, onFindNext }: { onCountChange: (n: number) => void; goal: number; onFindNext: () => void }) {
   const today = austinDateStr();
   const emptyForm = { Name: "", "TikTok Handle": "", Niche: "", "TikTok URL": "" };
   const [entries, setEntries] = useState<Array<{ id: string; fields: Record<string, string> }>>([]);
@@ -896,7 +905,7 @@ function BookwormTikTokToday({ onCountChange, goal }: { onCountChange: (n: numbe
   return (
     <div className="flex flex-col gap-2.5">
       <div
-        className="flex items-center gap-3 px-4 py-3 rounded-xl"
+        className="flex flex-wrap items-center gap-3 rounded-xl px-4 py-3"
         style={{
           border: `1px solid ${done ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
           background: done ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
@@ -905,13 +914,22 @@ function BookwormTikTokToday({ onCountChange, goal }: { onCountChange: (n: numbe
         <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
           {loading ? "…" : count} / {goal}
         </span>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold text-white transition-all"
-          style={{ background: "var(--color-accent)" }}
-        >
-          <Plus size={14} /> Log creator
-        </button>
+        <div className="flex w-full gap-2 min-[480px]:w-auto">
+          <button
+            onClick={onFindNext}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-surface2 px-4 py-2 text-sm font-semibold text-textSecondary transition-all hover:border-accent hover:text-foreground min-[480px]:flex-none"
+          >
+            <SearchIcon size={14} /> Find creators
+          </button>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-white transition-all min-[480px]:flex-none"
+            style={{ background: "var(--color-accent)" }}
+          >
+            <Plus size={14} /> Log creator
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -1309,7 +1327,7 @@ function DailyContentFollowUp({
   );
 }
 
-export default function TodayTab() {
+export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearch: (mode: "splitmic-linkedin" | "bookworm-tiktok") => void }) {
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1461,6 +1479,7 @@ export default function TodayTab() {
                 <BookwormTikTokToday
                   goal={settings["Bookworm TikTok Target"]}
                   onCountChange={(n) => set({ "Bookworm TikTok Sent": n })}
+                  onFindNext={() => onOpenProspectSearch("bookworm-tiktok")}
                 />
                 <p className="text-sm text-muted px-1">
                   Goal: {settings["Bookworm TikTok Target"]} creators in personal development and book summaries, invited to partner
@@ -1529,6 +1548,7 @@ export default function TodayTab() {
             <LinkedInToday
               goal={settings["SplitMic LinkedIn Target"]}
               onCountChange={(n) => set({ "LinkedIn Sent": n })}
+              onFindNext={() => onOpenProspectSearch("splitmic-linkedin")}
             />
             <p className="text-sm text-muted px-1">
               Goal: {settings["SplitMic LinkedIn Target"]} LinkedIn connections or outreach attempts. Search using the terms on the Search tab,
