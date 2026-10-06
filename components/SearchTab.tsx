@@ -131,13 +131,10 @@ export default function SearchTab() {
     email: { eyebrow: "Email", title: "Find the next email prospect", description: "Routine cold outreach stays separate from strategic partnerships.", groups: emailBusiness === "Bookworm" ? BOOKWORM_EMAIL_GROUPS : SPLITMIC_EMAIL_GROUPS },
   }[mode];
 
-  const openRecommendedSearch = () => {
-    const term = copy.groups[0].terms[0];
-    const url = mode === "splitmic-linkedin"
-      ? `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(term)}`
-      : `https://www.tiktok.com/search/user?q=${encodeURIComponent(term)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
+  const recommendedTerm = copy.groups[0].terms[0];
+  const recommendedSearchUrl = mode === "splitmic-linkedin"
+    ? `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(recommendedTerm)}`
+    : `https://www.tiktok.com/search/user?q=${encodeURIComponent(recommendedTerm)}`;
 
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-5 sm:gap-6">
@@ -156,9 +153,9 @@ export default function SearchTab() {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{copy.description}</p>
         </div>
         {mode !== "email" && (
-          <button onClick={openRecommendedSearch} className="flex min-h-12 w-full flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white shadow-[0_8px_24px_rgba(232,67,10,0.2)] transition-all hover:brightness-110 sm:w-auto">
+          <a href={recommendedSearchUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-12 w-full flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white shadow-[0_8px_24px_rgba(232,67,10,0.2)] transition-all hover:brightness-110 sm:w-auto">
             <SearchIcon size={16} /> Search {mode === "splitmic-linkedin" ? "LinkedIn" : "TikTok"} <ExternalLink size={14} />
-          </button>
+          </a>
         )}
       </header>
 
