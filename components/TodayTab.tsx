@@ -6,6 +6,7 @@ import { TIKTOK_NICHES } from "@/lib/bookwormTikTok";
 import { Save, Check, Minus, Plus, RefreshCw, ExternalLink, ChevronDown, ChevronUp, X, Send, Settings2, Search as SearchIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import OrganizationInput from "./OrganizationInput";
+import { DailyOutreachProgress, OutreachProgressBar } from "./OutreachProgress";
 
 type Progress = {
   Date?: string;
@@ -178,16 +179,18 @@ function Counter({ count, onChange, goal }: { count: number; onChange: (n: numbe
   const done = count >= goal;
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 rounded-xl"
+      className="flex flex-col gap-3 px-4 py-3 rounded-xl"
       style={{
         border: `1px solid ${done ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
         background: done ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
       }}
     >
-      <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
-        {count} / {goal}
-      </span>
-      <div className="flex items-center gap-1 px-1.5 py-1.5 rounded-full bg-black/30 border border-border">
+      <OutreachProgressBar count={count} target={goal} label="Outreach progress" showValue={false} />
+      <div className="flex items-center gap-3">
+        <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
+          {count} / {goal}
+        </span>
+        <div className="flex items-center gap-1 px-1.5 py-1.5 rounded-full bg-black/30 border border-border">
         <button
           onClick={() => onChange(Math.max(0, count - 1))}
           aria-label="Decrease"
@@ -214,6 +217,7 @@ function Counter({ count, onChange, goal }: { count: number; onChange: (n: numbe
         >
           <Plus size={15} />
         </button>
+        </div>
       </div>
     </div>
   );
@@ -721,16 +725,18 @@ function LinkedInToday({ onCountChange, goal, onFindNext }: { onCountChange: (n:
   return (
     <div className="flex flex-col gap-2.5">
       <div
-        className="flex flex-wrap items-center gap-3 rounded-xl px-4 py-3"
+        className="flex flex-col gap-3 rounded-xl px-4 py-3"
         style={{
           border: `1px solid ${done ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
           background: done ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
         }}
       >
-        <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
-          {loading ? "…" : count} / {goal}
-        </span>
-        <div className="flex w-full gap-2 min-[480px]:w-auto">
+        <OutreachProgressBar count={count} target={goal} label="LinkedIn connections" showValue={false} />
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
+            {loading ? "…" : count} / {goal}
+          </span>
+          <div className="flex w-full gap-2 min-[480px]:w-auto">
           <button
             onClick={onFindNext}
             className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-surface2 px-4 py-2 text-sm font-semibold text-textSecondary transition-all hover:border-accent hover:text-foreground min-[480px]:flex-none"
@@ -745,6 +751,7 @@ function LinkedInToday({ onCountChange, goal, onFindNext }: { onCountChange: (n:
           >
             <Plus size={14} /> Log prospect
           </button>
+          </div>
         </div>
       </div>
 
@@ -905,16 +912,18 @@ function BookwormTikTokToday({ onCountChange, goal, onFindNext }: { onCountChang
   return (
     <div className="flex flex-col gap-2.5">
       <div
-        className="flex flex-wrap items-center gap-3 rounded-xl px-4 py-3"
+        className="flex flex-col gap-3 rounded-xl px-4 py-3"
         style={{
           border: `1px solid ${done ? "rgba(232,67,10,0.4)" : "var(--color-border)"}`,
           background: done ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
         }}
       >
-        <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
-          {loading ? "…" : count} / {goal}
-        </span>
-        <div className="flex w-full gap-2 min-[480px]:w-auto">
+        <OutreachProgressBar count={count} target={goal} label="TikTok messages" showValue={false} />
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
+            {loading ? "…" : count} / {goal}
+          </span>
+          <div className="flex w-full gap-2 min-[480px]:w-auto">
           <button
             onClick={onFindNext}
             className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-surface2 px-4 py-2 text-sm font-semibold text-textSecondary transition-all hover:border-accent hover:text-foreground min-[480px]:flex-none"
@@ -929,6 +938,7 @@ function BookwormTikTokToday({ onCountChange, goal, onFindNext }: { onCountChang
           >
             <Plus size={14} /> Log creator
           </button>
+          </div>
         </div>
       </div>
 
@@ -1423,6 +1433,24 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
           {weekday} · {schedule}
         </p>
       </div>
+
+      {!loading && !isWeekend && (
+        <DailyOutreachProgress
+          business={business}
+          counts={{
+            splitmicLinkedIn: progress["LinkedIn Sent"] ?? 0,
+            splitmicEmail: progress["Emails Sent"] ?? 0,
+            bookwormTikTok: progress["Bookworm TikTok Sent"] ?? 0,
+            bookwormEmail: progress["Bookworm Emails Sent"] ?? 0,
+          }}
+          targets={{
+            splitmicLinkedIn: settings["SplitMic LinkedIn Target"],
+            splitmicEmail: settings["SplitMic Email Target"],
+            bookwormTikTok: settings["Bookworm TikTok Target"],
+            bookwormEmail: settings["Bookworm Email Target"],
+          }}
+        />
+      )}
 
       {business === "Bookworm" && (
         <>

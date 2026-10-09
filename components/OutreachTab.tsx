@@ -5,6 +5,7 @@ import OutreachBoard from "./OutreachBoard";
 import LinkedInBoard from "./LinkedInBoard";
 import BookwormOutreachBoard from "./BookwormOutreachBoard";
 import QualifiedTikTokBoard from "./QualifiedTikTokBoard";
+import OutreachDailyProgress from "./OutreachDailyProgress";
 
 type Business = "SplitMic" | "Bookworm";
 type Pipeline = "email" | "social";
@@ -112,6 +113,8 @@ export default function OutreachTab() {
           </div>
         </div>
       </section>
+
+      <OutreachDailyProgress business={business} />
 
       {business === "SplitMic" ? (
         pipeline === "email" ? (
