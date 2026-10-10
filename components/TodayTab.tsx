@@ -39,6 +39,17 @@ type Progress = {
   "Bookworm TikTok Sent"?: number;
   "SplitMic Calls Made"?: number;
   "Bookworm Calls Made"?: number;
+  "After Work Meditation Minutes"?: number;
+  "Reading Minutes"?: number;
+  "Evening Meditation Minutes"?: number;
+  "Goals Affirmations Minutes"?: number;
+  "Study Minutes"?: number;
+  "Camera Speaking Minutes"?: number;
+  "Calls Answered"?: number;
+  "Meaningful Call Conversations"?: number;
+  "Call Follow-ups"?: number;
+  "Call Demos Booked"?: number;
+  "Call Sales Opportunities"?: number;
   "Bookworm Content Posted"?: boolean;
   "Bookworm Content Platform"?: string;
   "Bookworm Content Title"?: string;
@@ -64,12 +75,12 @@ type ExecutionSettings = {
 };
 
 const defaultExecutionSettings: ExecutionSettings = {
-  "SplitMic LinkedIn Target": 10,
-  "SplitMic Email Target": 5,
-  "Bookworm TikTok Target": 10,
-  "Bookworm Email Target": 5,
-  "SplitMic Calls Target": 5,
-  "Bookworm Calls Target": 5,
+  "SplitMic LinkedIn Target": 20,
+  "SplitMic Email Target": 10,
+  "Bookworm TikTok Target": 20,
+  "Bookworm Email Target": 10,
+  "SplitMic Calls Target": 10,
+  "Bookworm Calls Target": 10,
 };
 
 type BookwormContact = {
@@ -134,6 +145,17 @@ const emptyProgress: Progress = {
   "Bookworm TikTok Sent": 0,
   "SplitMic Calls Made": 0,
   "Bookworm Calls Made": 0,
+  "After Work Meditation Minutes": 0,
+  "Reading Minutes": 0,
+  "Evening Meditation Minutes": 0,
+  "Goals Affirmations Minutes": 0,
+  "Study Minutes": 0,
+  "Camera Speaking Minutes": 0,
+  "Calls Answered": 0,
+  "Meaningful Call Conversations": 0,
+  "Call Follow-ups": 0,
+  "Call Demos Booked": 0,
+  "Call Sales Opportunities": 0,
   "Bookworm Content Posted": false,
   "Bookworm Content Platform": "",
   "Bookworm Content Title": "",
@@ -159,15 +181,22 @@ function Block({
   tag,
   time,
   title,
+  status,
+  current = false,
   children,
 }: {
   tag: string;
   time: string;
   title: string;
+  status?: ActivityStatus;
+  current?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <section
+      className={current ? "rounded-2xl border border-accent/50 bg-accent/[0.045] p-4 sm:p-5" : ""}
+      aria-current={current ? "step" : undefined}
+    >
       <div className="flex items-baseline gap-3 flex-wrap mb-3.5">
         <span
           className="text-xs font-bold font-mono tracking-[0.16em] px-2.5 py-1 rounded-full"
@@ -176,10 +205,110 @@ function Block({
           {tag}
         </span>
         <h2 className="text-sm uppercase tracking-[0.14em] text-muted font-mono">{time}</h2>
+        {status && <StatusPill status={status} current={current} />}
       </div>
       <h3 className="text-lg font-bold text-foreground mb-3">{title}</h3>
       <div className="flex flex-col gap-2.5">{children}</div>
     </section>
+  );
+}
+
+type ActivityStatus = "Not Started" | "In Progress" | "Complete";
+
+function activityStatus(value: number, target: number, current = false): ActivityStatus {
+  if (value >= target) return "Complete";
+  if (value > 0 || current) return "In Progress";
+  return "Not Started";
+}
+
+function StatusPill({ status, current = false }: { status: ActivityStatus; current?: boolean }) {
+  const style =
+    status === "Complete"
+      ? "border-[#30d158]/35 bg-[#30d158]/10 text-[#65dc7c]"
+      : status === "In Progress"
+        ? "border-[#0a84ff]/35 bg-[#0a84ff]/10 text-[#61a9ff]"
+        : "border-border bg-white/[0.025] text-muted";
+  return (
+    <span className={`ml-auto rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${style}`}>
+      {current && status !== "Complete" ? "Current · " : ""}{status}
+    </span>
+  );
+}
+
+function clampMinutes(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+function MinutesTracker({
+  label,
+  time,
+  purpose,
+  value,
+  target,
+  current,
+  onChange,
+}: {
+  label: string;
+  time: string;
+  purpose: string;
+  value: number;
+  target: number;
+  current: boolean;
+  onChange: (value: number) => void;
+}) {
+  const status = activityStatus(value, target, current);
+  const update = (next: number) => onChange(Math.min(target, clampMinutes(next)));
+  return (
+    <article className={`rounded-xl border p-4 ${current ? "border-accent/55 bg-accent/[0.055]" : "border-border bg-black/20"}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-bold text-foreground">{label}</p>
+          <p className="mt-1 font-mono text-xs uppercase tracking-[0.1em] text-muted">{time}</p>
+        </div>
+        <StatusPill status={status} current={current} />
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-textSecondary">{purpose}</p>
+      <div className="mt-4">
+        <OutreachProgressBar count={value} target={target} label={`${label} minutes`} />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => update(value - 5)}
+          aria-label={`Subtract 5 minutes from ${label}`}
+          className="min-h-10 rounded-lg border border-border bg-black/25 px-3 text-sm font-semibold text-textSecondary transition-colors hover:text-foreground"
+        >
+          −5
+        </button>
+        <label className="flex min-h-10 min-w-0 flex-1 items-center rounded-lg border border-border bg-black/25 px-3">
+          <span className="sr-only">{label} minutes completed</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={value}
+            onFocus={(event) => event.target.select()}
+            onChange={(event) => update(Number(event.target.value.replace(/[^0-9]/g, "") || 0))}
+            className="min-w-0 flex-1 bg-transparent text-center font-mono text-base font-bold text-foreground outline-none"
+          />
+          <span className="text-xs text-muted">min</span>
+        </label>
+        <button
+          type="button"
+          onClick={() => update(value + 5)}
+          aria-label={`Add 5 minutes to ${label}`}
+          className="min-h-10 rounded-lg border border-border bg-black/25 px-3 text-sm font-semibold text-textSecondary transition-colors hover:text-foreground"
+        >
+          +5
+        </button>
+        <button
+          type="button"
+          onClick={() => update(target)}
+          className="min-h-10 rounded-lg bg-accent px-3 text-sm font-bold text-white transition-opacity hover:opacity-90"
+        >
+          Complete
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -1287,7 +1416,7 @@ function DailyContentFollowUp({
   onChange: (patch: Partial<Progress>) => void;
 }) {
   return (
-    <Block tag="PUBLISH & ENGAGE" time="4:00 PM - 4:30 PM" title="Confirm Today&apos;s Content and Respond">
+    <Block tag="PUBLISH & ENGAGE" time="During 10:00 AM - 2:00 PM" title="Confirm Today&apos;s Content and Respond">
       <p className="px-1 text-sm leading-relaxed text-muted">
         Buffer handles the publishing. Confirm both posts are live, save their links, and respond to early comments.
       </p>
@@ -1345,6 +1474,251 @@ function DailyContentFollowUp({
   );
 }
 
+function austinMinuteOfDay(date = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+  return hour * 60 + minute;
+}
+
+function inTimeRange(minute: number | null, start: number, end: number): boolean {
+  return minute != null && minute >= start && minute < end;
+}
+
+function currentWeekdayBlock(minute: number | null): string {
+  if (inTimeRange(minute, 580, 595)) return "After-work meditation";
+  if (inTimeRange(minute, 600, 840)) return "Business development";
+  if (inTimeRange(minute, 1200, 1260)) return "Reading";
+  if (inTimeRange(minute, 1260, 1300)) return "Evening meditation";
+  if (inTimeRange(minute, 1300, 1315)) return "Goals + affirmations";
+  if (inTimeRange(minute, 1315, 1380)) return "Course / lesson / study";
+  if (inTimeRange(minute, 1380, 1440)) return "Camera + speaking practice";
+  return "Between scheduled blocks";
+}
+
+function AfterWorkReset({
+  progress,
+  minute,
+  onChange,
+}: {
+  progress: Progress;
+  minute: number | null;
+  onChange: (patch: Partial<Progress>) => void;
+}) {
+  const value = progress["After Work Meditation Minutes"] ?? 0;
+  const current = inTimeRange(minute, 580, 595);
+  return (
+    <Block
+      tag="AFTER WORK"
+      time="9:30 AM - 9:55 AM"
+      title="Finish Shift and Reset"
+      status={activityStatus(value, 15, current)}
+      current={current}
+    >
+      <div className="rounded-xl border border-border bg-black/20 px-4 py-3">
+        <p className="text-sm font-semibold text-foreground">9:30 AM · Finish airport work shift</p>
+        <p className="mt-1 text-sm text-textSecondary">Transition out of the overnight shift before focused business development.</p>
+      </div>
+      <MinutesTracker
+        label="Meditation"
+        time="9:40 AM - 9:55 AM"
+        purpose="Reset mentally after work and prepare for focused business development."
+        value={value}
+        target={15}
+        current={current}
+        onChange={(next) => onChange({ "After Work Meditation Minutes": next })}
+      />
+    </Block>
+  );
+}
+
+const CALL_OUTCOME_FIELDS = [
+  ["Calls Answered", "Answered"],
+  ["Meaningful Call Conversations", "Meaningful conversations"],
+  ["Call Follow-ups", "Follow-ups"],
+  ["Call Demos Booked", "Demos booked"],
+  ["Call Sales Opportunities", "Sales opportunities"],
+] as const;
+
+function ColdCallOutcomes({
+  progress,
+  attempts,
+  target,
+  onChange,
+}: {
+  progress: Progress;
+  attempts: number;
+  target: number;
+  onChange: (patch: Partial<Progress>) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-surface2/70 p-4 sm:p-5" aria-label="Cold call outcomes">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-accentLight">Cold calling outcomes</p>
+          <h3 className="mt-1 text-lg font-bold text-foreground">Results stay separate from the activity target</h3>
+        </div>
+        <p className="font-mono text-sm font-semibold text-textSecondary">{attempts} / {target} attempts</p>
+      </div>
+      <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
+        {CALL_OUTCOME_FIELDS.map(([field, label]) => (
+          <label key={field} className="rounded-xl border border-border bg-black/20 p-3">
+            <span className="block min-h-9 text-xs font-semibold leading-snug text-textSecondary">{label}</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={progress[field] ?? 0}
+              onFocus={(event) => event.target.select()}
+              onChange={(event) => onChange({ [field]: Number(event.target.value.replace(/[^0-9]/g, "") || 0) })}
+              className="mt-2 w-full rounded-lg border border-border bg-black/25 px-3 py-2 text-center font-mono text-lg font-bold text-foreground outline-none focus:border-accent"
+            />
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PersonalDevelopmentPlan({
+  progress,
+  minute,
+  onChange,
+}: {
+  progress: Progress;
+  minute: number | null;
+  onChange: (patch: Partial<Progress>) => void;
+}) {
+  const activities = [
+    {
+      field: "Reading Minutes" as const,
+      label: "Reading",
+      time: "8:00 PM - 9:00 PM",
+      purpose: "Focused reading and continuous learning.",
+      target: 60,
+      current: inTimeRange(minute, 1200, 1260),
+    },
+    {
+      field: "Evening Meditation Minutes" as const,
+      label: "Meditation",
+      time: "9:00 PM - 9:40 PM",
+      purpose: "Build mental stillness, concentration, awareness, and discipline.",
+      target: 40,
+      current: inTimeRange(minute, 1260, 1300),
+    },
+    {
+      field: "Goals Affirmations Minutes" as const,
+      label: "Goals + Affirmations",
+      time: "9:40 PM - 9:55 PM",
+      purpose: "Write goals and affirmations, reinforce direction, and maintain long-term focus.",
+      target: 15,
+      current: inTimeRange(minute, 1300, 1315),
+    },
+    {
+      field: "Study Minutes" as const,
+      label: "Course / Lesson / Study",
+      time: "9:55 PM - 11:00 PM",
+      purpose: "Develop current skills in AI, technology, automation, marketing, sales, business, and communication.",
+      target: 65,
+      current: inTimeRange(minute, 1315, 1380),
+    },
+    {
+      field: "Camera Speaking Minutes" as const,
+      label: "Camera + Speaking Practice",
+      time: "11:00 PM - 12:00 AM",
+      purpose: "Practice public speaking, sales communication, persuasion, product demos, and walkthrough videos.",
+      target: 60,
+      current: inTimeRange(minute, 1380, 1440),
+    },
+  ];
+  const minutes = activities.reduce((sum, activity) => sum + Math.min(progress[activity.field] ?? 0, activity.target), 0);
+  const current = inTimeRange(minute, 1200, 1440);
+  return (
+    <Block
+      tag="BUILD THE PERSON"
+      time="8:00 PM - 12:00 AM · 4 HOURS"
+      title="Personal + Skill Development"
+      status={activityStatus(minutes, 240, current)}
+      current={current}
+    >
+      <div className="rounded-xl border border-border bg-black/20 p-4">
+        <OutreachProgressBar count={minutes} target={240} label="Evening block" />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {activities.map((activity) => (
+          <MinutesTracker
+            key={activity.field}
+            label={activity.label}
+            time={activity.time}
+            purpose={activity.purpose}
+            value={progress[activity.field] ?? 0}
+            target={activity.target}
+            current={activity.current}
+            onChange={(next) =>
+              onChange({
+                [activity.field]: next,
+                ...(activity.field === "Camera Speaking Minutes" ? { "Camera Practice": next >= activity.target } : {}),
+              })
+            }
+          />
+        ))}
+      </div>
+    </Block>
+  );
+}
+
+function DailyCompletionPanel({
+  progress,
+  outreachCompleted,
+  outreachTarget,
+  minute,
+}: {
+  progress: Progress;
+  outreachCompleted: number;
+  outreachTarget: number;
+  minute: number | null;
+}) {
+  const ratios = [
+    Math.min(outreachCompleted / Math.max(1, outreachTarget), 1),
+    Math.min((progress["After Work Meditation Minutes"] ?? 0) / 15, 1),
+    Math.min((progress["Reading Minutes"] ?? 0) / 60, 1),
+    Math.min((progress["Evening Meditation Minutes"] ?? 0) / 40, 1),
+    Math.min((progress["Goals Affirmations Minutes"] ?? 0) / 15, 1),
+    Math.min((progress["Study Minutes"] ?? 0) / 65, 1),
+    Math.min((progress["Camera Speaking Minutes"] ?? 0) / 60, 1),
+  ];
+  const complete = ratios.filter((ratio) => ratio >= 1).length;
+  const percentage = Math.round((ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length) * 100);
+  return (
+    <section className="rounded-2xl border border-border bg-surface2/75 p-4 sm:p-5" aria-label="Daily completion">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Daily completion</p>
+          <p className="mt-1 text-2xl font-extrabold text-foreground">{percentage}%</p>
+          <p className="mt-1 text-sm text-textSecondary">{complete} of 7 measurable activities complete</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Current block</p>
+          <p className="mt-1 text-base font-bold text-foreground">{currentWeekdayBlock(minute)}</p>
+          <p className="mt-1 text-sm text-textSecondary">Austin time</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Outreach remaining</p>
+          <p className="mt-1 text-2xl font-extrabold text-foreground">{Math.max(0, outreachTarget - outreachCompleted)}</p>
+          <p className="mt-1 text-sm text-textSecondary">of {outreachTarget} weekday actions</p>
+        </div>
+      </div>
+      <div className="mt-4">
+        <OutreachProgressBar count={percentage} target={100} label="Whole-day completion" showValue={false} />
+      </div>
+    </section>
+  );
+}
+
 export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearch: (mode: "splitmic-linkedin" | "bookworm-tiktok") => void }) {
   const [progress, setProgress] = useState<Progress>(emptyProgress);
   const [loading, setLoading] = useState(true);
@@ -1353,6 +1727,7 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
   const [error, setError] = useState<string | null>(null);
   const [business, setBusiness] = useState<"SplitMic" | "Bookworm">("SplitMic");
   const [settings, setSettings] = useState<ExecutionSettings>(defaultExecutionSettings);
+  const [minuteOfDay, setMinuteOfDay] = useState<number | null>(null);
 
   const today = austinDateStr();
   const day = dayNumber();
@@ -1384,6 +1759,13 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
     })();
   }, [today]);
 
+  useEffect(() => {
+    const updateTime = () => setMinuteOfDay(austinMinuteOfDay());
+    updateTime();
+    const timer = window.setInterval(updateTime, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const set = (patch: Partial<Progress>) => setProgress((p) => ({ ...p, ...patch }));
 
   const save = async () => {
@@ -1409,7 +1791,27 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
   const header = formatHeaderDate(today);
   const schedule = isWeekend
     ? "8:00 AM - 4:00 PM · Deep work + content preparation"
-    : "12:00 PM - 4:30 PM · Monday to Friday";
+    : "10:00 AM - 2:00 PM · 8:00 PM - 12:00 AM · Monday to Friday";
+  const outreachCounts = {
+    splitmicLinkedIn: progress["LinkedIn Sent"] ?? 0,
+    splitmicEmail: progress["Emails Sent"] ?? 0,
+    bookwormTikTok: progress["Bookworm TikTok Sent"] ?? 0,
+    bookwormEmail: progress["Bookworm Emails Sent"] ?? 0,
+    splitmicCalls: progress["SplitMic Calls Made"] ?? 0,
+    bookwormCalls: progress["Bookworm Calls Made"] ?? 0,
+  };
+  const outreachTargets = {
+    splitmicLinkedIn: settings["SplitMic LinkedIn Target"],
+    splitmicEmail: settings["SplitMic Email Target"],
+    bookwormTikTok: settings["Bookworm TikTok Target"],
+    bookwormEmail: settings["Bookworm Email Target"],
+    splitmicCalls: settings["SplitMic Calls Target"],
+    bookwormCalls: settings["Bookworm Calls Target"],
+  };
+  const outreachCompleted = Object.values(outreachCounts).reduce((sum, value) => sum + value, 0);
+  const outreachTarget = Object.values(outreachTargets).reduce((sum, value) => sum + value, 0);
+  const callsAttempted = outreachCounts.splitmicCalls + outreachCounts.bookwormCalls;
+  const callsTarget = outreachTargets.splitmicCalls + outreachTargets.bookwormCalls;
 
   return (
     <div className="flex flex-col gap-9 max-w-[900px] mx-auto">
@@ -1443,24 +1845,32 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
       </div>
 
       {!loading && !isWeekend && (
+        <DailyCompletionPanel
+          progress={progress}
+          outreachCompleted={outreachCompleted}
+          outreachTarget={outreachTarget}
+          minute={minuteOfDay}
+        />
+      )}
+
+      {!loading && !isWeekend && (
+        <AfterWorkReset progress={progress} minute={minuteOfDay} onChange={set} />
+      )}
+
+      {!loading && !isWeekend && (
         <DailyOutreachProgress
           business={business}
-          counts={{
-            splitmicLinkedIn: progress["LinkedIn Sent"] ?? 0,
-            splitmicEmail: progress["Emails Sent"] ?? 0,
-            bookwormTikTok: progress["Bookworm TikTok Sent"] ?? 0,
-            bookwormEmail: progress["Bookworm Emails Sent"] ?? 0,
-            splitmicCalls: progress["SplitMic Calls Made"] ?? 0,
-            bookwormCalls: progress["Bookworm Calls Made"] ?? 0,
-          }}
-          targets={{
-            splitmicLinkedIn: settings["SplitMic LinkedIn Target"],
-            splitmicEmail: settings["SplitMic Email Target"],
-            bookwormTikTok: settings["Bookworm TikTok Target"],
-            bookwormEmail: settings["Bookworm Email Target"],
-            splitmicCalls: settings["SplitMic Calls Target"],
-            bookwormCalls: settings["Bookworm Calls Target"],
-          }}
+          counts={outreachCounts}
+          targets={outreachTargets}
+        />
+      )}
+
+      {!loading && !isWeekend && (
+        <ColdCallOutcomes
+          progress={progress}
+          attempts={callsAttempted}
+          target={callsTarget}
+          onChange={set}
         />
       )}
 
@@ -1496,7 +1906,13 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
 
           {!loading && !isWeekend && (
             <>
-              <Block tag="OUTREACH" time="Anytime today" title="Email and TikTok Outreach">
+              <Block
+                tag="BUILD THE BUSINESS"
+                time="10:00 AM - 2:00 PM · 4 HOURS"
+                title="Marketing + Sales + Business Development"
+                status={activityStatus(outreachCompleted, outreachTarget, inTimeRange(minuteOfDay, 600, 840))}
+                current={inTimeRange(minuteOfDay, 600, 840)}
+              >
                 <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">
                   Email · Austin book clubs, stores and influencers
                 </p>
@@ -1541,6 +1957,7 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
               </Block>
 
               <DailyContentFollowUp progress={progress} onChange={set} />
+              <PersonalDevelopmentPlan progress={progress} minute={minuteOfDay} onChange={set} />
               <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
             </>
           )}
@@ -1579,7 +1996,13 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
 
       {!loading && !isWeekend && (
         <>
-          <Block tag="MARKETING" time="12:00 PM - 2:00 PM" title="Outreach and Content">
+          <Block
+            tag="BUILD THE BUSINESS"
+            time="10:00 AM - 2:00 PM · 4 HOURS"
+            title="Marketing + Sales + Business Development"
+            status={activityStatus(outreachCompleted, outreachTarget, inTimeRange(minuteOfDay, 600, 840))}
+            current={inTimeRange(minuteOfDay, 600, 840)}
+          >
             <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-1">Email</p>
             <Counter
               count={progress["Emails Sent"] ?? 0}
@@ -1618,63 +2041,10 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
               Goal: {settings["SplitMic LinkedIn Target"]} LinkedIn connections or outreach attempts. Search using the terms on the Search tab,
               then log each person here. The count updates itself.
             </p>
-            <CheckRow
-              label="Camera practice completed"
-              checked={!!progress["Camera Practice"]}
-              onToggle={() => set({ "Camera Practice": !progress["Camera Practice"] })}
-            />
-          </Block>
-
-          <Block tag="BUILD" time="2:00 PM - 3:00 PM" title="Today's Highest-Priority SplitMic Build">
-            <input
-              value={progress["Build Objective"] || ""}
-              onChange={(e) => set({ "Build Objective": e.target.value })}
-              placeholder="Today's one objective"
-              className={input}
-            />
-            <CheckRow
-              label="Build session completed"
-              checked={!!progress["Build Completed"]}
-              onToggle={() => set({ "Build Completed": !progress["Build Completed"] })}
-            />
-            <textarea
-              value={progress["Build Notes"] || ""}
-              onChange={(e) => set({ "Build Notes": e.target.value })}
-              placeholder="What did you build?"
-              rows={3}
-              className={area}
-            />
-          </Block>
-
-          <Block tag="DELIVER" time="3:00 PM - 4:00 PM" title="Replies, Follow-ups and Feedback">
-            <CheckRow
-              label="Delivery session completed"
-              checked={!!progress["Deliver Completed"]}
-              onToggle={() => set({ "Deliver Completed": !progress["Deliver Completed"] })}
-            />
-            <textarea
-              value={progress["Feedback Received"] || ""}
-              onChange={(e) => set({ "Feedback Received": e.target.value })}
-              placeholder="What feedback or insight did you receive today?"
-              rows={3}
-              className={area}
-            />
-            <textarea
-              value={progress["Needs Follow-up"] || ""}
-              onChange={(e) => set({ "Needs Follow-up": e.target.value })}
-              placeholder="Who needs a follow-up?"
-              rows={2}
-              className={area}
-            />
-            <input
-              value={progress["Deliver Next Action"] || ""}
-              onChange={(e) => set({ "Deliver Next Action": e.target.value })}
-              placeholder="Next action"
-              className={input}
-            />
           </Block>
 
           <DailyContentFollowUp progress={progress} onChange={set} />
+          <PersonalDevelopmentPlan progress={progress} minute={minuteOfDay} onChange={set} />
           <SaveBar saving={saving} savedAt={savedAt} onSave={save} />
         </>
       )}

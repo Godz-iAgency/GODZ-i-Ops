@@ -76,6 +76,16 @@ export function marketingTarget(settings: ExecutionSettings): number {
   );
 }
 
+export function personalDevelopmentMinutes(progress: ProgressFields | null): number {
+  return (
+    Math.min(Number(progress?.["Reading Minutes"] || 0), 60) +
+    Math.min(Number(progress?.["Evening Meditation Minutes"] || 0), 40) +
+    Math.min(Number(progress?.["Goals Affirmations Minutes"] || 0), 15) +
+    Math.min(Number(progress?.["Study Minutes"] || 0), 65) +
+    Math.min(Number(progress?.["Camera Speaking Minutes"] || 0), 60)
+  );
+}
+
 function followUpsFromRecords(
   date: string,
   contacts: Contact[],
@@ -180,9 +190,8 @@ export async function getDailyExecution(date: string) {
   };
   const settings = settingsResult.settings;
   const followUps = followUpsFromRecords(date, contacts, linkedin, bookworm, tiktok);
-  const marketingComplete = marketingTotal(counts) >= marketingTarget(settings);
-  const buildComplete = progress?.["Build Status"] === "Complete" || !!progress?.["Build Completed"];
-  const deliveryComplete = progress?.["Delivery Status"] === "Complete" || !!progress?.["Deliver Completed"];
+  const businessDevelopmentComplete = marketingTotal(counts) >= marketingTarget(settings);
+  const personalDevelopmentComplete = personalDevelopmentMinutes(progress) >= 240;
 
   return {
     date,
@@ -191,8 +200,8 @@ export async function getDailyExecution(date: string) {
     counts,
     total: marketingTotal(counts),
     target: marketingTarget(settings),
-    blocksComplete: [marketingComplete, buildComplete, deliveryComplete].filter(Boolean).length,
-    blockStatus: { marketingComplete, buildComplete, deliveryComplete },
+    blocksComplete: [businessDevelopmentComplete, personalDevelopmentComplete].filter(Boolean).length,
+    blockStatus: { businessDevelopmentComplete, personalDevelopmentComplete },
     followUps,
     followUpCounts: followUps.reduce<Record<string, number>>((acc, item) => {
       acc[item.channel] = (acc[item.channel] || 0) + 1;
@@ -223,9 +232,8 @@ export async function getWeeklyExecution(date: string) {
     return {
       date: day,
       counts,
-      marketingComplete: marketingTotal(counts) >= marketingTarget(settingsResult.settings),
-      buildComplete: progress?.["Build Status"] === "Complete" || !!progress?.["Build Completed"],
-      deliveryComplete: progress?.["Delivery Status"] === "Complete" || !!progress?.["Deliver Completed"],
+      businessDevelopmentComplete: marketingTotal(counts) >= marketingTarget(settingsResult.settings),
+      personalDevelopmentComplete: personalDevelopmentMinutes(progress) >= 240,
     };
   });
   const totals = rows.reduce<DailyCounts>(

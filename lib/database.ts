@@ -335,6 +335,17 @@ export type ProgressFields = {
   "Bookworm TikTok Sent"?: number;
   "SplitMic Calls Made"?: number;
   "Bookworm Calls Made"?: number;
+  "After Work Meditation Minutes"?: number;
+  "Reading Minutes"?: number;
+  "Evening Meditation Minutes"?: number;
+  "Goals Affirmations Minutes"?: number;
+  "Study Minutes"?: number;
+  "Camera Speaking Minutes"?: number;
+  "Calls Answered"?: number;
+  "Meaningful Call Conversations"?: number;
+  "Call Follow-ups"?: number;
+  "Call Demos Booked"?: number;
+  "Call Sales Opportunities"?: number;
   "Build Project"?: string;
   "Build Objective"?: string;
   "Build Status"?: string;
@@ -565,12 +576,12 @@ export type ExecutionSettings = {
 };
 
 export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
-  "SplitMic LinkedIn Target": 10,
-  "SplitMic Email Target": 5,
-  "Bookworm TikTok Target": 10,
-  "Bookworm Email Target": 5,
-  "SplitMic Calls Target": 5,
-  "Bookworm Calls Target": 5,
+  "SplitMic LinkedIn Target": 20,
+  "SplitMic Email Target": 10,
+  "Bookworm TikTok Target": 20,
+  "Bookworm Email Target": 10,
+  "SplitMic Calls Target": 10,
+  "Bookworm Calls Target": 10,
 };
 
 export async function getExecutionSettings(): Promise<{ id: string | null; settings: ExecutionSettings }> {
@@ -580,12 +591,12 @@ export async function getExecutionSettings(): Promise<{ id: string | null; setti
   return {
     id: records[0].id,
     settings: {
-      "SplitMic LinkedIn Target": Number(fields["SplitMic LinkedIn Target"] ?? 10),
-      "SplitMic Email Target": Number(fields["SplitMic Email Target"] ?? 5),
-      "Bookworm TikTok Target": Number(fields["Bookworm TikTok Target"] ?? 10),
-      "Bookworm Email Target": Number(fields["Bookworm Email Target"] ?? 5),
-      "SplitMic Calls Target": Number(fields["SplitMic Calls Target"] ?? 5),
-      "Bookworm Calls Target": Number(fields["Bookworm Calls Target"] ?? 5),
+      "SplitMic LinkedIn Target": Number(fields["SplitMic LinkedIn Target"] ?? 20),
+      "SplitMic Email Target": Number(fields["SplitMic Email Target"] ?? 10),
+      "Bookworm TikTok Target": Number(fields["Bookworm TikTok Target"] ?? 20),
+      "Bookworm Email Target": Number(fields["Bookworm Email Target"] ?? 10),
+      "SplitMic Calls Target": Number(fields["SplitMic Calls Target"] ?? 10),
+      "Bookworm Calls Target": Number(fields["Bookworm Calls Target"] ?? 10),
     },
   };
 }

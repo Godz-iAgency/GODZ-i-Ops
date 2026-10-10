@@ -10,12 +10,12 @@ import {
 } from "./OutreachProgress";
 
 const defaultTargets: OutreachTargets = {
-  splitmicLinkedIn: 10,
-  splitmicEmail: 5,
-  bookwormTikTok: 10,
-  bookwormEmail: 5,
-  splitmicCalls: 5,
-  bookwormCalls: 5,
+  splitmicLinkedIn: 20,
+  splitmicEmail: 10,
+  bookwormTikTok: 20,
+  bookwormEmail: 10,
+  splitmicCalls: 10,
+  bookwormCalls: 10,
 };
 
 const emptyCounts: OutreachCounts = {
