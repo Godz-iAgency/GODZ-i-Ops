@@ -17,6 +17,8 @@ export async function PUT(req: NextRequest) {
     "SplitMic Email Target",
     "Bookworm TikTok Target",
     "Bookworm Email Target",
+    "SplitMic Calls Target",
+    "Bookworm Calls Target",
   ];
   const settings = {} as ExecutionSettings;
   for (const key of keys) {

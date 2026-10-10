@@ -333,6 +333,8 @@ export type ProgressFields = {
   "LinkedIn Sent"?: number;
   "Bookworm Emails Sent"?: number;
   "Bookworm TikTok Sent"?: number;
+  "SplitMic Calls Made"?: number;
+  "Bookworm Calls Made"?: number;
   "Build Project"?: string;
   "Build Objective"?: string;
   "Build Status"?: string;
@@ -558,6 +560,8 @@ export type ExecutionSettings = {
   "SplitMic Email Target": number;
   "Bookworm TikTok Target": number;
   "Bookworm Email Target": number;
+  "SplitMic Calls Target": number;
+  "Bookworm Calls Target": number;
 };
 
 export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
@@ -565,6 +569,8 @@ export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
   "SplitMic Email Target": 5,
   "Bookworm TikTok Target": 10,
   "Bookworm Email Target": 5,
+  "SplitMic Calls Target": 5,
+  "Bookworm Calls Target": 5,
 };
 
 export async function getExecutionSettings(): Promise<{ id: string | null; settings: ExecutionSettings }> {
@@ -578,6 +584,8 @@ export async function getExecutionSettings(): Promise<{ id: string | null; setti
       "SplitMic Email Target": Number(fields["SplitMic Email Target"] ?? 5),
       "Bookworm TikTok Target": Number(fields["Bookworm TikTok Target"] ?? 10),
       "Bookworm Email Target": Number(fields["Bookworm Email Target"] ?? 5),
+      "SplitMic Calls Target": Number(fields["SplitMic Calls Target"] ?? 5),
+      "Bookworm Calls Target": Number(fields["Bookworm Calls Target"] ?? 5),
     },
   };
 }

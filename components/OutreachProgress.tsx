@@ -14,6 +14,8 @@ export type OutreachCounts = {
   splitmicEmail: number;
   bookwormTikTok: number;
   bookwormEmail: number;
+  splitmicCalls: number;
+  bookwormCalls: number;
 };
 
 export type OutreachTargets = {
@@ -21,6 +23,8 @@ export type OutreachTargets = {
   splitmicEmail: number;
   bookwormTikTok: number;
   bookwormEmail: number;
+  splitmicCalls: number;
+  bookwormCalls: number;
 };
 
 type MetricKey = keyof OutreachCounts;
@@ -30,11 +34,13 @@ const METRICS: Record<MetricKey, { label: string }> = {
   splitmicEmail: { label: "SplitMic emails" },
   bookwormTikTok: { label: "TikTok messages" },
   bookwormEmail: { label: "Bookworm emails" },
+  splitmicCalls: { label: "SplitMic cold calls" },
+  bookwormCalls: { label: "Bookworm cold calls" },
 };
 
 const BUSINESS_METRICS: Record<OutreachBusiness, MetricKey[]> = {
-  SplitMic: ["splitmicLinkedIn", "splitmicEmail"],
-  Bookworm: ["bookwormTikTok", "bookwormEmail"],
+  SplitMic: ["splitmicLinkedIn", "splitmicEmail", "splitmicCalls"],
+  Bookworm: ["bookwormTikTok", "bookwormEmail", "bookwormCalls"],
 };
 
 export function OutreachProgressBar({

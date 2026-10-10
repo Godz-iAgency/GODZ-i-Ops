@@ -82,8 +82,8 @@ export const GOOGLE_SHEET_SCHEMAS: SheetSchema[] = [
   },
   {
     title: "Daily Progress",
-    headers: ["Record ID", "Date", "Day Number", "Weekday", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent", "Build Project", "Build Objective", "Build Status", "Build Completed", "Build Notes", "Delivery Objective", "Delivery Status", "Delivery Recipient", "Delivery Link", "Delivery Notes", "Deliver Completed", "Feedback Received", "Needs Follow-up", "Deliver Next Action", "Camera Practice", "Content Posted", "Content Platform", "Content Title", "Content URL", "Book", "Pages or Chapter", "Learned", "Apply", "Deep Work Completed", "Deep Work Notes", "Day Note", "Bookworm Content Posted", "Bookworm Content Platform", "Bookworm Content Title", "Bookworm Content URL", "Weekend Bookworm Outlines Ready", "Weekend SplitMic Outlines Ready", "Weekend Content Research Notes", "Weekend Content Recorded", "Weekend Content Edited", "Weekend Content Scheduled", "Weekend Content Production Notes", "Content Engagement Completed", "Content Engagement Notes"],
-    numericColumns: ["Day Number", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent"],
+    headers: ["Record ID", "Date", "Day Number", "Weekday", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent", "Build Project", "Build Objective", "Build Status", "Build Completed", "Build Notes", "Delivery Objective", "Delivery Status", "Delivery Recipient", "Delivery Link", "Delivery Notes", "Deliver Completed", "Feedback Received", "Needs Follow-up", "Deliver Next Action", "Camera Practice", "Content Posted", "Content Platform", "Content Title", "Content URL", "Book", "Pages or Chapter", "Learned", "Apply", "Deep Work Completed", "Deep Work Notes", "Day Note", "Bookworm Content Posted", "Bookworm Content Platform", "Bookworm Content Title", "Bookworm Content URL", "Weekend Bookworm Outlines Ready", "Weekend SplitMic Outlines Ready", "Weekend Content Research Notes", "Weekend Content Recorded", "Weekend Content Edited", "Weekend Content Scheduled", "Weekend Content Production Notes", "Content Engagement Completed", "Content Engagement Notes", "SplitMic Calls Made", "Bookworm Calls Made"],
+    numericColumns: ["Day Number", "Emails Sent", "LinkedIn Sent", "Bookworm Emails Sent", "Bookworm TikTok Sent", "SplitMic Calls Made", "Bookworm Calls Made"],
     booleanColumns: ["Build Completed", "Deliver Completed", "Camera Practice", "Content Posted", "Deep Work Completed", "Bookworm Content Posted", "Weekend Bookworm Outlines Ready", "Weekend SplitMic Outlines Ready", "Weekend Content Recorded", "Weekend Content Edited", "Weekend Content Scheduled", "Content Engagement Completed"],
     dropdowns: {
       "Build Status": ["Not Started", "In Progress", "Completed", "Blocked"],
@@ -102,8 +102,8 @@ export const GOOGLE_SHEET_SCHEMAS: SheetSchema[] = [
   },
   {
     title: "Settings",
-    headers: ["Record ID", "Name", "SplitMic LinkedIn Target", "SplitMic Email Target", "Bookworm TikTok Target", "Bookworm Email Target"],
-    numericColumns: ["SplitMic LinkedIn Target", "SplitMic Email Target", "Bookworm TikTok Target", "Bookworm Email Target"],
+    headers: ["Record ID", "Name", "SplitMic LinkedIn Target", "SplitMic Email Target", "Bookworm TikTok Target", "Bookworm Email Target", "SplitMic Calls Target", "Bookworm Calls Target"],
+    numericColumns: ["SplitMic LinkedIn Target", "SplitMic Email Target", "Bookworm TikTok Target", "Bookworm Email Target", "SplitMic Calls Target", "Bookworm Calls Target"],
   },
   {
     title: "Email Cleanup Log",
@@ -486,8 +486,17 @@ export async function initializeGoogleSheetsDatabase(): Promise<{ title: string;
   await sheetsFetch(":batchUpdate", { method: "POST", body: JSON.stringify({ requests: formatRequests }) });
 
   const settings = new GoogleSheetsTable(GOOGLE_SHEET_SCHEMAS.find((schema) => schema.title === "Settings")!);
-  if (!(await settings.select({ maxRecords: 1 }).all()).length) {
-    await settings.create([{ fields: { Name: "Default", "SplitMic LinkedIn Target": 10, "SplitMic Email Target": 5, "Bookworm TikTok Target": 10, "Bookworm Email Target": 5 } }]);
+  const settingsRecords = await settings.select({ maxRecords: 1 }).all();
+  if (!settingsRecords.length) {
+    await settings.create([{ fields: { Name: "Default", "SplitMic LinkedIn Target": 10, "SplitMic Email Target": 5, "Bookworm TikTok Target": 10, "Bookworm Email Target": 5, "SplitMic Calls Target": 5, "Bookworm Calls Target": 5 } }]);
+  } else {
+    const current = settingsRecords[0];
+    const missingCallTargets: Fields = {};
+    if (current.fields["SplitMic Calls Target"] == null) missingCallTargets["SplitMic Calls Target"] = 5;
+    if (current.fields["Bookworm Calls Target"] == null) missingCallTargets["Bookworm Calls Target"] = 5;
+    if (Object.keys(missingCallTargets).length) {
+      await settings.update([{ id: current.id, fields: missingCallTargets }]);
+    }
   }
 
   return GOOGLE_SHEET_SCHEMAS.map((schema) => ({ title: schema.title, sheetId: ids.get(schema.title)! }));

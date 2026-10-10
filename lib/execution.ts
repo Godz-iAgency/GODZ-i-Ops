@@ -35,6 +35,8 @@ export type DailyCounts = {
   splitmicEmail: number;
   bookwormTikTok: number;
   bookwormEmail: number;
+  splitmicCalls: number;
+  bookwormCalls: number;
 };
 
 function dateOnly(value?: string): string {
@@ -54,11 +56,13 @@ function progressCounts(progress: ProgressFields | null): DailyCounts {
     splitmicEmail: Number(progress?.["Emails Sent"] || 0),
     bookwormTikTok: Number(progress?.["Bookworm TikTok Sent"] || 0),
     bookwormEmail: Number(progress?.["Bookworm Emails Sent"] || 0),
+    splitmicCalls: Number(progress?.["SplitMic Calls Made"] || 0),
+    bookwormCalls: Number(progress?.["Bookworm Calls Made"] || 0),
   };
 }
 
 export function marketingTotal(counts: DailyCounts): number {
-  return counts.splitmicLinkedIn + counts.splitmicEmail + counts.bookwormTikTok + counts.bookwormEmail;
+  return counts.splitmicLinkedIn + counts.splitmicEmail + counts.bookwormTikTok + counts.bookwormEmail + counts.splitmicCalls + counts.bookwormCalls;
 }
 
 export function marketingTarget(settings: ExecutionSettings): number {
@@ -66,7 +70,9 @@ export function marketingTarget(settings: ExecutionSettings): number {
     settings["SplitMic LinkedIn Target"] +
     settings["SplitMic Email Target"] +
     settings["Bookworm TikTok Target"] +
-    settings["Bookworm Email Target"]
+    settings["Bookworm Email Target"] +
+    settings["SplitMic Calls Target"] +
+    settings["Bookworm Calls Target"]
   );
 }
 
@@ -161,12 +167,16 @@ export async function getDailyExecution(date: string) {
     splitmicEmail: countContactedOn(date, contacts.map((c) => c.fields["Email Last Contacted"])),
     bookwormTikTok: countContactedOn(date, tiktok.map((c) => c.fields["Date Contacted"])),
     bookwormEmail: countContactedOn(date, bookworm.map((c) => c.fields["Last Contact"])),
+    splitmicCalls: 0,
+    bookwormCalls: 0,
   };
   const counts: DailyCounts = {
     splitmicLinkedIn: Math.max(saved.splitmicLinkedIn, actual.splitmicLinkedIn),
     splitmicEmail: Math.max(saved.splitmicEmail, actual.splitmicEmail),
     bookwormTikTok: Math.max(saved.bookwormTikTok, actual.bookwormTikTok),
     bookwormEmail: Math.max(saved.bookwormEmail, actual.bookwormEmail),
+    splitmicCalls: saved.splitmicCalls,
+    bookwormCalls: saved.bookwormCalls,
   };
   const settings = settingsResult.settings;
   const followUps = followUpsFromRecords(date, contacts, linkedin, bookworm, tiktok);
@@ -224,8 +234,10 @@ export async function getWeeklyExecution(date: string) {
       splitmicEmail: acc.splitmicEmail + row.counts.splitmicEmail,
       bookwormTikTok: acc.bookwormTikTok + row.counts.bookwormTikTok,
       bookwormEmail: acc.bookwormEmail + row.counts.bookwormEmail,
+      splitmicCalls: acc.splitmicCalls + row.counts.splitmicCalls,
+      bookwormCalls: acc.bookwormCalls + row.counts.bookwormCalls,
     }),
-    { splitmicLinkedIn: 0, splitmicEmail: 0, bookwormTikTok: 0, bookwormEmail: 0 }
+    { splitmicLinkedIn: 0, splitmicEmail: 0, bookwormTikTok: 0, bookwormEmail: 0, splitmicCalls: 0, bookwormCalls: 0 }
   );
   return { start, rows, totals, settings: settingsResult.settings };
 }

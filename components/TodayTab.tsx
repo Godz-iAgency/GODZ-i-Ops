@@ -37,6 +37,8 @@ type Progress = {
   "Deep Work Completed"?: boolean;
   "Deep Work Notes"?: string;
   "Bookworm TikTok Sent"?: number;
+  "SplitMic Calls Made"?: number;
+  "Bookworm Calls Made"?: number;
   "Bookworm Content Posted"?: boolean;
   "Bookworm Content Platform"?: string;
   "Bookworm Content Title"?: string;
@@ -57,6 +59,8 @@ type ExecutionSettings = {
   "SplitMic Email Target": number;
   "Bookworm TikTok Target": number;
   "Bookworm Email Target": number;
+  "SplitMic Calls Target": number;
+  "Bookworm Calls Target": number;
 };
 
 const defaultExecutionSettings: ExecutionSettings = {
@@ -64,6 +68,8 @@ const defaultExecutionSettings: ExecutionSettings = {
   "SplitMic Email Target": 5,
   "Bookworm TikTok Target": 10,
   "Bookworm Email Target": 5,
+  "SplitMic Calls Target": 5,
+  "Bookworm Calls Target": 5,
 };
 
 type BookwormContact = {
@@ -126,6 +132,8 @@ const emptyProgress: Progress = {
   "Deep Work Completed": false,
   "Deep Work Notes": "",
   "Bookworm TikTok Sent": 0,
+  "SplitMic Calls Made": 0,
+  "Bookworm Calls Made": 0,
   "Bookworm Content Posted": false,
   "Bookworm Content Platform": "",
   "Bookworm Content Title": "",
@@ -175,7 +183,7 @@ function Block({
   );
 }
 
-function Counter({ count, onChange, goal }: { count: number; onChange: (n: number) => void; goal: number }) {
+function Counter({ count, onChange, goal, label }: { count: number; onChange: (n: number) => void; goal: number; label: string }) {
   const done = count >= goal;
   return (
     <div
@@ -185,7 +193,7 @@ function Counter({ count, onChange, goal }: { count: number; onChange: (n: numbe
         background: done ? "rgba(232,67,10,0.1)" : "rgba(255,255,255,0.02)",
       }}
     >
-      <OutreachProgressBar count={count} target={goal} label="Outreach progress" showValue={false} />
+      <OutreachProgressBar count={count} target={goal} label={label} showValue={false} />
       <div className="flex items-center gap-3">
         <span className="flex-1 text-base font-mono" style={{ color: done ? "#f2ece5" : "var(--color-muted)" }}>
           {count} / {goal}
@@ -1442,12 +1450,16 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
             splitmicEmail: progress["Emails Sent"] ?? 0,
             bookwormTikTok: progress["Bookworm TikTok Sent"] ?? 0,
             bookwormEmail: progress["Bookworm Emails Sent"] ?? 0,
+            splitmicCalls: progress["SplitMic Calls Made"] ?? 0,
+            bookwormCalls: progress["Bookworm Calls Made"] ?? 0,
           }}
           targets={{
             splitmicLinkedIn: settings["SplitMic LinkedIn Target"],
             splitmicEmail: settings["SplitMic Email Target"],
             bookwormTikTok: settings["Bookworm TikTok Target"],
             bookwormEmail: settings["Bookworm Email Target"],
+            splitmicCalls: settings["SplitMic Calls Target"],
+            bookwormCalls: settings["Bookworm Calls Target"],
           }}
         />
       )}
@@ -1491,6 +1503,7 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
                 <Counter
                   count={progress["Bookworm Emails Sent"] ?? 0}
                   goal={settings["Bookworm Email Target"]}
+                  label="Bookworm emails"
                   onChange={(n) => set({ "Bookworm Emails Sent": n })}
                 />
                 <p className="text-sm text-muted px-1">
@@ -1502,6 +1515,17 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
                     onContactedChange={(d) => set({ "Bookworm Emails Sent": (progress["Bookworm Emails Sent"] ?? 0) + d })}
                   />
                 </div>
+
+                <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">Phone · cold calls</p>
+                <Counter
+                  count={progress["Bookworm Calls Made"] ?? 0}
+                  goal={settings["Bookworm Calls Target"]}
+                  label="Bookworm cold calls"
+                  onChange={(n) => set({ "Bookworm Calls Made": n })}
+                />
+                <p className="text-sm text-muted px-1">
+                  Goal: {settings["Bookworm Calls Target"]} Bookworm cold calls completed today
+                </p>
 
                 <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">TikTok · creators</p>
                 <BookwormTikTokToday
@@ -1560,6 +1584,7 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
             <Counter
               count={progress["Emails Sent"] ?? 0}
               goal={settings["SplitMic Email Target"]}
+              label="SplitMic emails"
               onChange={(n) => set({ "Emails Sent": n })}
             />
             <p className="text-sm text-muted px-1">
@@ -1571,6 +1596,17 @@ export default function TodayTab({ onOpenProspectSearch }: { onOpenProspectSearc
                 onSentChange={(d) => set({ "Emails Sent": (progress["Emails Sent"] ?? 0) + d })}
               />
             </div>
+
+            <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">Phone · cold calls</p>
+            <Counter
+              count={progress["SplitMic Calls Made"] ?? 0}
+              goal={settings["SplitMic Calls Target"]}
+              label="SplitMic cold calls"
+              onChange={(n) => set({ "SplitMic Calls Made": n })}
+            />
+            <p className="text-sm text-muted px-1">
+              Goal: {settings["SplitMic Calls Target"]} SplitMic cold calls completed today
+            </p>
 
             <p className="text-xs uppercase tracking-[0.1em] text-muted font-mono mt-4">LinkedIn</p>
             <LinkedInToday

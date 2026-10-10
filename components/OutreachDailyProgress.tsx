@@ -14,6 +14,8 @@ const defaultTargets: OutreachTargets = {
   splitmicEmail: 5,
   bookwormTikTok: 10,
   bookwormEmail: 5,
+  splitmicCalls: 5,
+  bookwormCalls: 5,
 };
 
 const emptyCounts: OutreachCounts = {
@@ -21,6 +23,8 @@ const emptyCounts: OutreachCounts = {
   splitmicEmail: 0,
   bookwormTikTok: 0,
   bookwormEmail: 0,
+  splitmicCalls: 0,
+  bookwormCalls: 0,
 };
 
 export default function OutreachDailyProgress({ business }: { business: OutreachBusiness }) {
@@ -58,12 +62,16 @@ export default function OutreachDailyProgress({ business }: { business: Outreach
             (item: { fields?: Record<string, string> }) => item.fields?.["Date Contacted"] === today
           ).length,
           bookwormEmail: Number(progress["Bookworm Emails Sent"] || 0),
+          splitmicCalls: Number(progress["SplitMic Calls Made"] || 0),
+          bookwormCalls: Number(progress["Bookworm Calls Made"] || 0),
         });
         setTargets({
           splitmicLinkedIn: Number(settings["SplitMic LinkedIn Target"] ?? defaultTargets.splitmicLinkedIn),
           splitmicEmail: Number(settings["SplitMic Email Target"] ?? defaultTargets.splitmicEmail),
           bookwormTikTok: Number(settings["Bookworm TikTok Target"] ?? defaultTargets.bookwormTikTok),
           bookwormEmail: Number(settings["Bookworm Email Target"] ?? defaultTargets.bookwormEmail),
+          splitmicCalls: Number(settings["SplitMic Calls Target"] ?? defaultTargets.splitmicCalls),
+          bookwormCalls: Number(settings["Bookworm Calls Target"] ?? defaultTargets.bookwormCalls),
         });
       } catch {
         // The boards below already surface provider errors. Keep this summary quiet.
